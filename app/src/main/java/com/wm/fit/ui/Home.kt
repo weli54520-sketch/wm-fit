@@ -147,8 +147,8 @@ fun Home(nav: Nav) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                "${Calc.weeklySets(P.focus.isNotEmpty(), P.level)} مجموعة بالأسبوع لعضلات التركيز، " +
-                    "و${Calc.weeklySets(false, P.level)} للباقي",
+                if (P.focus.isEmpty()) "كل يوم له عضلة رئيسية، والباقي مساعدة."
+                else "عضلات التركيز تنلعب مرتين بالأسبوع (أقصى شي)، وتاخذ يوم رئيسي لها.",
                 style = MaterialTheme.typography.bodySmall,
                 color = C.muted,
             )

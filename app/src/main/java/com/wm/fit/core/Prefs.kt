@@ -47,6 +47,9 @@ object P {
         set(v) { trainDaysRaw = v.filter { it in 0..6 }.distinct().sorted().joinToString(",") }
 
     val daysPerWeek: Int get() = trainDays.size
+
+    /** تبديلات المستخدم بين أيام الخطة (شوف Plan.swapDays). */
+    var daySwapsRaw by Pref("daySwaps", "")
     /** beg مبتدئ، mid متوسط، adv متقدم */
     var level by Pref("level", "beg")
 

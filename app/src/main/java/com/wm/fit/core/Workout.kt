@@ -3,17 +3,15 @@ package com.wm.fit.core
 import kotlin.math.roundToInt
 
 /**
- * يبني تمارين اليوم من خطة الأسبوع.
+ * يبني تمارين اليوم من خطة الأسبوع (Plan).
  *
- * - عدد التمارين لكل عضلة من المجموعات الأسبوعية (ACSM 2026) مقسومة على أيامها.
+ * - العضلة الرئيسية أول: تمرينها الأساسي ثابت كل أسبوع، والباقي يتغير كل 5 أسابيع.
+ * - العضلات المساعدة بعدها، بتمارين غير الأساسية عشان ما يتكرر نفس التمرين مرتين بالأسبوع.
  * - يتجنب التمارين اللي تضغط على إصابة جديدة (متوسطة أو قوية).
  * - المزمنة ما توقف التمرين، بس نقدّم الأنسب وننبّه نخفف.
  * - يطبّق البدائل اللي اختارها المستخدم من زر "ما أقدر".
  */
 object Workout {
-
-    /** أكثر عدد تمارين باليوم، عشان التمرين ما يطول. */
-    private const val MAX_ITEMS = 8
 
     data class Item(
         val ex: Ex,
@@ -24,6 +22,10 @@ object Workout {
         val from: Ex? = null,
         /** إصابات تخص هذا التمرين بس ما توقفه. */
         val cautions: List<Injury> = emptyList(),
+        /** التمرين الأساسي لليوم (ثابت كل أسبوع). */
+        val main: Boolean = false,
+        /** هل هو للعضلة الرئيسية أو مساعد. */
+        val primary: Boolean = true,
     )
 
     fun forDay(dow: Int): List<Item> {
@@ -33,70 +35,71 @@ object Workout {
         val scheme = Plan.scheme(P.goal, P.level)
         val tired = Store.bodyToday == BodyCheck.TIRED
         val sets = if (tired) (scheme.sets - 1).coerceAtLeast(2) else scheme.sets
-        val focus = P.focus.mapNotNull { Muscle.byId(it) }
-
-        // عضلات التركيز أول
-        val groups = session.groups.sortedByDescending { it in focus }
-        val picked = mutableListOf<Item>()
+        val block = Plan.block()
         val used = mutableSetOf<String>()
+        val out = mutableListOf<Item>()
 
-        val perMuscle = groups.map { m ->
-            val weekly = Calc.weeklySets(m in focus, P.level)
-            val (hits, nth) = Plan.muscleHits(m, dow)
-            val perSession = weekly.toFloat() / hits
-            val n = (perSession / scheme.sets).roundToInt().coerceIn(1, 3)
-            Triple(m, n, nth)
+        for (slot in session.slots) {
+            pick(slot, block, used).forEachIndexed { idx, ex ->
+                val (real, from) = applySwap(ex, used)
+                if (out.any { it.ex.id == real.id }) return@forEachIndexed
+                out += Item(
+                    ex = real,
+                    sets = sets,
+                    reps = real.reps ?: scheme.reps,
+                    restSec = if (real.compound) scheme.restSec else (scheme.restSec * 0.75f).roundToInt(),
+                    from = from,
+                    cautions = Store.cautions(real),
+                    main = slot.main && idx == 0,
+                    primary = slot.main,
+                )
+            }
         }
-
-        // نختار المركبة أول لكل العضلات، بعدين العزل
-        val chosen = perMuscle.associate { (m, n, nth) -> m to choose(m, n, nth, used) }
-        val ordered = chosen.values.flatten().sortedByDescending { it.compound }
-
-        for (ex in ordered) {
-            if (picked.size >= MAX_ITEMS) break
-            val (real, from) = applySwap(ex, used)
-            if (picked.any { it.ex.id == real.id }) continue
-            picked += Item(
-                ex = real,
-                sets = sets,
-                reps = real.reps ?: scheme.reps,
-                restSec = if (real.compound) scheme.restSec else (scheme.restSec * 0.75f).roundToInt(),
-                from = from,
-                cautions = Store.cautions(real),
-            )
-        }
-        return picked
+        return out
     }
 
     /**
-     * ترتيب الاختيار لكل عضلة: نخلط أنواع الحركة عشان كل يوم ياخذ نوعين مختلفين.
-     * مثلاً الأرجل: سكوات (أمامي) + رومانية (خلفي)، واليوم الثاني: ضغط أرجل + ثني أرجل.
+     * يختار تمارين المكان.
+     * الرئيسية: أول تمرين = الأساسي (الأول في المرة الأولى بالأسبوع، الثاني في المرة الثانية).
+     * المساعدة للعضلات الكبيرة: نتجنب التمارين الأساسية عشان ما تتكرر.
      */
-    private val order = listOf(
-        "squat", "rdl", "leg_press", "leg_curl", "goblet", "lunge", "leg_ext", "calf",
-        "hip_thrust", "bulgarian", "glute_bridge",
-        "bench", "cable_fly", "incline_db", "pushup",
-        "pulldown", "cable_row", "pullup", "db_row", "deadlift",
-        "db_ohp", "lateral", "face_pull", "rear_fly",
-        "db_curl", "pushdown", "hammer", "oh_ext",
-        "plank", "cable_crunch", "knee_raise",
-        "farmer", "wrist_curl",
-    ).withIndex().associate { (i, id) -> id to i }
-
-    /** يختار [n] تمارين للعضلة، ويدوّر بينها حسب ترتيب اليوم عشان تتنوع. */
-    private fun choose(m: Muscle, n: Int, nth: Int, used: MutableSet<String>): List<Ex> {
-        val pool = Exercises.forMuscle(m)
+    private fun pick(slot: Plan.Slot, block: Int, used: MutableSet<String>): List<Ex> {
+        val part = slot.part
+        val pool = part.ids.mapNotNull { Exercises.get(it) }
             .filter { !Store.blocked(it) && it.id !in used }
-            .sortedWith(
-                // اللي فيها إصابة مزمنة أو خفيفة تتأخر، والباقي بالترتيب المخلوط
-                compareBy<Ex> { Store.cautions(it).size }
-                    .thenBy { order[it.id] ?: Int.MAX_VALUE },
-            )
         if (pool.isEmpty()) return emptyList()
-        val out = (0 until n.coerceAtMost(pool.size)).map { pool[(nth * n + it) % pool.size] }.distinct()
-        used += out.map { it.id }
-        return out
+        val big = part.ids.size > 3
+        val mains = if (big) part.ids.take(2) else emptyList()
+        val chosen = mutableListOf<Ex>()
+
+        if (slot.main) {
+            // الأساسي ثابت: المرة الأولى بالأسبوع الأول، والمرة الثانية الثاني
+            val fixed = part.ids.take(2)
+            val prefer = listOf(fixed[slot.nth % fixed.size], fixed[(slot.nth + 1) % fixed.size])
+            val main = prefer.firstNotNullOfOrNull { id -> pool.firstOrNull { it.id == id } } ?: pool.first()
+            chosen += main
+            // أول يوم للعضلة الكبيرة: الأساسي الثاني بعده (مثل سكوات + رومانية = أمامي وخلفي)
+            if (big && slot.nth == 0 && slot.count > 1) {
+                pool.firstOrNull { it.id == mains[1] && it !in chosen }?.let { chosen += it }
+            }
+        }
+
+        // الباقي: اللي ما فيها إصابة أول، وندوّر بينها كل 5 أسابيع
+        // التمارين الثقيلة جداً ما تجي كمساعدة
+        val rest = pool.filter { it !in chosen && it.id !in mains && (slot.main || it.id !in heavy) }
+            .ifEmpty { pool.filter { it !in chosen } }
+        val clean = rest.filter { Store.cautions(it).isEmpty() }
+        val risky = rest.filter { Store.cautions(it).isNotEmpty() }
+        val shift = if (clean.isEmpty()) 0 else (block + slot.nth * 2) % clean.size
+        val rotated = clean.drop(shift) + clean.take(shift) + risky
+        chosen += rotated.take((slot.count - chosen.size).coerceAtLeast(0))
+
+        used += chosen.map { it.id }
+        return chosen
     }
+
+    /** تمارين ثقيلة على الجسم كله، تكون في يوم عضلتها الرئيسية بس. */
+    private val heavy = setOf("deadlift", "squat")
 
     /** لو المستخدم اختار بديل لهذا التمرين، نرجّع البديل. */
     private fun applySwap(ex: Ex, used: MutableSet<String>): Pair<Ex, Ex?> {
@@ -105,6 +108,15 @@ object Workout {
         if (Store.blocked(alt)) return ex to null
         used += alt.id
         return alt to ex
+    }
+
+    /** مجموع المجموعات بالأسبوع لكل عضلة، من الخطة الفعلية. */
+    fun weeklySets(): Map<Muscle, Int> {
+        val total = mutableMapOf<Muscle, Int>()
+        Plan.trainingDays().forEach { d ->
+            forDay(d).forEach { total[it.ex.muscle] = (total[it.ex.muscle] ?: 0) + it.sets }
+        }
+        return total
     }
 
     /** أعلى رقم في مدى العدّات، مثل "6-10" = 10. */

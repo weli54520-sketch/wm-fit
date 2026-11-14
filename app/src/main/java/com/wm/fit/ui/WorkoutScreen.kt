@@ -265,6 +265,15 @@ private fun ExerciseCard(
                     .clickable { nav.detail(ex.id) },
             ) { ExerciseAnim(ex.move, Modifier.fillMaxSize().padding(4.dp), play = false) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    when {
+                        item.main -> "الأساسي · ثابت كل أسبوع"
+                        item.primary -> "رئيسية"
+                        else -> "مساعدة"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (item.primary) C.accent else C.muted,
+                )
                 Text(ex.ar + if (allDone) " ✅" else "", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "${ex.en} · ${ex.muscle.ar} · ${ex.equip}",
