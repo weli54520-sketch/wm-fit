@@ -1,6 +1,8 @@
 package com.wm.fit.ui
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -63,13 +65,23 @@ fun WMFitTheme(content: @Composable () -> Unit) {
         colorScheme = darkColorScheme(
             primary = C.accent,
             onPrimary = C.onAccent,
+            secondary = C.accent,
+            onSecondary = C.onAccent,
             background = C.bg,
-            surface = C.card,
             onBackground = C.text,
+            surface = C.card,
             onSurface = C.text,
+            surfaceVariant = C.card2,
+            onSurfaceVariant = C.muted,
+            outline = C.line,
             error = C.bad,
+            onError = C.onAccent,
         ),
         typography = typo,
-        content = content,
-    )
+    ) {
+        // نص افتراضي أبيض على الخلفية الداكنة، عشان ما يطلع أسود بأي مكان
+        CompositionLocalProvider(LocalContentColor provides C.text) {
+            content()
+        }
+    }
 }
