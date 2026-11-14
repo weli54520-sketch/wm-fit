@@ -24,11 +24,12 @@ import com.wm.fit.core.Goal
 import com.wm.fit.core.Muscle
 import com.wm.fit.core.P
 import com.wm.fit.core.Plan
+import com.wm.fit.core.Store
 import java.util.Calendar
 import kotlin.math.roundToInt
 
 @Composable
-fun Home(onOpenPlan: () -> Unit) {
+fun Home(nav: Nav) {
     val d = Calc.daily()
     val session = Plan.todaySession()
     val dow = Plan.todayDow()
@@ -61,7 +62,7 @@ fun Home(onOpenPlan: () -> Unit) {
         }
 
         // تمرين اليوم
-        Card(onClick = if (session != null) onOpenPlan else null) {
+        Card(onClick = if (session != null && !P.heartRisk) nav.workout else null) {
             if (session != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -80,6 +81,11 @@ fun Home(onOpenPlan: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = C.muted,
                         )
+                    }
+                }
+                if (!P.heartRisk) {
+                    BigButton(if (Store.today() in Store.done) "خلّصته ✅ شوف التمرين" else "ابدأ التمرين") {
+                        nav.workout()
                     }
                 }
             } else {
@@ -113,8 +119,23 @@ fun Home(onOpenPlan: () -> Unit) {
             )
         }
 
+        // الإصابات
+        Card(onClick = { nav.injuries() }) {
+            Text("إصاباتك", style = MaterialTheme.typography.bodySmall, color = C.muted)
+            Text(
+                if (Store.injuries.isEmpty()) "ما فيه إصابات مسجلة"
+                else Store.injuries.values.joinToString(" · ") { "${it.area.ar} (${levelAr(it.level)})" },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                "عندك ألم؟ حدده على الخريطة، وأنا أعدّل التمارين.",
+                style = MaterialTheme.typography.bodySmall,
+                color = C.muted,
+            )
+        }
+
         // التركيز
-        Card(onClick = onOpenPlan) {
+        Card {
             Text(
                 if (P.focus.isEmpty()) "خطة متوازنة" else "تركيزك (اختيارك)",
                 style = MaterialTheme.typography.bodySmall,
@@ -173,7 +194,7 @@ fun Home(onOpenPlan: () -> Unit) {
 @Composable
 private fun WeekRing() {
     val total = P.daysPerWeek
-    val done = Plan.trainingDays(total).count { it < Plan.todayDow() }
+    val done = Store.doneThisWeek().coerceAtMost(total)
     val accent = C.accent
     Box(Modifier.size(84.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {

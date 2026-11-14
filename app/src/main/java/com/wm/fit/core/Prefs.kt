@@ -35,7 +35,18 @@ object P {
     var goal by Pref("goal", Goal.CUT)
     /** معامل النشاط اليومي بدون التمرين */
     var activity by Pref("activity", 1.55f)
-    var daysPerWeek by Pref("daysPerWeek", 4)
+    /** عدد الأيام القديم (المرحلة 1). نستخدمه بس لو ما اختار أيامه. */
+    private var daysPerWeekOld by Pref("daysPerWeek", 4)
+
+    /** أيام التمرين اللي اختارها المستخدم، مفصولة بفاصلة. 0 = الأحد. */
+    var trainDaysRaw by Pref("trainDays", "")
+    var trainDays: List<Int>
+        get() = trainDaysRaw.split(",").mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 0..6 }.distinct().sorted()
+            .ifEmpty { Plan.defaultDays(daysPerWeekOld) }
+        set(v) { trainDaysRaw = v.filter { it in 0..6 }.distinct().sorted().joinToString(",") }
+
+    val daysPerWeek: Int get() = trainDays.size
     /** beg مبتدئ، mid متوسط، adv متقدم */
     var level by Pref("level", "beg")
 
@@ -75,6 +86,8 @@ object P {
     // ===== الخصوصية =====
     /** المحادثة الحرة مع Claude. مقفلة افتراضياً، والمستخدم يفعّلها بنفسه بمفتاحه. */
     var smartChat by Pref("smartChat", false)
+    /** سألناه عن إذن الإشعارات (لمؤقت الراحة)؟ نسأل مرة وحدة بس. */
+    var askedNotif by Pref("askedNotif", false)
     /** قفل التطبيق بالبصمة */
     var appLock by Pref("appLock", false)
 
@@ -82,6 +95,7 @@ object P {
     fun wipe() {
         sp.edit().clear().apply()
         Pref.reloadAll()
+        Store.load()
     }
 }
 

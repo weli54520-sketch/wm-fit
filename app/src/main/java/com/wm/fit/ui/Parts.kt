@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.wm.fit.core.Plan
 
 /** بطاقة: الشكل الأساسي لكل المحتوى. */
 @Composable
@@ -196,4 +197,93 @@ fun SectionLabel(text: String) {
         color = C.muted,
         modifier = Modifier.padding(start = 6.dp),
     )
+}
+
+/** عنوان الشاشة مع زر رجوع. */
+@Composable
+fun Header(title: String, sub: String? = null, onBack: (() -> Unit)? = null) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (onBack != null) {
+            Box(
+                Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(C.card)
+                    .border(1.dp, C.line, RoundedCornerShape(14.dp))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                // في العربي السهم يأشر لليمين للرجوع
+                Text("→", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall, color = C.muted)
+            Text(title, style = MaterialTheme.typography.headlineMedium)
+        }
+    }
+}
+
+/** زر ثانوي بإطار. */
+@Composable
+fun OutlineButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = C.text,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, if (color == C.text) C.line else color.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, style = MaterialTheme.typography.bodyMedium, color = color, textAlign = TextAlign.Center) }
+}
+
+/**
+ * اختيار أيام التمرين: المستخدم يضغط على الأيام اللي يبيها.
+ * لازم بين [Plan.MIN_DAYS] و [Plan.MAX_DAYS] أيام.
+ */
+@Composable
+fun DayPicker(selected: List<Int>, onChange: (List<Int>) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            (0..6).forEach { d ->
+                val on = d in selected
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (on) C.accent else C.bg)
+                        .border(1.dp, if (on) C.accent else C.line, RoundedCornerShape(12.dp))
+                        .clickable {
+                            val next = if (on) selected - d else selected + d
+                            if (next.size in Plan.MIN_DAYS..Plan.MAX_DAYS) onChange(next.sorted())
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        Plan.dayShortAr[d],
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (on) C.onAccent else C.muted,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+        Text(
+            "${selected.size} أيام بالأسبوع. اختر من ${Plan.MIN_DAYS} إلى ${Plan.MAX_DAYS} أيام، " +
+                "والباقي راحة.",
+            style = MaterialTheme.typography.labelSmall,
+            color = C.muted,
+        )
+    }
 }

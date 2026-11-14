@@ -7,24 +7,40 @@ import java.util.Calendar
  *
  * الأساس (ACSM 2026): كل عضلة مرتين بالأسبوع على الأقل، عشان كذا التقسيمات
  * كلها تكرر العضلة مرتين أو أكثر، ما فيه "يوم لكل عضلة مرة بالأسبوع".
- * الجمعة والسبت راحة افتراضياً (عطلة السعودية).
+ * المستخدم يختار أيامه، والجمعة راحة في الافتراضي.
  */
 object Plan {
 
     val dayNamesAr = listOf("الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت")
     val dayShortAr = listOf("أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت")
 
-    /** أيام التمرين في الأسبوع. 0 = الأحد. */
-    fun trainingDays(perWeek: Int): List<Int> = when (perWeek) {
+    /**
+     * الأيام الافتراضية لو المستخدم ما اختار. 0 = الأحد.
+     * الجمعة راحة دايماً في الافتراضي، والمستخدم يقدر يغيّر أيامه من الإعدادات.
+     */
+    fun defaultDays(perWeek: Int): List<Int> = when (perWeek.coerceIn(MIN_DAYS, MAX_DAYS)) {
+        2 -> listOf(0, 3)
         3 -> listOf(0, 2, 4)
-        5 -> listOf(0, 1, 2, 4, 5)
-        else -> listOf(0, 1, 3, 4)
+        4 -> listOf(0, 1, 3, 4)
+        5 -> listOf(0, 1, 2, 3, 4)
+        else -> listOf(0, 1, 2, 3, 4, 6)
     }
+
+    /** أقل وأكثر عدد أيام. يومين = كل عضلة مرتين بجسم كامل. */
+    const val MIN_DAYS = 2
+    const val MAX_DAYS = 6
+
+    /** أيام التمرين اللي اختارها المستخدم. */
+    fun trainingDays(): List<Int> = P.trainDays
 
     /** جلسة تمرين واحدة. */
     data class Session(val title: String, val groups: List<Muscle>)
 
     private fun splits(perWeek: Int): List<Session> = when (perWeek) {
+        2 -> listOf(
+            Session("جسم كامل أ", listOf(Muscle.LEGS, Muscle.CHEST, Muscle.BACK, Muscle.SHOULDERS, Muscle.CORE)),
+            Session("جسم كامل ب", listOf(Muscle.GLUTES, Muscle.BACK, Muscle.CHEST, Muscle.ARMS, Muscle.LEGS)),
+        )
         3 -> listOf(
             Session("جسم كامل أ", listOf(Muscle.LEGS, Muscle.CHEST, Muscle.BACK, Muscle.CORE)),
             Session("جسم كامل ب", listOf(Muscle.LEGS, Muscle.SHOULDERS, Muscle.BACK, Muscle.ARMS)),
@@ -37,6 +53,14 @@ object Plan {
             Session("علوي", listOf(Muscle.CHEST, Muscle.BACK, Muscle.SHOULDERS)),
             Session("سفلي", listOf(Muscle.LEGS, Muscle.GLUTES, Muscle.CORE)),
         )
+        6 -> listOf(
+            Session("دفع", listOf(Muscle.CHEST, Muscle.SHOULDERS, Muscle.ARMS)),
+            Session("سحب", listOf(Muscle.BACK, Muscle.ARMS, Muscle.FOREARMS)),
+            Session("أرجل", listOf(Muscle.LEGS, Muscle.GLUTES, Muscle.CORE)),
+            Session("دفع", listOf(Muscle.SHOULDERS, Muscle.CHEST, Muscle.ARMS)),
+            Session("سحب", listOf(Muscle.BACK, Muscle.ARMS, Muscle.FOREARMS)),
+            Session("أرجل", listOf(Muscle.GLUTES, Muscle.LEGS, Muscle.CORE)),
+        )
         else -> listOf(
             Session("علوي", listOf(Muscle.CHEST, Muscle.BACK, Muscle.SHOULDERS, Muscle.ARMS)),
             Session("سفلي", listOf(Muscle.LEGS, Muscle.GLUTES, Muscle.CORE)),
@@ -46,19 +70,25 @@ object Plan {
     }
 
     /** جلسة هذا اليوم، أو null لو يوم راحة. 0 = الأحد. */
-    fun sessionFor(dow: Int, perWeek: Int = P.daysPerWeek): Session? {
-        val days = trainingDays(perWeek)
+    fun sessionFor(dow: Int, days: List<Int> = trainingDays()): Session? {
         val i = days.indexOf(dow)
         if (i < 0) return null
-        val s = splits(perWeek)
+        val s = splits(days.size)
         val base = s[i % s.size]
-        // عضلة التركيز تنضاف لأول جلسة ما هي فيها، عشان تاخذ مجموعات أكثر
+        // عضلة التركيز تنضاف لكل جلسة ثانية ما هي فيها، عشان تاخذ مجموعات أكثر
         val focus = P.focus.mapNotNull { Muscle.byId(it) }
         val extra = focus.firstOrNull { it !in base.groups && (i % 2 == 0) }
         val groups = if (extra != null) base.groups + extra else base.groups
         val title = if (focus.isNotEmpty() && focus.any { it in groups })
             base.title + " · تركيز" else base.title
         return Session(title, groups)
+    }
+
+    /** كم مرة العضلة تتمرن بالأسبوع، وترتيب هذا اليوم بينها (للتنويع بين الجلسات). */
+    fun muscleHits(m: Muscle, dow: Int): Pair<Int, Int> {
+        val days = trainingDays()
+        val with = days.filter { sessionFor(it, days)?.groups?.contains(m) == true }
+        return with.size.coerceAtLeast(1) to with.indexOf(dow).coerceAtLeast(0)
     }
 
     /** رقم اليوم اليوم. 0 = الأحد. */

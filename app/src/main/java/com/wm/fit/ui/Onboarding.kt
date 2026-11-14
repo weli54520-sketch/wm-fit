@@ -24,11 +24,11 @@ import com.wm.fit.core.Goal
 import com.wm.fit.core.Muscle
 import com.wm.fit.core.P
 
-/** أسئلة أول مرة: 6 خطوات. */
+/** أسئلة أول مرة: 7 خطوات. */
 @Composable
 fun Onboarding(onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
-    val steps = 6
+    val steps = 7
 
     Column(
         Modifier
@@ -71,6 +71,7 @@ fun Onboarding(onDone: () -> Unit) {
                 3 -> StepFocus()
                 4 -> StepTraining()
                 5 -> StepSafety()
+                6 -> StepInjuries()
             }
         }
 
@@ -81,7 +82,7 @@ fun Onboarding(onDone: () -> Unit) {
         BigButton(
             text = when (step) {
                 0 -> "يلا نبدأ"
-                5 -> "فهمت، ابدأ خطتي"
+                6 -> "فهمت، ابدأ خطتي"
                 1 -> if (ok) "التالي" else "عبّ عمرك وطولك ووزنك"
                 else -> "التالي"
             },
@@ -313,12 +314,8 @@ private fun StepFocus() {
 private fun StepTraining() {
     Title("تمرينك", "كم يوم تقدر تلتزم؟ الصدق هنا أهم من الطموح.")
 
-    SectionLabel("أيام التمرين بالأسبوع")
-    Segmented(
-        options = listOf(3 to "3 أيام", 4 to "4 أيام", 5 to "5 أيام"),
-        selected = P.daysPerWeek,
-        onSelect = { P.daysPerWeek = it },
-    )
+    SectionLabel("وش الأيام اللي تروح فيها النادي؟")
+    DayPicker(P.trainDays) { P.trainDays = it }
 
     SectionLabel("مستواك في الحديد")
     Segmented(
@@ -393,6 +390,15 @@ private fun StepSafety() {
         else -> "ممتاز. تقدر تبدأ خطتك كاملة." to false
     }
     Note(verdict.first, warn = verdict.second)
+}
+
+@Composable
+private fun StepInjuries() {
+    Title(
+        "عندك إصابة أو ألم؟",
+        "اضغط على المكان، وحدد قوة الألم وهل هي جديدة أو مزمنة. لو ما عندك شي، اضغط التالي.",
+    )
+    InjuryMap()
 }
 
 @Composable

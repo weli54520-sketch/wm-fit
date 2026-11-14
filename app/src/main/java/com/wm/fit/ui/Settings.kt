@@ -17,11 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.wm.fit.core.Exercises
 import com.wm.fit.core.Muscle
+import com.wm.fit.core.Store
 import com.wm.fit.core.P
 
 @Composable
-fun Settings(onRestart: () -> Unit, onSources: () -> Unit) {
+fun Settings(nav: Nav, onRestart: () -> Unit) {
     var confirmWipe by remember { mutableStateOf(false) }
 
     Column(
@@ -57,15 +59,51 @@ fun Settings(onRestart: () -> Unit, onSources: () -> Unit) {
                 Text("الهدف", style = MaterialTheme.typography.bodyMedium)
                 Text(stageLabel(), style = MaterialTheme.typography.bodyMedium, color = C.accent)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("أيام التمرين", style = MaterialTheme.typography.bodyMedium)
-                Text("${P.daysPerWeek} أيام", style = MaterialTheme.typography.bodyMedium, color = C.muted)
-            }
+            Text("أيام التمرين", style = MaterialTheme.typography.bodyMedium)
+            DayPicker(P.trainDays) { P.trainDays = it }
             Text(
                 "عشان تغيّر هدفك أو عضلات التركيز، اضغط \"أعد أسئلة البداية\" تحت.",
                 style = MaterialTheme.typography.labelSmall,
                 color = C.muted,
             )
+        }
+
+        SectionLabel("التمارين")
+        Card(radius = 22, onClick = { nav.injuries() }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("خريطة الإصابات", style = MaterialTheme.typography.bodyMedium)
+                Text("›", style = MaterialTheme.typography.titleMedium, color = C.muted)
+            }
+        }
+        Card(radius = 22, onClick = { nav.library() }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("مكتبة التمارين", style = MaterialTheme.typography.bodyMedium)
+                Text("›", style = MaterialTheme.typography.titleMedium, color = C.muted)
+            }
+        }
+        if (Store.swaps.isNotEmpty()) {
+            Card(radius = 22) {
+                Text("البدائل اللي اخترتها", style = MaterialTheme.typography.bodyMedium)
+                Store.swaps.forEach { (from, to) ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${Exercises.get(from)?.ar ?: from} ← ${Exercises.get(to)?.ar ?: to}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = C.muted,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            "رجّع",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = C.accent,
+                            modifier = Modifier.clickable { Store.clearSwap(from) }.padding(6.dp),
+                        )
+                    }
+                }
+            }
         }
 
         SectionLabel("الشكل")
@@ -99,13 +137,14 @@ fun Settings(onRestart: () -> Unit, onSources: () -> Unit) {
             Text("بياناتك في جوالك بس", style = MaterialTheme.typography.titleMedium)
             Text(
                 "ما فيه حساب ولا خادم. التطبيق ما يرسل أي شي، والنت يستخدمه للتحديث بس. " +
+                    "أوزانك وإصاباتك تنحفظ داخل جوالك. " +
                     "وقفلنا النسخة الاحتياطية التلقائية عشان بياناتك ما تطلع لسحابة جوجل.",
                 style = MaterialTheme.typography.bodySmall,
                 color = C.muted,
             )
         }
 
-        Card(radius = 22, onClick = onSources) {
+        Card(radius = 22, onClick = { nav.sources() }) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("من وين أرقامنا؟", style = MaterialTheme.typography.bodyMedium)
                 Text("›", style = MaterialTheme.typography.titleMedium, color = C.muted)
@@ -159,7 +198,11 @@ fun Settings(onRestart: () -> Unit, onSources: () -> Unit) {
     }
 }
 
-/** مفتاح تشغيل وإطفاء. */
+/**
+ * مفتاح تشغيل وإطفاء.
+ * المفعّل: الدائرة على جهة النهاية (End)، يعني يسار في العربي ويمين في الإنجليزي،
+ * مثل مفاتيح أندرويد نفسها.
+ */
 @Composable
 fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
     Box(
@@ -169,7 +212,7 @@ fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
             .background(if (on) C.accent else C.track)
             .clickable { onChange(!on) }
             .padding(3.dp),
-        contentAlignment = if (on) Alignment.CenterStart else Alignment.CenterEnd,
+        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
             Modifier

@@ -51,6 +51,11 @@ fun PlanScreen() {
         }
 
         Card {
+            Text("أيامك", style = MaterialTheme.typography.titleMedium)
+            DayPicker(P.trainDays) { P.trainDays = it }
+        }
+
+        Card {
             Text("أيام الأسبوع", style = MaterialTheme.typography.titleMedium)
             (0..6).forEach { i ->
                 val s = Plan.sessionFor(i)
@@ -112,11 +117,6 @@ fun PlanScreen() {
         }
 
         Note(Plan.cardioNote(P.goal))
-
-        Note(
-            "التمارين نفسها وشرحها وزر \"ما أقدر\" جايين في التحديث الجاي. " +
-                "هذي المرحلة الأولى: الحسابات والخطة الأسبوعية.",
-        )
 
         Spacer(Modifier.height(100.dp))
     }
