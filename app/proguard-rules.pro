@@ -22,3 +22,9 @@
 -dontwarn kotlin.reflect.jvm.internal.**
 -dontwarn java.lang.management.**
 -dontwarn io.opentelemetry.**
+# Android ما فيه AnnotatedType. تستخدمه بس ميزة "المخرجات المنظمة" في مكتبة Anthropic
+# (توليد JSON Schema)، واحنا ما نستخدمها
+-dontwarn java.lang.reflect.AnnotatedType
+-dontwarn java.lang.reflect.AnnotatedParameterizedType
+-dontwarn java.lang.reflect.Annotated*
+-dontwarn com.github.victools.jsonschema.**
