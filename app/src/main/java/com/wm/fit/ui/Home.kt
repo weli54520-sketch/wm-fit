@@ -155,7 +155,7 @@ fun Home(nav: Nav) {
         }
 
         // الأسبوع
-        Card {
+        Card(onClick = { nav.plan() }) {
             Text("أسبوعك", style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 (0..6).forEach { i ->
@@ -243,6 +243,7 @@ private fun greeting(): String {
 internal fun stageLabel(): String = when (P.goal) {
     Goal.CUT -> "مرحلة التنشيف"
     Goal.BULK -> "مرحلة التضخيم"
+    Goal.MAINTAIN -> "مرحلة التثبيت"
     else -> "مرحلة اللياقة"
 }
 

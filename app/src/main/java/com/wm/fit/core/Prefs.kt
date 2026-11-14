@@ -31,7 +31,7 @@ object P {
     var heightCm by Pref("heightCm", 0)
     var weightKg by Pref("weightKg", 0f)
 
-    /** الهدف: cut تنشيف، bulk تضخيم، fitness لياقة */
+    /** الهدف: cut تنشيف، maintain تثبيت، bulk تضخيم، fitness لياقة */
     var goal by Pref("goal", Goal.CUT)
     /** معامل النشاط اليومي بدون التمرين */
     var activity by Pref("activity", 1.55f)
@@ -79,6 +79,12 @@ object P {
     /** الخصر المستهدف بالسنتيمتر. 0 = ما حدده. */
     var targetWaist by Pref("targetWaist", 0f)
     var neckCm by Pref("neckCm", 0f)
+    /** محيط الورك (للنساء، معادلة Navy تحتاجه). */
+    var hipCm by Pref("hipCm", 0f)
+    /** متى بدأت المرحلة الحالية (yyyy-MM-dd). */
+    var stageSince by Pref("stageSince", "")
+    /** آخر مرة ضغط "مو الحين" على اقتراح المرحلة. */
+    var stageSnooze by Pref("stageSnooze", "")
 
     // ===== الشكل =====
     /** 0 أخضر، 1 برتقالي، 2 أزرق، 3 فيروزي */
@@ -99,6 +105,8 @@ object P {
         sp.edit().clear().apply()
         Pref.reloadAll()
         Store.load()
+        Diary.deleteAllPhotos()
+        Diary.load()
     }
 }
 
@@ -106,6 +114,8 @@ object Goal {
     const val CUT = "cut"
     const val BULK = "bulk"
     const val FITNESS = "fitness"
+    /** تثبيت: أكل على احتياجك بالضبط، بين التنشيف والتضخيم. */
+    const val MAINTAIN = "maintain"
 }
 
 /** عضلات التركيز. المعرّف ثابت في التخزين، والاسم للعرض. */

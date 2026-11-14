@@ -430,7 +430,7 @@ object Plan {
             restSec = 75,
             note = "وقت التنشيف نحافظ على الأوزان قدر الإمكان، هي اللي تحمي عضلك.",
         )
-        Goal.BULK -> Scheme(
+        Goal.BULK, Goal.MAINTAIN -> Scheme(
             sets = if (level == "beg") 3 else 4,
             reps = "6-10",
             restSec = 120,
@@ -448,6 +448,7 @@ object Plan {
     fun cardioNote(goal: String): String = when (goal) {
         Goal.CUT -> "امشِ 8 إلى 10 آلاف خطوة يومياً. أسهل من الكارديو الشديد وأقل تعب على رجولك."
         Goal.BULK -> "كارديو خفيف 10 دقايق للإحماء بس، عشان ما ياكل من سعراتك."
+        Goal.MAINTAIN -> "كمّل على 7 إلى 8 آلاف خطوة يومياً، وأكلك على احتياجك بالضبط."
         else -> "150 دقيقة كارديو متوسط بالأسبوع، أو 75 دقيقة شديد."
     }
 }

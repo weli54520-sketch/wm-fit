@@ -104,7 +104,10 @@ fun WorkoutScreen(nav: Nav) {
             }
         }
 
-        OutlineButton("📚 مكتبة التمارين", Modifier.fillMaxWidth()) { nav.library() }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlineButton("📋 خطة الأسبوع", Modifier.weight(1f)) { nav.plan() }
+            OutlineButton("📚 مكتبة التمارين", Modifier.weight(1f)) { nav.library() }
+        }
 
         if (today !in days && dow != today) {
             Note("اليوم يوم راحة في خطتك. لو تبي تتمرن، هذي جلسة يوم ${Plan.dayNamesAr[dow]}.")

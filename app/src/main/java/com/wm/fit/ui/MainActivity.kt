@@ -43,7 +43,8 @@ class MainActivity : ComponentActivity() {
 private enum class Tab(val label: String, val icon: String) {
     HOME("الرئيسية", "🏠"),
     WORKOUT("التمرين", "🏋️"),
-    PLAN("الخطة", "📋"),
+    FOOD("الأكل", "🍽️"),
+    PROGRESS("التقدم", "📈"),
     SETTINGS("الإعدادات", "⚙️"),
 }
 
@@ -52,6 +53,9 @@ sealed interface Over {
     data object Sources : Over
     data object Injuries : Over
     data object Library : Over
+    data object Plan : Over
+    data object AddFood : Over
+    data object Supps : Over
     data class Detail(val id: String) : Over
 }
 
@@ -64,6 +68,7 @@ class Nav(
     fun injuries() = push(Over.Injuries)
     fun library() = push(Over.Library)
     fun sources() = push(Over.Sources)
+    fun plan() = push(Over.Plan)
 }
 
 @Composable
@@ -91,7 +96,8 @@ private fun Root() {
                 when (tab) {
                     Tab.HOME -> Home(nav)
                     Tab.WORKOUT -> WorkoutScreen(nav)
-                    Tab.PLAN -> PlanScreen()
+                    Tab.FOOD -> FoodScreen(nav)
+                    Tab.PROGRESS -> ProgressScreen(nav)
                     Tab.SETTINGS -> Settings(
                         nav = nav,
                         onRestart = { nonce++; tab = Tab.HOME; stack = emptyList() },
@@ -114,6 +120,9 @@ private fun Root() {
                             Over.Sources -> Sources(onBack = pop)
                             Over.Injuries -> InjuryScreen(onBack = pop)
                             Over.Library -> Library(nav, onBack = pop)
+                            Over.Plan -> PlanScreen(onBack = pop)
+                            Over.AddFood -> AddFoodScreen(onBack = pop)
+                            Over.Supps -> SuppsScreen(onBack = pop)
                             is Over.Detail -> key(over.id) { ExerciseDetail(over.id, nav, onBack = pop) }
                         }
                     }

@@ -21,7 +21,7 @@ import com.wm.fit.core.Workout
 
 /** خطة الأسبوع: كل يوم وعضلته الرئيسية والمساعدة، وليش. */
 @Composable
-fun PlanScreen() {
+fun PlanScreen(onBack: (() -> Unit)? = null) {
     val scheme = Plan.scheme(P.goal, P.level)
     val focus = P.focus.mapNotNull { Muscle.byId(it) }
     val week = Plan.week()
@@ -34,11 +34,7 @@ fun PlanScreen() {
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Spacer(Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stageLabel(), style = MaterialTheme.typography.bodySmall, color = C.muted)
-            Text("خطة الأسبوع", style = MaterialTheme.typography.headlineMedium)
-        }
+        Header("خطة الأسبوع", sub = stageLabel(), onBack = onBack)
 
         if (P.heartRisk) {
             Note(
@@ -164,6 +160,6 @@ fun PlanScreen() {
 
         Note(Plan.cardioNote(P.goal))
 
-        Spacer(Modifier.height(100.dp))
+        Spacer(Modifier.height(40.dp))
     }
 }
