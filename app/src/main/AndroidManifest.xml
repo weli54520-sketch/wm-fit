@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- الإنترنت: للتحديث من داخل التطبيق، وللمحادثة الذكية لو فعّلها المستخدم بنفسه.
-         ما نرسل أي بيانات غير كذا. -->
+    <!-- الإنترنت: للتحديث من داخل التطبيق (لما المستخدم يضغط بنفسه)، وللمحادثة الذكية
+         لو فعّلها المستخدم بمفتاحه. ما نرسل أي بيانات غير كذا. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- تحديث التطبيق من داخله -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -34,5 +34,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- يشارك ملف التحديث مع شاشة التثبيت في أندرويد -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

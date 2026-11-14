@@ -1,7 +1,6 @@
 package com.wm.fit.ui
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,17 +19,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import com.wm.fit.core.P
 import com.wm.fit.core.RestTimer
 import com.wm.fit.core.Store
 import kotlinx.coroutines.delay
 import java.util.Locale
 
-class MainActivity : ComponentActivity() {
+// FragmentActivity عشان نافذة البصمة (BiometricPrompt) تحتاجها
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent { WMFitTheme { Root() } }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppLock.onStart()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AppLock.onStop()
     }
 
     override fun onResume() {
@@ -56,6 +67,7 @@ sealed interface Over {
     data object Plan : Over
     data object AddFood : Over
     data object Supps : Over
+    data object Coach : Over
     data class Detail(val id: String) : Over
 }
 
@@ -69,6 +81,7 @@ class Nav(
     fun library() = push(Over.Library)
     fun sources() = push(Over.Sources)
     fun plan() = push(Over.Plan)
+    fun coach() = push(Over.Coach)
 }
 
 @Composable
@@ -82,6 +95,11 @@ private fun Root() {
 
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
     BackHandler(enabled = stack.isEmpty() && tab != Tab.HOME && P.onboarded) { tab = Tab.HOME }
+
+    if (AppLock.locked) {
+        LockScreen()
+        return
+    }
 
     key(nonce) {
         if (!P.onboarded) {
@@ -123,6 +141,7 @@ private fun Root() {
                             Over.Plan -> PlanScreen(onBack = pop)
                             Over.AddFood -> AddFoodScreen(onBack = pop)
                             Over.Supps -> SuppsScreen(onBack = pop)
+                            Over.Coach -> CoachScreen(nav, onBack = pop)
                             is Over.Detail -> key(over.id) { ExerciseDetail(over.id, nav, onBack = pop) }
                         }
                     }

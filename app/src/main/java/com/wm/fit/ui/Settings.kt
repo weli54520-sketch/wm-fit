@@ -21,6 +21,7 @@ import com.wm.fit.core.Exercises
 import com.wm.fit.core.Muscle
 import com.wm.fit.core.Store
 import com.wm.fit.core.P
+import com.wm.fit.core.Secrets
 
 @Composable
 fun Settings(nav: Nav, onRestart: () -> Unit) {
@@ -136,13 +137,24 @@ fun Settings(nav: Nav, onRestart: () -> Unit) {
         Card(radius = 22) {
             Text("بياناتك في جوالك بس", style = MaterialTheme.typography.titleMedium)
             Text(
-                "ما فيه حساب ولا خادم. التطبيق ما يرسل أي شي، والنت يستخدمه للتحديث بس. " +
+                "ما فيه حساب ولا خادم. التطبيق ما يرسل أي شي. النت للتحديث لما تضغط بنفسك، " +
+                    "وللمحادثة الذكية لو فعّلتها. " +
                     "أوزانك وإصاباتك تنحفظ داخل جوالك. " +
                     "وقفلنا النسخة الاحتياطية التلقائية عشان بياناتك ما تطلع لسحابة جوجل.",
                 style = MaterialTheme.typography.bodySmall,
                 color = C.muted,
             )
         }
+
+        SectionLabel("الأمان")
+        SecurityCard()
+
+        SectionLabel("المدرب الذكي")
+        SmartChatCard(nav)
+
+        SectionLabel("النسخة الاحتياطية والتحديث")
+        BackupCard(onRestored = onRestart)
+        UpdateCard()
 
         Card(radius = 22, onClick = { nav.sources() }) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -185,9 +197,9 @@ fun Settings(nav: Nav, onRestart: () -> Unit) {
             onDismissRequest = { confirmWipe = false },
             containerColor = C.card,
             title = { Text("أكيد تبي تمسح كل شي؟") },
-            text = { Text("بياناتك وقياساتك وإصاباتك كلها بتنمسح، وما ترجع.") },
+            text = { Text("بياناتك وقياساتك وإصاباتك وصورك ومفتاح Claude كلها بتنمسح، وما ترجع.") },
             confirmButton = {
-                TextButton(onClick = { P.wipe(); confirmWipe = false; onRestart() }) {
+                TextButton(onClick = { P.wipe(); Secrets.clear(); confirmWipe = false; onRestart() }) {
                     Text("امسح", color = C.bad)
                 }
             },

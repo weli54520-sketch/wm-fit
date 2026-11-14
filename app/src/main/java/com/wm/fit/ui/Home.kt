@@ -25,6 +25,9 @@ import com.wm.fit.core.Muscle
 import com.wm.fit.core.P
 import com.wm.fit.core.Plan
 import com.wm.fit.core.Store
+import com.wm.fit.core.Coach
+import com.wm.fit.core.Stages
+import com.wm.fit.core.Diary
 import java.util.Calendar
 import kotlin.math.roundToInt
 
@@ -99,6 +102,25 @@ fun Home(nav: Nav) {
             }
         }
 
+        // المدرب: أول اقتراح
+        Coach.tips().firstOrNull()?.let { t ->
+            Card(onClick = { nav.coach() }) {
+                Text("المدرب يقترح", style = MaterialTheme.typography.bodySmall, color = C.accent)
+                Text(t.title, style = MaterialTheme.typography.titleMedium)
+                Text(t.why, style = MaterialTheme.typography.bodySmall, color = C.muted)
+            }
+        }
+        Stages.suggestion()?.let { s ->
+            Card {
+                Text("اقتراح المرحلة", style = MaterialTheme.typography.bodySmall, color = C.accent)
+                Text(s.why, style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BigButton("انتقل لـ${Stages.names[s.to]}", Modifier.weight(1f)) { Stages.move(s.to) }
+                    OutlineButton("مو الحين", Modifier.weight(1f)) { Stages.snooze() }
+                }
+            }
+        }
+
         // أرقام اليوم
         Card {
             Text("أرقامك اليومية", style = MaterialTheme.typography.titleMedium)
@@ -113,7 +135,7 @@ fun Home(nav: Nav) {
                 Stat(fmt1(d.bmi), "مؤشر الكتلة", Modifier.weight(1f))
             }
             Text(
-                "مجموع سعراتك بدون تعديل الهدف: ${d.tdee}",
+                "أكلت اليوم ${Diary.totals().kcal} من ${d.kcal} سعرة. مجموع سعراتك بدون تعديل الهدف: ${d.tdee}",
                 style = MaterialTheme.typography.labelSmall,
                 color = C.muted,
             )

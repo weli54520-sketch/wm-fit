@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ملف التحديث بس (داخل cache)، عشان أندرويد يقدر يركّبه -->
+<paths>
+    <cache-path name="update" path="." />
+</paths>

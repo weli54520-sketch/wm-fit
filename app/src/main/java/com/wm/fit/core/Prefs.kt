@@ -61,6 +61,8 @@ object P {
 
     /** المدرب يقترح عضلات متأخرة */
     var coachSuggests by Pref("coachSuggests", true)
+    /** اقتراحات المدرب اللي قال عنها "مو الحين" (JSON: المعرّف ← التاريخ). */
+    var coachDismissed by Pref("coachDismissed", "{}")
 
     // ===== أسئلة السلامة =====
     var sfHeart by Pref("sfHeart", false)
