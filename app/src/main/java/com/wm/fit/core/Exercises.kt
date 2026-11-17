@@ -552,7 +552,7 @@ object Exercises {
             ),
             inc = 1f,
         ),
-    )
+    ) + extraExercises
 
     private val byId = all.associateBy { it.id }
 

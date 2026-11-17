@@ -68,7 +68,7 @@ object Workout {
         val pool = part.ids.mapNotNull { Exercises.get(it) }
             .filter { !Store.blocked(it) && it.id !in used }
         if (pool.isEmpty()) return emptyList()
-        val big = part.ids.size > 3
+        val big = part in bigParts
         val mains = if (big) part.ids.take(2) else emptyList()
         val chosen = mutableListOf<Ex>()
 
@@ -84,6 +84,12 @@ object Workout {
             }
         }
 
+        // يوم الأرجل: لازم تمرين للفخذ الخلفي (مع الأرداف في المكان الثاني)
+        if (part == Plan.Part.LEGS && slot.main && chosen.none { it.id in hamstring }) {
+            pool.firstOrNull { it.id in hamstring && it !in chosen && Store.cautions(it).isEmpty() }
+                ?.let { chosen += it }
+        }
+
         // الباقي: اللي ما فيها إصابة أول، وندوّر بينها كل 5 أسابيع
         // التمارين الثقيلة جداً ما تجي كمساعدة
         val rest = pool.filter { it !in chosen && it.id !in mains && (slot.main || it.id !in heavy) }
@@ -97,6 +103,12 @@ object Workout {
         used += chosen.map { it.id }
         return chosen
     }
+
+    /** الأجزاء الكبيرة: تمارينها الأساسية (أول اثنين) ما تتكرر كمساعدة. */
+    private val bigParts = setOf(Plan.Part.LEGS, Plan.Part.CHEST, Plan.Part.BACK, Plan.Part.SHOULDERS)
+
+    /** تمارين الفخذ الخلفي. */
+    private val hamstring = setOf("rdl", "leg_curl", "lying_leg_curl", "db_rdl", "sl_rdl")
 
     /** تمارين ثقيلة على الجسم كله، تكون في يوم عضلتها الرئيسية بس. */
     private val heavy = setOf("deadlift", "squat")

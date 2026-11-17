@@ -67,6 +67,10 @@ object Store {
     var bodyToday by mutableStateOf(0)
         private set
 
+    /** تمارين منقولة: تاريخ اليوم الجديد (yyyy-MM-dd) ← رقم يوم الجلسة الفايتة (0 = الأحد). */
+    var moved by mutableStateOf<Map<String, Int>>(emptyMap())
+        private set
+
     private val sp get() = P.sp
 
     fun today(): String = day(Date())
@@ -110,6 +114,11 @@ object Store {
                 }
             }
         }.getOrDefault(emptyMap())
+
+        val t0 = today()
+        moved = readMap("moved")
+            .mapValues { it.value.toIntOrNull() ?: -1 }
+            .filter { it.key >= t0 && it.value in 0..6 }
 
         done = (sp.getString("done", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
     }
@@ -237,6 +246,17 @@ object Store {
             o.put(k, arr)
         }
         sp.edit().putString("logs", o.toString()).apply()
+    }
+
+    /** ينقل جلسة يوم فايت ([dow]) ليوم ثاني ([date]). */
+    fun moveWorkout(date: String, dow: Int) {
+        moved = moved + (date to dow)
+        writeMap("moved", moved.mapValues { it.value.toString() })
+    }
+
+    fun clearMove(date: String) {
+        moved = moved - date
+        writeMap("moved", moved.mapValues { it.value.toString() })
     }
 
     fun markDone() {

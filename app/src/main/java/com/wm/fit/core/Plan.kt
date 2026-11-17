@@ -56,15 +56,16 @@ object Plan {
      */
     enum class Part(val ar: String, val muscle: Muscle, val key: String, val ids: List<String>) {
         LEGS("أرجل", Muscle.LEGS, "legs",
-            listOf("squat", "rdl", "leg_press", "leg_curl", "goblet", "lunge", "leg_ext", "calf")),
-        GLUTES("أرداف", Muscle.GLUTES, "glutes", listOf("hip_thrust", "bulgarian", "glute_bridge")),
-        CHEST("صدر", Muscle.CHEST, "chest", listOf("bench", "incline_db", "cable_fly", "pushup")),
-        BACK("ظهر", Muscle.BACK, "back", listOf("pulldown", "cable_row", "pullup", "db_row", "deadlift")),
-        SHOULDERS("أكتاف", Muscle.SHOULDERS, "shoulders", listOf("db_ohp", "lateral", "face_pull", "rear_fly")),
-        SIDE_DELT("أكتاف جانبي", Muscle.SHOULDERS, "shoulders", listOf("lateral")),
+            listOf("squat", "rdl", "leg_press", "leg_curl", "goblet", "lunge", "leg_ext", "calf",
+                "lying_leg_curl", "hack_squat", "db_rdl", "step_up", "sl_rdl", "seated_calf")),
+        GLUTES("أرداف", Muscle.GLUTES, "glutes", listOf("hip_thrust", "bulgarian", "glute_bridge", "sumo_squat", "cable_pull_through", "single_leg_bridge")),
+        CHEST("صدر", Muscle.CHEST, "chest", listOf("bench", "incline_db", "cable_fly", "pushup", "db_bench", "machine_press", "incline_bar")),
+        BACK("ظهر", Muscle.BACK, "back", listOf("pulldown", "cable_row", "pullup", "db_row", "deadlift", "barbell_row", "chest_row", "close_pulldown")),
+        SHOULDERS("أكتاف", Muscle.SHOULDERS, "shoulders", listOf("db_ohp", "lateral", "face_pull", "rear_fly", "machine_ohp", "cable_lateral")),
+        SIDE_DELT("أكتاف جانبي", Muscle.SHOULDERS, "shoulders", listOf("lateral", "cable_lateral")),
         REAR_DELT("أكتاف خلفي", Muscle.SHOULDERS, "shoulders", listOf("rear_fly", "face_pull")),
-        TRICEPS("ترايسبس", Muscle.ARMS, "tri", listOf("pushdown", "oh_ext")),
-        BICEPS("بايسبس", Muscle.ARMS, "bi", listOf("db_curl", "hammer")),
+        TRICEPS("ترايسبس", Muscle.ARMS, "tri", listOf("pushdown", "oh_ext", "cable_oh_ext")),
+        BICEPS("بايسبس", Muscle.ARMS, "bi", listOf("db_curl", "hammer", "ez_curl", "cable_curl", "incline_curl")),
         CORE("بطن", Muscle.CORE, "core", listOf("plank", "cable_crunch", "knee_raise")),
         FOREARMS("ساعد", Muscle.FOREARMS, "forearms", listOf("farmer", "wrist_curl")),
     }
@@ -248,6 +249,16 @@ object Plan {
                 if ((count[k] ?: 0) < need(k) && (count[k] ?: 0) < MAX_PER_WEEK) place(k)
             }
         }
+        // يوم الأرجل لازم فيه أرداف (مع الفخذ الخلفي)، عشان يشتغلون مع بعض
+        for (i in 0 until n) {
+            if (order[i] == Muscle.LEGS && "glutes" !in present[i] &&
+                (count["glutes"] ?: 0) < MAX_PER_WEEK && secs[i].size < maxSec
+            ) {
+                secs[i] += "glutes"
+                present[i] += "glutes"
+                count["glutes"] = (count["glutes"] ?: 0) + 1
+            }
+        }
         // يوم فيه عضلة وحدة بس: نضيف له عضلة كبيرة مساعدة عشان توصل مرتين بالأسبوع.
         // جزء واحد بس، عشان اليوم ما يتشتت.
         for (i in 0 until n) {
@@ -304,6 +315,7 @@ object Plan {
                 val big = k in setOf("legs", "glutes", "chest", "back", "shoulders")
                 val prim = order.count { it == mk }
                 val c = when {
+                    k == "glutes" && m == Muscle.LEGS -> 2
                     big && prim == 0 -> (totalEx(mk).toFloat() / count[k]!!).roundToInt().coerceIn(1, 2)
                     f -> 2
                     else -> 1

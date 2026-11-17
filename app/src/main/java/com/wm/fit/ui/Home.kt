@@ -34,7 +34,8 @@ import kotlin.math.roundToInt
 @Composable
 fun Home(nav: Nav) {
     val d = Calc.daily()
-    val session = Plan.todaySession()
+    // لو نقلت تمرين فايت لليوم، يطلع هو
+    val session = Store.moved[Store.today()]?.let { Plan.sessionFor(it) } ?: Plan.todaySession()
     val dow = Plan.todayDow()
 
     Column(
