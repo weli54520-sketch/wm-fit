@@ -4,13 +4,12 @@ package com.wm.fit.core
  * تمارين إضافية لمكتبة التمارين: عضلات الفخذ الخلفي والأرداف أول شي، وبعدين بدائل
  * لكل عضلة. التقنية مبنية على الأوضاع المعروفة في تدريب القوة (NSCA).
  *
- * ملاحظة: الرسمة المتحركة لبعض التمارين مشتركة مع تمرين قريب منه بنفس الحركة.
- * الخطوات المكتوبة هي المرجع للتقنية الصحيحة.
+ * كل تمرين له رسمته الخاصة في ui/Anim.kt (راجعناها كصور قبل الرفع).
  */
 internal val extraExercises: List<Ex> = listOf(
     // ===== الأرجل (فخذ خلفي وأمامي) =====
     Ex(
-        "lying_leg_curl", "ثني الأرجل نايم", "Lying Leg Curl", Muscle.LEGS, false, "جهاز", Move.LEG_CURL,
+        "lying_leg_curl", "ثني الأرجل نايم", "Lying Leg Curl", Muscle.LEGS, false, "جهاز", Move.LYING_CURL,
         setOf(Area.KNEE),
         listOf(
             "انبطح على الجهاز، وركبك على طرف المقعد، والمخدة فوق كعبك.",
@@ -24,7 +23,7 @@ internal val extraExercises: List<Ex> = listOf(
         ),
     ),
     Ex(
-        "hack_squat", "هاك سكوات", "Hack Squat", Muscle.LEGS, true, "جهاز", Move.SQUAT,
+        "hack_squat", "هاك سكوات", "Hack Squat", Muscle.LEGS, true, "جهاز", Move.HACK,
         setOf(Area.KNEE, Area.HIP),
         listOf(
             "ظهرك وراسك لاصقين بالمسند، وكتوفك تحت الوسادات.",
@@ -39,7 +38,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 5f,
     ),
     Ex(
-        "db_rdl", "رومانية بالدمبل", "Dumbbell Romanian Deadlift", Muscle.LEGS, true, "دمبل", Move.HINGE,
+        "db_rdl", "رومانية بالدمبل", "Dumbbell Romanian Deadlift", Muscle.LEGS, true, "دمبل", Move.DB_HINGE,
         setOf(Area.LOWER_BACK, Area.HIP),
         listOf(
             "امسك دمبل بكل يد قدام فخذك، وركبك مثنية شوي.",
@@ -55,7 +54,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2f,
     ),
     Ex(
-        "step_up", "الصعود على الصندوق", "Dumbbell Step-Up", Muscle.LEGS, true, "دمبل", Move.LUNGE,
+        "step_up", "الصعود على الصندوق", "Dumbbell Step-Up", Muscle.LEGS, true, "دمبل", Move.STEP_UP,
         setOf(Area.KNEE, Area.HIP, Area.ANKLE),
         listOf(
             "اختر صندوق ارتفاعه تحت الركبة، وامسك دمبل بكل يد.",
@@ -70,7 +69,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2f, perSide = true,
     ),
     Ex(
-        "sl_rdl", "رومانية برجل وحدة", "Single-Leg RDL", Muscle.LEGS, false, "دمبل", Move.HINGE,
+        "sl_rdl", "رومانية برجل وحدة", "Single-Leg RDL", Muscle.LEGS, false, "دمبل", Move.SL_HINGE,
         setOf(Area.LOWER_BACK, Area.HIP, Area.ANKLE),
         listOf(
             "اوقف على رجل، ركبتها مثنية شوي، ودمبل في اليد المقابلة.",
@@ -85,7 +84,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 1f, perSide = true,
     ),
     Ex(
-        "seated_calf", "رفع السمانة جلوس", "Seated Calf Raise", Muscle.LEGS, false, "جهاز", Move.CALF,
+        "seated_calf", "رفع السمانة جلوس", "Seated Calf Raise", Muscle.LEGS, false, "جهاز", Move.SEATED_CALF,
         setOf(Area.ANKLE),
         listOf(
             "اجلس والمخدة فوق ركبك، وأصابعك على المنصة.",
@@ -101,7 +100,7 @@ internal val extraExercises: List<Ex> = listOf(
 
     // ===== الأرداف =====
     Ex(
-        "sumo_squat", "سكوات سومو بالدمبل", "Sumo Squat", Muscle.GLUTES, true, "دمبل", Move.GOBLET,
+        "sumo_squat", "سكوات سومو بالدمبل", "Sumo Squat", Muscle.GLUTES, true, "دمبل", Move.SUMO,
         setOf(Area.KNEE, Area.HIP),
         listOf(
             "رجولك أعرض بوضوح من كتوفك، وأصابعك طالعة لبرا.",
@@ -116,7 +115,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2f,
     ),
     Ex(
-        "cable_pull_through", "سحب الكيبل بين الرجلين", "Cable Pull-Through", Muscle.GLUTES, false, "كيبل", Move.HINGE,
+        "cable_pull_through", "سحب الكيبل بين الرجلين", "Cable Pull-Through", Muscle.GLUTES, false, "كيبل", Move.PULL_THROUGH,
         setOf(Area.LOWER_BACK, Area.HIP),
         listOf(
             "اوقف ظهرك للجهاز، والحبل بين رجولك من ورا.",
@@ -130,7 +129,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2.5f,
     ),
     Ex(
-        "single_leg_bridge", "جسر الأرداف برجل وحدة", "Single-Leg Glute Bridge", Muscle.GLUTES, false, "وزن الجسم", Move.BRIDGE,
+        "single_leg_bridge", "جسر الأرداف برجل وحدة", "Single-Leg Glute Bridge", Muscle.GLUTES, false, "وزن الجسم", Move.SL_BRIDGE,
         setOf(Area.HIP),
         listOf(
             "انسدح وظهرك على الأرض، رجل مثنية وكعبها على الأرض.",
@@ -147,7 +146,7 @@ internal val extraExercises: List<Ex> = listOf(
 
     // ===== الصدر =====
     Ex(
-        "db_bench", "بنش بالدمبل", "Dumbbell Bench Press", Muscle.CHEST, true, "دمبل", Move.BENCH,
+        "db_bench", "بنش بالدمبل", "Dumbbell Bench Press", Muscle.CHEST, true, "دمبل", Move.DB_BENCH,
         setOf(Area.SHOULDER, Area.ELBOW, Area.WRIST, Area.CHEST),
         listOf(
             "انسدح وكتوفك لورا ولتحت، والدمبلات جنب صدرك.",
@@ -162,7 +161,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2f,
     ),
     Ex(
-        "machine_press", "ضغط الصدر بالجهاز", "Machine Chest Press", Muscle.CHEST, true, "جهاز", Move.BENCH,
+        "machine_press", "ضغط الصدر بالجهاز", "Machine Chest Press", Muscle.CHEST, true, "جهاز", Move.SEATED_PRESS,
         setOf(Area.SHOULDER, Area.ELBOW),
         listOf(
             "ظبط الكرسي لين المقابض تكون بمستوى نص صدرك.",
@@ -177,7 +176,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 5f,
     ),
     Ex(
-        "incline_bar", "ضغط مائل بالبار", "Incline Barbell Press", Muscle.CHEST, true, "بار", Move.INCLINE,
+        "incline_bar", "ضغط مائل بالبار", "Incline Barbell Press", Muscle.CHEST, true, "بار", Move.INCLINE_BAR,
         setOf(Area.SHOULDER, Area.ELBOW, Area.WRIST, Area.CHEST),
         listOf(
             "خلّ البنش مائل 30 درجة، وكتوفك لورا ولتحت.",
@@ -193,7 +192,7 @@ internal val extraExercises: List<Ex> = listOf(
 
     // ===== الظهر =====
     Ex(
-        "barbell_row", "تجديف بالبار", "Barbell Row", Muscle.BACK, true, "بار", Move.ROW_BENT,
+        "barbell_row", "تجديف بالبار", "Barbell Row", Muscle.BACK, true, "بار", Move.ROW_BAR,
         setOf(Area.LOWER_BACK, Area.ELBOW, Area.HIP),
         listOf(
             "امسك البار وميّل جسمك لقدام نحو 45 درجة، وظهرك مستقيم.",
@@ -207,7 +206,7 @@ internal val extraExercises: List<Ex> = listOf(
         ),
     ),
     Ex(
-        "chest_row", "تجديف بالجهاز", "Chest-Supported Row", Muscle.BACK, true, "جهاز", Move.ROW_SEATED,
+        "chest_row", "تجديف بالجهاز", "Chest-Supported Row", Muscle.BACK, true, "جهاز", Move.CHEST_ROW,
         setOf(Area.ELBOW, Area.SHOULDER),
         listOf(
             "صدرك على المسند، وأمسك المقابض وكتوفك مرتاحة.",
@@ -239,7 +238,7 @@ internal val extraExercises: List<Ex> = listOf(
 
     // ===== الأكتاف =====
     Ex(
-        "machine_ohp", "ضغط الأكتاف بالجهاز", "Machine Shoulder Press", Muscle.SHOULDERS, true, "جهاز", Move.OHP,
+        "machine_ohp", "ضغط الأكتاف بالجهاز", "Machine Shoulder Press", Muscle.SHOULDERS, true, "جهاز", Move.SEATED_OHP,
         setOf(Area.SHOULDER, Area.ELBOW),
         listOf(
             "ظبط الكرسي لين المقابض تكون بمستوى كتوفك.",
@@ -254,7 +253,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 5f,
     ),
     Ex(
-        "cable_lateral", "رفع جانبي بالكيبل", "Cable Lateral Raise", Muscle.SHOULDERS, false, "كيبل", Move.RAISE,
+        "cable_lateral", "رفع جانبي بالكيبل", "Cable Lateral Raise", Muscle.SHOULDERS, false, "كيبل", Move.CABLE_RAISE,
         setOf(Area.SHOULDER),
         listOf(
             "اوقف جنب الجهاز، وامسك المقبض باليد البعيدة.",
@@ -271,7 +270,7 @@ internal val extraExercises: List<Ex> = listOf(
 
     // ===== الذراعين =====
     Ex(
-        "cable_oh_ext", "تمديد ترايسبس فوق الراس", "Cable Overhead Extension", Muscle.ARMS, false, "كيبل", Move.OH_EXT,
+        "cable_oh_ext", "تمديد ترايسبس فوق الراس", "Cable Overhead Extension", Muscle.ARMS, false, "كيبل", Move.CABLE_OH_EXT,
         setOf(Area.ELBOW, Area.SHOULDER),
         listOf(
             "اوقف ظهرك للجهاز، والحبل خلف راسك.",
@@ -286,7 +285,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2.5f,
     ),
     Ex(
-        "ez_curl", "بايسبس بالبار المتعرج", "EZ-Bar Curl", Muscle.ARMS, false, "بار", Move.CURL,
+        "ez_curl", "بايسبس بالبار المتعرج", "EZ-Bar Curl", Muscle.ARMS, false, "بار", Move.BAR_CURL,
         setOf(Area.ELBOW, Area.WRIST),
         listOf(
             "امسك البار المتعرج بقبضة مرتاحة، وكوعك لاصق بجنبك.",
@@ -301,7 +300,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2f,
     ),
     Ex(
-        "cable_curl", "بايسبس بالكيبل", "Cable Curl", Muscle.ARMS, false, "كيبل", Move.CURL,
+        "cable_curl", "بايسبس بالكيبل", "Cable Curl", Muscle.ARMS, false, "كيبل", Move.CABLE_CURL,
         setOf(Area.ELBOW, Area.WRIST),
         listOf(
             "اوقف قدام الجهاز، وامسك البار بقبضة مرتاحة.",
@@ -316,7 +315,7 @@ internal val extraExercises: List<Ex> = listOf(
         inc = 2.5f,
     ),
     Ex(
-        "incline_curl", "بايسبس بنش مائل", "Incline Dumbbell Curl", Muscle.ARMS, false, "دمبل", Move.CURL,
+        "incline_curl", "بايسبس بنش مائل", "Incline Dumbbell Curl", Muscle.ARMS, false, "دمبل", Move.INCLINE_CURL,
         setOf(Area.ELBOW, Area.WRIST, Area.SHOULDER),
         listOf(
             "اجلس على بنش مائل 60 درجة، وظهرك لاصق.",

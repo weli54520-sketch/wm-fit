@@ -65,6 +65,9 @@ fun Home(nav: Nav) {
             )
         }
 
+        // تمرين فاتك: التطبيق ينبّهك بنفسه ويقترح يوم
+        if (!P.heartRisk) MissedCard(nav)
+
         // تمرين اليوم
         Card(onClick = if (session != null && !P.heartRisk) nav.workout else null) {
             if (session != null) {
@@ -271,3 +274,48 @@ internal fun stageLabel(): String = when (P.goal) {
 }
 
 internal fun fmt1(v: Float): String = (v * 10).roundToInt().let { "${it / 10}.${it % 10}" }
+
+/** أقرب يوم فاضي (مو يوم تمرين وما فيه تمرين منقول) من اليوم لين 6 أيام. */
+internal fun freeDayOffset(): Int? {
+    val days = Plan.trainingDays()
+    for (off in 0..6) {
+        val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, off) }
+        val dow = c.get(Calendar.DAY_OF_WEEK) - 1
+        if (dow !in days && Store.moved[Store.day(c.time)] == null) return off
+    }
+    return null
+}
+
+internal fun offsetName(off: Int): String = when (off) {
+    0 -> "اليوم"
+    1 -> "بكرة"
+    else -> {
+        val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, off) }
+        "يوم " + Plan.dayNamesAr[c.get(Calendar.DAY_OF_WEEK) - 1]
+    }
+}
+
+@Composable
+private fun MissedCard(nav: Nav) {
+    val missed = Store.missedDow(Plan.trainingDays(), Plan.todayDow()) ?: return
+    val session = Plan.sessionFor(missed) ?: return
+    val off = freeDayOffset()
+    Card(bg = C.warnBg) {
+        Text("فاتك تمرين ${Plan.dayNamesAr[missed]}", style = MaterialTheme.typography.titleMedium)
+        Text(
+            session.title + if (off != null) ". تبي تلعبه ${offsetName(off)}؟ ما يأثر على باقي أيامك." else ".",
+            style = MaterialTheme.typography.bodySmall,
+            color = C.warnText,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (off != null) {
+                OutlineButton("العبه ${offsetName(off)}", Modifier.weight(1f), C.accent) {
+                    val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, off) }
+                    Store.moveWorkout(Store.day(c.time), missed)
+                    if (off == 0) nav.workout()
+                }
+            }
+            OutlineButton("لا، خلاص", Modifier.weight(1f)) { Store.skipMissed(missed) }
+        }
+    }
+}

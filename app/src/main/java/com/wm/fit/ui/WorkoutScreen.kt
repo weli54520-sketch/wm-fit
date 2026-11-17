@@ -62,8 +62,6 @@ fun WorkoutScreen(nav: Nav) {
     var cantFor by remember { mutableStateOf<Workout.Item?>(null) }
     var summary by remember { mutableStateOf(false) }
     var moveDialog by remember { mutableStateOf(false) }
-    // مسودة المجموعات: نكتب أرقام التمرين كلها، وبعدها نحفظها مرة وحدة
-    val drafts = remember { mutableStateMapOf<String, SetDraft>() }
 
     // إذن الإشعارات (أندرويد 13+) عشان مؤقت الراحة يطلع على شاشة القفل. نسأل مرة وحدة.
     val askNotif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -116,13 +114,11 @@ fun WorkoutScreen(nav: Nav) {
             OutlineButton("📚 مكتبة التمارين", Modifier.weight(1f)) { nav.library() }
         }
 
-        OutlineButton("⏭ فاتني تمرين، انقله ليوم ثاني", Modifier.fillMaxWidth(), C.warn) { moveDialog = true }
-
         if (movedToday != null && movedToday == dow) {
-            Note("هذا تمرين منقول: كان يوم ${Plan.dayNamesAr[movedToday]} وفاتك.")
+            Note("هذا تمرين ${Plan.dayNamesAr[movedToday]} اللي فاتك، نقلته لليوم.")
         }
 
-        if (today !in days && dow != today) {
+        if (today !in days && dow != today && movedToday != dow) {
             Note("اليوم يوم راحة في خطتك. لو تبي تتمرن، هذي جلسة يوم ${Plan.dayNamesAr[dow]}.")
         }
 
@@ -134,6 +130,10 @@ fun WorkoutScreen(nav: Nav) {
             )
         } else {
             BodyCheckCard(nav)
+
+            if (items.isNotEmpty() && !doneToday) {
+                Note("اكتب الوزن والعدّات، واضغط ✓ بعد كل مجموعة. ينحفظ على طول، والراحة تبدأ لحالها.")
+            }
 
             if (items.isEmpty() && session != null) {
                 Note(
@@ -148,36 +148,39 @@ fun WorkoutScreen(nav: Nav) {
                     item = item,
                     nav = nav,
                     onCant = { cantFor = item },
-                    drafts = drafts,
-                    onRest = { startRest(item.restSec) },
+                    onSetLogged = { last ->
+                        // الراحة بعد كل مجموعة، إلا آخر مجموعة في آخر تمرين
+                        if (!(last && i == items.lastIndex)) startRest(item.restSec)
+                    },
                 )
             }
 
             if (items.isNotEmpty()) {
-                val pending = drafts.values.count { it.on }
-                Note(
-                    "تمرّن وأنت مرتاح، وبعد ما تخلص علّم المجموعات اللي سويتها بـ ✓ واحفظها كلها مرة وحدة.",
-                )
                 if (doneToday) {
                     Note("خلّصت تمرين اليوم ✅ يعطيك العافية.")
-                }
-                BigButton(
-                    if (doneToday) "احفظ المجموعات اللي علّمتها ($pending)"
-                    else "خلّصت التمرين واحفظ المجموعات ($pending)",
-                ) {
-                    saveDrafts(items, drafts)
-                    Store.markDone()
-                    RestTimer.stop(ctx)
-                    summary = true
+                } else {
+                    BigButton("خلّصت التمرين") {
+                        Store.markDone()
+                        RestTimer.stop(ctx)
+                        summary = true
+                    }
                 }
             }
         }
+
+        Text(
+            "⏭ فاتني تمرين؟ انقله ليوم ثاني",
+            style = MaterialTheme.typography.bodySmall,
+            color = C.muted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().clickable { moveDialog = true }.padding(12.dp),
+        )
 
         Spacer(Modifier.height(190.dp))
     }
 
     if (moveDialog) {
-        MoveDialog(days = days, dowNow = dow, onClose = { moveDialog = false }) { missed, date ->
+        MoveDialog(days = days, onClose = { moveDialog = false }) { missed, date ->
             Store.moveWorkout(date, missed)
             if (date == Store.today()) picked = missed
             moveDialog = false
@@ -274,8 +277,7 @@ private fun ExerciseCard(
     item: Workout.Item,
     nav: Nav,
     onCant: () -> Unit,
-    drafts: MutableMap<String, SetDraft>,
-    onRest: () -> Unit,
+    onSetLogged: (last: Boolean) -> Unit,
 ) {
     val ex = item.ex
     val logged = Store.todaySets(ex.id)
@@ -347,23 +349,31 @@ private fun ExerciseCard(
 
         hint?.let { Text(it.text, style = MaterialTheme.typography.bodySmall, color = C.accent) }
 
-        // المجموعات: كلها قدامك، علّم ✓ على اللي سويتها
+        // المجموعات
         val unit = repsUnit(item.reps)
         repeat(item.sets) { i ->
-            if (i < logged.size) {
-                LoggedRow(i, logged[i], unit, isLast = i == logged.lastIndex) { Store.undoSet(ex.id) }
-            } else {
-                val key = "${ex.id}#$i"
-                val prev = drafts["${ex.id}#${i - 1}"]
-                val base = SetDraft(
-                    w = prev?.w ?: (logged.lastOrNull()?.w ?: hint?.weight)?.let { Workout.kg(it) } ?: "",
-                    r = prev?.r ?: (logged.lastOrNull()?.r ?: Workout.topReps(item.reps))?.toString() ?: "",
+            when {
+                i < logged.size -> LoggedRow(i, logged[i], unit, isLast = i == logged.lastIndex) {
+                    Store.undoSet(ex.id)
+                }
+                i == logged.size -> InputRow(
+                    index = i,
+                    ex = ex,
+                    unit = unit,
+                    weight0 = logged.lastOrNull()?.w ?: hint?.weight,
+                    reps0 = logged.lastOrNull()?.r ?: Workout.topReps(item.reps),
+                ) { s ->
+                    Store.logSet(ex.id, i, s)
+                    onSetLogged(i == item.sets - 1)
+                }
+                else -> Text(
+                    "مجموعة ${i + 1}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = C.muted,
+                    modifier = Modifier.padding(vertical = 6.dp),
                 )
-                DraftRow(i, ex, unit, drafts[key] ?: base) { drafts[key] = it }
             }
         }
-
-        OutlineButton("⏱ ابدأ الراحة (${item.restSec} ث)", Modifier.fillMaxWidth(), onClick = onRest)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlineButton("الشرح", Modifier.weight(1f)) { nav.detail(ex.id) }
@@ -402,73 +412,78 @@ private fun LoggedRow(index: Int, s: SetLog, unit: String, isLast: Boolean, onUn
     }
 }
 
-/** مجموعة مكتوبة بس ما انحفظت لين يخلّص التمرين. */
-internal data class SetDraft(val w: String, val r: String, val on: Boolean = false)
-
 @Composable
-private fun DraftRow(index: Int, ex: Ex, unit: String, d: SetDraft, onChange: (SetDraft) -> Unit) {
+private fun InputRow(
+    index: Int,
+    ex: Ex,
+    unit: String,
+    weight0: Float?,
+    reps0: Int?,
+    onLog: (SetLog) -> Unit,
+) {
+    var w by remember(ex.id, index) { mutableStateOf(weight0?.let { Workout.kg(it) } ?: "") }
+    var r by remember(ex.id, index) { mutableStateOf(reps0?.toString() ?: "") }
+    val reps = r.toIntOrNull() ?: 0
+    val weight = w.toFloatOrNull() ?: 0f
+    val ok = reps > 0 && (ex.body || weight > 0f)
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("${index + 1}", style = MaterialTheme.typography.titleMedium, color = C.accent)
-        SmallField(d.w, if (ex.body) "وزن إضافي" else "كجم", Modifier.weight(1f), decimal = true) { v ->
-            onChange(d.copy(w = v.filter { it.isDigit() || it == '.' }.take(6)))
+        SmallField(w, if (ex.body) "وزن إضافي" else "كجم", Modifier.weight(1f), decimal = true) { v ->
+            w = v.filter { it.isDigit() || it == '.' }.take(6)
         }
-        SmallField(d.r, unit, Modifier.weight(1f), decimal = false) { v ->
-            onChange(d.copy(r = v.filter { it.isDigit() }.take(3)))
-        }
+        SmallField(r, unit, Modifier.weight(1f), decimal = false) { v -> r = v.filter { it.isDigit() }.take(3) }
         Box(
             Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(if (d.on) C.accent else C.track)
-                .clickable { onChange(d.copy(on = !d.on)) },
+                .background(if (ok) C.accent else C.track)
+                .clickable(enabled = ok) { onLog(SetLog(weight, reps)) },
             contentAlignment = Alignment.Center,
-        ) { Text("✓", style = MaterialTheme.typography.titleMedium, color = if (d.on) C.onAccent else C.muted) }
+        ) { Text("✓", style = MaterialTheme.typography.titleMedium, color = if (ok) C.onAccent else C.muted) }
     }
 }
 
-/** يحفظ كل المجموعات اللي علّمها المستخدم، بالترتيب. */
-private fun saveDrafts(items: List<Workout.Item>, drafts: MutableMap<String, SetDraft>) {
-    items.forEach { item ->
-        val start = Store.todaySets(item.ex.id).size
-        for (i in start until item.sets) {
-            val d = drafts["${item.ex.id}#$i"] ?: continue
-            val reps = d.r.toIntOrNull() ?: 0
-            val weight = d.w.toFloatOrNull() ?: 0f
-            if (d.on && reps > 0 && (item.ex.body || weight > 0f)) {
-                Store.logSet(item.ex.id, Store.todaySets(item.ex.id).size, SetLog(weight, reps))
-            }
-        }
-    }
-    drafts.clear()
-}
-
-/** زر "فاتني تمرين": تختار الجلسة الفايتة واليوم الجديد (من اليوم لين 6 أيام). */
+/** "فاتني تمرين": أي تمرين فاتك، ووين تبي تلعبه (من اليوم لين 6 أيام). */
 @Composable
-private fun MoveDialog(days: List<Int>, dowNow: Int, onClose: () -> Unit, onPick: (Int, String) -> Unit) {
-    var missed by remember { mutableIntStateOf(dowNow) }
+private fun MoveDialog(days: List<Int>, onClose: () -> Unit, onPick: (Int, String) -> Unit) {
+    val today = Plan.todayDow()
+    var missed by remember {
+        mutableIntStateOf(Store.missedDow(days, today) ?: days.lastOrNull { it < today } ?: days.first())
+    }
     val options = (0..6).map { off ->
         val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, off) }
-        val name = Plan.dayNamesAr[c.get(Calendar.DAY_OF_WEEK) - 1] +
-            when (off) { 0 -> " · اليوم"; 1 -> " · بكرة"; else -> "" }
-        Store.day(c.time) to name
+        val dow = c.get(Calendar.DAY_OF_WEEK) - 1
+        Triple(Store.day(c.time), offsetName(off), dow in days)
     }
-    var target by remember { mutableStateOf(options.getOrNull(1)?.first ?: Store.today()) }
+    var target by remember { mutableStateOf(options[freeDayOffset() ?: 0].first) }
     AlertDialog(
         onDismissRequest = onClose,
         containerColor = C.card,
         title = { Text("فاتني تمرين") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("أي تمرين فاتك؟", style = MaterialTheme.typography.bodySmall, color = C.muted)
+                Text("1) أي تمرين فاتك؟", style = MaterialTheme.typography.bodySmall, color = C.muted)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    days.forEach { d -> Choice(Plan.dayNamesAr[d], d == missed) { missed = d } }
+                    days.forEach { d ->
+                        Choice(Plan.dayNamesAr[d], d == missed, sub = Plan.sessionFor(d)?.title) { missed = d }
+                    }
                 }
-                Text("وين تبي تلعبه؟", style = MaterialTheme.typography.bodySmall, color = C.muted)
+                Text("2) متى تبي تلعبه؟", style = MaterialTheme.typography.bodySmall, color = C.muted)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    options.forEach { (date, name) -> Choice(name, date == target) { target = date } }
+                    options.forEach { (date, name, busy) ->
+                        Choice(name, date == target, sub = if (busy) "فيه تمرين" else "فاضي") { target = date }
+                    }
+                }
+                if (options.firstOrNull { it.first == target }?.third == true) {
+                    Text(
+                        "هاليوم فيه تمرين أصلاً. لو نقلته له، تمرين هاليوم بيروح.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = C.warnText,
+                    )
                 }
             }
         },

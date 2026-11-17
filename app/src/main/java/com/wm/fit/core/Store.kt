@@ -71,6 +71,12 @@ object Store {
     var moved by mutableStateOf<Map<String, Int>>(emptyMap())
         private set
 
+    private var trackSince = ""
+
+    /** تمارين فايتة قال عنها "خلاص، لا تذكرني" (تاريخ اليوم الفايت). */
+    var skipped by mutableStateOf<Set<String>>(emptySet())
+        private set
+
     private val sp get() = P.sp
 
     fun today(): String = day(Date())
@@ -115,10 +121,16 @@ object Store {
             }
         }.getOrDefault(emptyMap())
 
-        val t0 = today()
+        // نخلي النقل والتجاهل 8 أيام، عشان التمرين الفايت ما يرجع ينبّه بعد ما نقلته
+        val keep = day(Date(System.currentTimeMillis() - 8 * 86_400_000L))
         moved = readMap("moved")
             .mapValues { it.value.toIntOrNull() ?: -1 }
-            .filter { it.key >= t0 && it.value in 0..6 }
+            .filter { it.key >= keep && it.value in 0..6 }
+        // نبدأ نتابع التمارين الفايتة من أول يوم بعد هالتحديث، عشان ما ينبّه على أيام قديمة
+        trackSince = sp.getString("missedSince", null) ?: today().also {
+            sp.edit().putString("missedSince", it).apply()
+        }
+        skipped = (sp.getString("skipped", "") ?: "").split(",").filter { it >= keep && it.isNotBlank() }.toSet()
 
         done = (sp.getString("done", "") ?: "").split(",").filter { it.isNotBlank() }.toSet()
     }
@@ -252,6 +264,30 @@ object Store {
     fun moveWorkout(date: String, dow: Int) {
         moved = moved + (date to dow)
         writeMap("moved", moved.mapValues { it.value.toString() })
+    }
+
+    /** تاريخ يوم من هالأسبوع (0 = الأحد). */
+    fun dateOfDow(dow: Int): String {
+        val c = Calendar.getInstance()
+        c.add(Calendar.DAY_OF_YEAR, dow - (c.get(Calendar.DAY_OF_WEEK) - 1))
+        return day(c.time)
+    }
+
+    /**
+     * آخر تمرين فاتك هالأسبوع (يوم تمرين قبل اليوم، ما خلّصته، وما نقلته ولا تجاهلته).
+     * يرجّع رقم اليوم، أو null.
+     */
+    fun missedDow(trainDays: List<Int>, todayDow: Int): Int? = trainDays
+        .filter { it < todayDow }
+        .filter { d ->
+            val date = dateOfDow(d)
+            date >= trackSince && date !in done && date !in skipped && moved.none { (k, v) -> v == d && k >= date }
+        }
+        .maxOrNull()
+
+    fun skipMissed(dow: Int) {
+        skipped = skipped + dateOfDow(dow)
+        sp.edit().putString("skipped", skipped.joinToString(",")).apply()
     }
 
     fun clearMove(date: String) {

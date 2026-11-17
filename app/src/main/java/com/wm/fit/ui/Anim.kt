@@ -158,7 +158,7 @@ private val anims: Map<Move, Anim> by lazy {
         ),
         Move.ROW_SEATED to Anim(
             side(HIP, 36f, 64f, t = 10f, th = 84f, sh = 108f, ua = 95f, fa = 92f, ft = 0f),
-            side(HIP, 36f, 64f, t = 355f, th = 84f, sh = 108f, ua = 215f, fa = 82f, ft = 0f),
+            side(HIP, 36f, 64f, t = -5f, th = 84f, sh = 108f, ua = 215f, fa = 82f, ft = 0f),
             listOf(Cable(J.HAND, 96f, 62f), Line(24f, 67f, 46f, 67f)),
         ),
         Move.ROW_BENT to Anim(
@@ -181,10 +181,11 @@ private val anims: Map<Move, Anim> by lazy {
             side(FEET, 46f, 90f, t = 355f, ua = 250f, fa = 40f),
             listOf(Cable(J.HAND, 98f, 22f)),
         ),
+        // من قدام: من الجنب ما تبين الحركة (اليد تطلع للجنب مو لورا)
         Move.REAR_FLY to Anim(
-            side(FEET, 42f, 90f, t = 72f, th = 168f, sh = 188f, ua = 180f, fa = 178f),
-            side(FEET, 42f, 90f, t = 72f, th = 168f, sh = 188f, ua = 262f, fa = 262f),
-            listOf(Db(J.HAND)),
+            front(FEET, 50f, 90f, th = 10f, ua = 6f, fa = 6f),
+            front(FEET, 50f, 90f, th = 10f, ua = 84f, fa = 86f),
+            listOf(Db(J.HAND), Db(J.HAND2)),
         ),
         Move.CURL to Anim(
             side(FEET, 50f, 90f, ua = 182f, fa = 178f),
@@ -226,6 +227,108 @@ private val anims: Map<Move, Anim> by lazy {
             side(HIP, 40f, 62f, t = 28f, th = 90f, sh = 180f, ua = 150f, fa = 92f, wr = 40f),
             listOf(Db(J.WRIST), Line(30f, 65f, 52f, 65f)),
         ),
+
+        // ===== رسمات التمارين الجديدة =====
+        Move.LYING_CURL to Anim(
+            side(HIP, 46f, 63f, t = 88f, hd = 10f, th = 272f, sh = 272f, ua = 190f, fa = 120f, ft = 180f),
+            side(HIP, 46f, 63f, t = 88f, hd = 10f, th = 272f, sh = 25f, ua = 190f, fa = 120f, ft = 120f),
+            listOf(Line(30f, 67f, 80f, 67f), Line(34f, 67f, 34f, 92f), Line(74f, 67f, 74f, 92f)),
+        ),
+        Move.HACK to Anim(
+            side(FEET, 60f, 90f, t = 345f, th = 192f, sh = 165f, ua = 200f, fa = 20f),
+            side(FEET, 60f, 90f, t = 335f, th = 105f, sh = 215f, ua = 210f, fa = 30f),
+            listOf(Plate(J.SHO)),
+        ),
+        Move.DB_HINGE to Anim(
+            side(FEET, 50f, 90f),
+            side(FEET, 50f, 90f, t = 78f, th = 162f, sh = 190f, ua = 178f, fa = 178f),
+            listOf(Db(J.HAND)),
+        ),
+        Move.STEP_UP to Anim(
+            side(FEET, 62f, 74f, t = 15f, th = 110f, sh = 200f, th2 = 195f, sh2 = 175f),
+            side(FEET, 62f, 74f, th2 = 185f, sh2 = 200f),
+            listOf(Db(J.HAND), Line(50f, 75f, 76f, 75f), Line(50f, 75f, 50f, 92f), Line(76f, 75f, 76f, 92f)),
+        ),
+        Move.SL_HINGE to Anim(
+            side(FEET, 52f, 90f, th2 = 186f, sh2 = 186f),
+            side(FEET, 52f, 90f, t = 84f, th = 172f, sh = 186f, th2 = 268f, sh2 = 268f),
+            listOf(Db(J.HAND)),
+        ),
+        Move.SEATED_CALF to Anim(
+            side(HIP, 40f, 62f, th = 90f, sh = 180f, ua = 150f, fa = 95f, ft = 100f),
+            side(HIP, 40f, 62f, th = 84f, sh = 180f, ua = 150f, fa = 95f, ft = 145f),
+            listOf(Line(56f, 56f, 70f, 56f), Line(28f, 65f, 48f, 65f), Line(58f, 86f, 72f, 86f)),
+        ),
+        Move.SUMO to Anim(
+            side(FEET, 54f, 90f, ua = 180f, fa = 180f),
+            side(FEET, 54f, 90f, t = 12f, th = 98f, sh = 200f, ua = 185f, fa = 182f),
+            listOf(Db(J.HAND)),
+        ),
+        Move.PULL_THROUGH to Anim(
+            side(FEET, 56f, 90f, t = 72f, th = 162f, sh = 186f, ua = 200f, fa = 205f),
+            side(FEET, 56f, 90f, ua = 182f, fa = 182f),
+            listOf(Cable(J.HAND, 6f, 88f)),
+        ),
+        Move.SL_BRIDGE to Anim(
+            side(FEET, 70f, 90f, t = 260f, th = 60f, sh = 165f, th2 = 60f, sh2 = 60f, ua = 250f, fa = 270f),
+            side(FEET, 70f, 90f, t = 272f, th = 90f, sh = 190f, th2 = 90f, sh2 = 90f, ua = 245f, fa = 270f),
+            listOf(),
+        ),
+        Move.DB_BENCH to Anim(
+            side(HIP, 58f, 66f, t = 270f, th = 118f, sh = 195f, ua = 2f, fa = 2f),
+            side(HIP, 58f, 66f, t = 270f, th = 118f, sh = 195f, ua = 150f, fa = 8f),
+            listOf(Db(J.HAND), Line(18f, 70f, 64f, 70f), Line(24f, 70f, 24f, 90f), Line(58f, 70f, 58f, 90f)),
+        ),
+        Move.SEATED_PRESS to Anim(
+            side(HIP, 40f, 64f, th = 90f, sh = 180f, ua = 215f, fa = 90f),
+            side(HIP, 40f, 64f, th = 90f, sh = 180f, ua = 92f, fa = 90f),
+            listOf(Line(30f, 67f, 52f, 67f), Line(34f, 66f, 34f, 34f)),
+        ),
+        Move.INCLINE_BAR to Anim(
+            side(HIP, 56f, 68f, t = 305f, th = 110f, sh = 190f, ua = -10f, fa = -10f),
+            side(HIP, 56f, 68f, t = 305f, th = 110f, sh = 190f, ua = 165f, fa = -5f),
+            listOf(Plate(J.HAND), Line(36f, 50f, 58f, 71f), Line(52f, 71f, 52f, 90f)),
+        ),
+        Move.ROW_BAR to Anim(
+            side(FEET, 40f, 90f, t = 62f, th = 158f, sh = 192f, ua = 178f, fa = 178f),
+            side(FEET, 40f, 90f, t = 62f, th = 158f, sh = 192f, ua = 285f, fa = 175f),
+            listOf(Plate(J.HAND)),
+        ),
+        Move.CHEST_ROW to Anim(
+            side(HIP, 38f, 64f, t = 28f, th = 90f, sh = 180f, ua = 105f, fa = 100f),
+            side(HIP, 38f, 64f, t = 28f, th = 90f, sh = 180f, ua = 225f, fa = 95f),
+            listOf(Line(28f, 67f, 48f, 67f), Line(55f, 43f, 48f, 57f)),
+        ),
+        Move.SEATED_OHP to Anim(
+            side(HIP, 46f, 64f, th = 90f, sh = 180f, ua = 150f, fa = 10f),
+            side(HIP, 46f, 64f, th = 90f, sh = 180f, ua = 2f, fa = 2f),
+            listOf(Line(36f, 67f, 58f, 67f), Line(41f, 66f, 41f, 34f)),
+        ),
+        Move.CABLE_RAISE to Anim(
+            front(FEET, 50f, 90f, ua = 12f, fa = 14f),
+            front(FEET, 50f, 90f, ua = 86f, fa = 90f),
+            listOf(Cable(J.HAND, 30f, 90f), Cable(J.HAND2, 70f, 90f)),
+        ),
+        Move.CABLE_OH_EXT to Anim(
+            side(FEET, 54f, 90f, t = 20f, th = 175f, sh = 185f, ua = 15f, fa = -150f),
+            side(FEET, 54f, 90f, t = 20f, th = 175f, sh = 185f, ua = 20f, fa = 22f),
+            listOf(Cable(J.HAND, 8f, 70f)),
+        ),
+        Move.BAR_CURL to Anim(
+            side(FEET, 50f, 90f, ua = 182f, fa = 178f),
+            side(FEET, 50f, 90f, ua = 176f, fa = 25f),
+            listOf(Plate(J.HAND)),
+        ),
+        Move.CABLE_CURL to Anim(
+            side(FEET, 46f, 90f, ua = 182f, fa = 175f),
+            side(FEET, 46f, 90f, ua = 176f, fa = 25f),
+            listOf(Cable(J.HAND, 72f, 90f)),
+        ),
+        Move.INCLINE_CURL to Anim(
+            side(HIP, 56f, 68f, t = 330f, th = 110f, sh = 190f, ua = 188f, fa = 188f),
+            side(HIP, 56f, 68f, t = 330f, th = 110f, sh = 190f, ua = 188f, fa = 45f),
+            listOf(Db(J.HAND), Line(40f, 44f, 58f, 71f), Line(52f, 71f, 52f, 90f)),
+        ),
     )
 }
 
@@ -252,13 +355,24 @@ private fun vec(a: Float, l: Float): P2 {
 
 private fun lerp(a: Float, b: Float, k: Float) = a + (b - a) * k
 
+/**
+ * الزاوية تمشي أقصر طريق. بدونها، من 10 لـ 355 درجة يلف الجسم كله (345 درجة)
+ * بدل ما يتحرك 15 درجة، وهذا اللي خلّى رسمة السحب الأرضي تنسدح.
+ */
+private fun lerpAng(a: Float, b: Float, k: Float): Float {
+    var d = (b - a) % 360f
+    if (d > 180f) d -= 360f
+    if (d < -180f) d += 360f
+    return a + d * k
+}
+
 private fun mix(a: Pose, b: Pose, k: Float) = Pose(
     a.front, a.anchor,
     lerp(a.ax, b.ax, k), lerp(a.ay, b.ay, k),
-    lerp(a.t, b.t, k), lerp(a.hd, b.hd, k),
-    lerp(a.th, b.th, k), lerp(a.sh, b.sh, k), lerp(a.th2, b.th2, k), lerp(a.sh2, b.sh2, k),
-    lerp(a.ua, b.ua, k), lerp(a.fa, b.fa, k), lerp(a.ua2, b.ua2, k), lerp(a.fa2, b.fa2, k),
-    lerp(a.ft, b.ft, k), lerp(a.wr, b.wr, k),
+    lerpAng(a.t, b.t, k), lerpAng(a.hd, b.hd, k),
+    lerpAng(a.th, b.th, k), lerpAng(a.sh, b.sh, k), lerpAng(a.th2, b.th2, k), lerpAng(a.sh2, b.sh2, k),
+    lerpAng(a.ua, b.ua, k), lerpAng(a.fa, b.fa, k), lerpAng(a.ua2, b.ua2, k), lerpAng(a.fa2, b.fa2, k),
+    lerpAng(a.ft, b.ft, k), lerpAng(a.wr, b.wr, k),
 )
 
 /** المفاصل والخطوط اللي تنرسم. */

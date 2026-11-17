@@ -282,7 +282,7 @@ object Plan {
         // 4) كم تمرين لكل جزء
         val scheme = scheme(P.goal, P.level)
         fun totalEx(m: Muscle): Int =
-            (Calc.weeklySets(m in focus, P.level).toFloat() / scheme.sets).roundToInt().coerceIn(2, 6)
+            (Calc.weeklySets(m in focus, P.level).toFloat() / scheme.sets).roundToInt().coerceIn(4, 8)
 
         val nthSeen = mutableMapOf<String, Int>()
         val sessions = mutableMapOf<Int, Session>()
@@ -295,7 +295,7 @@ object Plan {
                 listOf(Part.BICEPS, Part.TRICEPS).forEach { p ->
                     val nth = nthSeen[p.key] ?: 0
                     nthSeen[p.key] = nth + 1
-                    slots += Slot(p, 2, true, isFocus, nth)
+                    slots += Slot(p, 3, true, isFocus, nth)
                 }
             } else {
                 val k = keysOf(m).first()
@@ -303,7 +303,8 @@ object Plan {
                 val prim = order.count { it == m }
                 val secN = count[k]!! - prim
                 val secEach = if (isFocus) 2 else 1
-                val each = ((totalEx(m) - secN * secEach).toFloat() / prim).roundToInt().coerceIn(3, 4)
+                // قرار المالك: يوم العضلة الرئيسية فيه 4 إلى 5 تمارين لها
+                val each = ((totalEx(m) - secN * secEach).toFloat() / prim).roundToInt().coerceIn(4, 5)
                 val nth = nthSeen[k] ?: 0
                 nthSeen[k] = nth + 1
                 slots += Slot(p, each, true, isFocus, nth)
@@ -329,7 +330,7 @@ object Plan {
             while (slots.sumOf { it.count } > MAX_ITEMS) {
                 val j = listOf(
                     slots.indexOfLast { !it.main && !it.focus && it.count > 1 },
-                    slots.indexOfFirst { it.main && it.count > 3 },
+                    slots.indexOfFirst { it.main && it.count > 4 },
                     slots.indexOfLast { !it.main && it.focus && it.count > 1 },
                     slots.indexOfLast { !it.main && !it.focus },
                 ).firstOrNull { it >= 0 } ?: break
