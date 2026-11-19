@@ -53,6 +53,10 @@ fun SettingsSheet(
     settings: LauncherSettings,
     previewApps: List<AppEntry>,
     repository: AppRepository,
+    hasWallpaper: Boolean,
+    onPickWallpaper: () -> Unit,
+    onClearWallpaper: () -> Unit,
+    onAddWidget: () -> Unit,
     onClose: () -> Unit,
 ) {
     val noRipple = remember { MutableInteractionSource() }
@@ -94,6 +98,26 @@ fun SettingsSheet(
                                 .height(5.dp),
                         )
                         Spacer(Modifier.height(16.dp))
+                        BasicText(
+                            "الشاشة",
+                            style = TextStyle(color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SheetButton("+ إضافة ويدجت", Modifier.weight(1f), onAddWidget)
+                            SheetButton("اختيار خلفية", Modifier.weight(1f), onPickWallpaper)
+                        }
+                        if (hasWallpaper) {
+                            Spacer(Modifier.height(8.dp))
+                            SheetButton("رجوع لخلفية الجوال", Modifier.fillMaxWidth(), onClearWallpaper)
+                        } else {
+                            Spacer(Modifier.height(8.dp))
+                            BasicText(
+                                "اختر خلفيتك من هنا عشان يشتغل الزجاج السائل الحقيقي",
+                                style = TextStyle(color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp),
+                            )
+                        }
+                        Spacer(Modifier.height(20.dp))
                         BasicText(
                             "شكل الأيقونات",
                             style = TextStyle(color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
@@ -152,5 +176,20 @@ private fun StyleOption(
                 textAlign = TextAlign.Center,
             ),
         )
+    }
+}
+
+@Composable
+private fun SheetButton(text: String, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(1.dp, Color(0xFFE3C285).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(text, style = TextStyle(color = Color(0xFFE3C285), fontSize = 14.sp, fontWeight = FontWeight.Medium))
     }
 }

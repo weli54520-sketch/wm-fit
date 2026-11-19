@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.waleed.launcher.trial.glass.WallpaperStore
 import com.waleed.launcher.trial.widgets.LocationStore
 import com.waleed.launcher.trial.widgets.WeatherStore
 import com.waleed.launcher.trial.widgets.WidgetStore
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
         val widgets = WidgetStore(applicationContext)
         val location = LocationStore(applicationContext)
         val weather = WeatherStore(applicationContext)
+        val wallpaper = WallpaperStore(applicationContext)
         setContent {
             HomeScreen(
                 repository = repository,
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
                 widgetStore = widgets,
                 location = location,
                 weather = weather,
+                wallpaper = wallpaper,
                 homePresses = homePresses,
             )
         }

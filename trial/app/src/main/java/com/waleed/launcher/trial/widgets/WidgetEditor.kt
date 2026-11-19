@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -66,12 +67,17 @@ private val EditorGold = Color(0xFFE3C285)
 /** لوحة تعديل الويدجت: تختار النوع والشكل والألوان والخط */
 @Composable
 fun WidgetEditorSheet(
-    slot: Slot?,
-    slotWidth: Dp,
-    slotHeight: Dp,
-    onChange: (Slot) -> Unit,
+    placed: Placed?,
+    cell: Dp,
+    rowHeight: Dp,
+    inset: Dp,
+    maxCols: Int,
+    onChange: (Placed) -> Unit,
+    onDelete: () -> Unit,
+    onMove: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val slot = placed?.slot
     val noRipple = remember { MutableInteractionSource() }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Box(Modifier.fillMaxSize()) {
@@ -99,7 +105,22 @@ fun WidgetEditorSheet(
                             .verticalScroll(rememberScrollState())
                             .padding(top = 16.dp, bottom = 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
                     ) {
-                        EditorBody(s, slotWidth, slotHeight, onChange, onClose)
+                        val p = placed!!
+                        EditorBody(
+                            s, cell * p.size.w - inset * 2, rowHeight * p.size.h - inset * 2,
+                            onChange = { newSlot -> onChange(p.copy(slot = newSlot)) }, onClose = onClose,
+                        )
+                        Section("المقاس")
+                        ChipRow {
+                            WSize.entries.filter { it.w <= maxCols }.forEach { z ->
+                                Chip(z.title, p.size == z) { onChange(p.copy(size = z, x = p.x.coerceAtMost(maxCols - z.w))) }
+                            }
+                        }
+                        Section("المكان")
+                        ChipRow {
+                            Chip("✥ نقل الويدجت", false) { onMove() }
+                            Chip("حذف الويدجت", false) { onDelete() }
+                        }
                     }
                 }
             }
@@ -127,7 +148,7 @@ private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slo
     Spacer(Modifier.height(14.dp))
     Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Chip("+ أضف ويدجت للمكدس", selected = false) {
-            onChange(Slot(slot.items + WConfig(WVariant.CLOCK_NOMOS, glass = cfg.glass, accent = cfg.accent), slot.items.size))
+            onChange(Slot(slot.items + WConfig.preset(WVariant.CLOCK_BLUE, WConfig(WVariant.CLOCK_BLUE, glass = cfg.glass)), slot.items.size))
         }
         if (slot.items.size > 1) {
             Chip("حذف هذا", selected = false) {
@@ -141,7 +162,10 @@ private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slo
     ChipRow {
         WType.entries.forEach { t ->
             Chip(t.title, selected = cfg.variant.type == t) {
-                if (cfg.variant.type != t) set(cfg.copy(variant = WVariant.entries.first { it.type == t }))
+                if (cfg.variant.type != t) {
+                    val v = WVariant.entries.first { it.type == t }
+                    set(if (v.isAnalog) WConfig.preset(v, cfg) else cfg.copy(variant = v))
+                }
             }
         }
     }
@@ -156,7 +180,10 @@ private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slo
         LaunchedEffect(pager) {
             snapshotFlow { pager.settledPage }.collect { p ->
                 val v = variants.getOrNull(p) ?: return@collect
-                if (v != latestCfg.value.variant) latestSet.value(latestCfg.value.copy(variant = v))
+                if (v != latestCfg.value.variant) {
+                    val base = latestCfg.value
+                    latestSet.value(if (v.isAnalog) WConfig.preset(v, base) else base.copy(variant = v))
+                }
             }
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -227,8 +254,87 @@ private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slo
     }
 
     if (cfg.variant.isAnalog) {
+        Section("المينا")
+        ChipRow {
+            DialFace.entries.forEach { f ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { set(cfg.copy(face = f)) }) {
+                    Box(
+                        Modifier.size(38.dp).clip(CircleShape).background(f.swatch)
+                            .border(if (cfg.face == f) 2.5.dp else 1.dp, if (cfg.face == f) EditorGold else Color.White.copy(alpha = 0.2f), CircleShape),
+                    )
+                    WText(f.title, 10.sp, color = if (cfg.face == f) EditorGold else Soft, shadow = false)
+                }
+            }
+        }
+        Section("المعدن (العقارب والمؤشرات)")
+        ChipRow {
+            Metal.entries.forEach { m ->
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.07f))
+                        .border(1.dp, if (cfg.metal == m) EditorGold else Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+                        .clickable { set(cfg.copy(metal = m)) }.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(16.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(m.light, m.dark))))
+                    Spacer(Modifier.size(6.dp))
+                    WText(m.title, 13.sp, color = if (cfg.metal == m) EditorGold else Color.White, shadow = false)
+                }
+            }
+        }
+        Section("المؤشرات")
+        ChipRow { Indices.entries.forEach { v -> Chip(v.title, cfg.indices == v) { set(cfg.copy(indices = v)) } } }
+        Section("العقارب")
+        ChipRow { Hands.entries.forEach { v -> Chip(v.title, cfg.hands == v) { set(cfg.copy(hands = v)) } } }
+        Section("الإطار")
+        ChipRow { Bezel.entries.forEach { v -> Chip(v.title, cfg.bezel == v) { set(cfg.copy(bezel = v)) } } }
+        Section("الإضافات على المينا")
+        ChipRow { Comp.entries.forEach { v -> Chip(v.title, cfg.comp == v) { set(cfg.copy(comp = v)) } } }
+        Section("كتابة على المينا")
+        BasicTextField(
+            value = cfg.dialText,
+            onValueChange = { set(cfg.copy(dialText = it.take(14))) },
+            singleLine = true,
+            textStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontFamily = WFonts.ruqaa),
+            cursorBrush = SolidColor(EditorGold),
+            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.08f)).padding(14.dp),
+        )
         Section("عقرب الثواني")
         ChipRow { Seconds.entries.forEach { sMode -> Chip(sMode.title, cfg.seconds == sMode) { set(cfg.copy(seconds = sMode)) } } }
+    }
+
+    if (cfg.variant.type == WType.CLOCK && !cfg.variant.isAnalog) {
+        Section("التاريخ مع الوقت")
+        ChipRow {
+            Chip("يظهر", cfg.showDate) { set(cfg.copy(showDate = true)) }
+            Chip("يختفي", !cfg.showDate) { set(cfg.copy(showDate = false)) }
+        }
+    }
+
+    if (cfg.variant == WVariant.COUNT_SALARY) {
+        Section("يوم الراتب بالشهر")
+        ChipRow {
+            listOf(1, 10, 25, 26, 27, 28).forEach { d -> Chip(d.toString(), cfg.salaryDay == d) { set(cfg.copy(salaryDay = d)) } }
+        }
+    }
+    if (cfg.variant == WVariant.COUNT_CUSTOM) {
+        val ctx = LocalContext.current
+        Section("اسم المناسبة")
+        BasicTextField(
+            value = cfg.countTitle,
+            onValueChange = { set(cfg.copy(countTitle = it.take(24))) },
+            singleLine = true,
+            textStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontFamily = WFonts.kufi),
+            cursorBrush = SolidColor(EditorGold),
+            modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.08f)).padding(14.dp),
+        )
+        Section("التاريخ")
+        ChipRow {
+            Chip(if (cfg.countDay > 0) java.time.LocalDate.ofEpochDay(cfg.countDay).toString() else "اختر التاريخ", false) {
+                pickDate(ctx, cfg.countDay) { d -> set(cfg.copy(countDay = d)) }
+            }
+        }
     }
 
     if (cfg.variant.type == WType.TEXT) {

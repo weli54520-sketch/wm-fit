@@ -38,70 +38,80 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.waleed.launcher.trial.PressTracker
+import com.waleed.launcher.trial.glass.GlassTone
+import com.waleed.launcher.trial.glass.LiquidGlass
 
 val WidgetCorner = 28.dp
 
-/** الزجاج حول الويدجت: داكن، شفاف، أو متلائم مع الخلفية + حدود رفيعة مضيئة */
+/** خلفية الويدجت: زجاج سائل حقيقي، أو تدرجات فخمة */
 @Composable
 fun GlassPanel(cfg: WConfig, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val shape = RoundedCornerShape(WidgetCorner)
-    val halo = if (cfg.glow) {
-        Modifier.drawBehind {
-            val r = WidgetCorner.toPx()
-            drawRoundRect(
-                Color.White.copy(alpha = 0.07f), Offset(-2.5f, -2.5f), Size(size.width + 5f, size.height + 5f),
-                CornerRadius(r + 2.5f), style = Stroke(3f),
-            )
-        }
-    } else {
-        Modifier
-    }
-    val bg = when (cfg.glass) {
-        Glass.DARK -> Modifier.background(Brush.verticalGradient(listOf(Color(0xD91C1C1F), Color(0xF00A0A0B))))
-        Glass.CLEAR -> Modifier
-            .background(Color.Black.copy(alpha = 0.16f))
-            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f))))
-        Glass.BLEND -> Modifier
-    }
-    val border = when {
-        cfg.glow -> Modifier.border(
-            1.dp,
-            Brush.linearGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.32f))),
-            shape,
+    when (cfg.glass) {
+        Glass.LIQUID, Glass.LIQUID_TINT, Glass.DARK -> LiquidGlass(
+            modifier,
+            WidgetCorner,
+            tone = when (cfg.glass) {
+                Glass.LIQUID -> GlassTone.CLEAR
+                Glass.LIQUID_TINT -> GlassTone.TINT
+                else -> GlassTone.DARK
+            },
+            tint = cfg.accent.color,
+            rim = cfg.glow,
+            content = content,
         )
-        cfg.glass == Glass.BLEND -> Modifier
-        else -> Modifier.border(1.dp, Color.White.copy(alpha = 0.12f), shape)
-    }
-    Box(modifier.then(halo).clip(shape).then(bg).then(border)) {
-        if (cfg.glass != Glass.BLEND) {
-            // لمعة خفيفة فوق
+        else -> {
+            val bg: Brush? = when (cfg.glass) {
+                Glass.BLACK -> Brush.verticalGradient(listOf(Color(0xFF141416), Color(0xFF050506)))
+                Glass.SUNSET -> Brush.linearGradient(listOf(Color(0xFF2E1A47), Color(0xFFB0476B), Color(0xFFF7A867)))
+                Glass.AURORA -> Brush.linearGradient(listOf(Color(0xFF0B1026), Color(0xFF3B2A6B), Color(0xFF2E8C7A)))
+                Glass.NIGHT -> Brush.verticalGradient(listOf(Color(0xFF0A1430), Color(0xFF16336B)))
+                Glass.GOLD -> Brush.linearGradient(listOf(Color(0xFF3A2C14), Color(0xFF9C7A3C), Color(0xFF2A1F0E)))
+                else -> null
+            }
+            val border = if (cfg.glow) {
+                Modifier.border(
+                    1.dp,
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.32f))),
+                    shape,
+                )
+            } else {
+                Modifier
+            }
             Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0f to Color.White.copy(alpha = 0.07f), 0.4f to Color.Transparent),
-                ),
+                modifier.clip(shape).then(if (bg != null) Modifier.background(bg) else Modifier).then(border),
+                content = content,
             )
         }
-        content()
     }
 }
 
 @Composable
 fun WidgetContent(cfg: WConfig) {
-    when (cfg.variant.type) {
-        WType.CLOCK -> when (cfg.variant) {
-            WVariant.CLOCK_THIN -> DigitalClock(cfg, bold = false)
-            WVariant.CLOCK_BOLD -> DigitalClock(cfg, bold = true)
-            WVariant.CLOCK_FLIP -> FlipClock(cfg)
-            WVariant.CLOCK_WORDS -> WordsClock(cfg)
-            WVariant.CLOCK_HALF -> HalfDialClock(cfg)
-            else -> AnalogClock(cfg)
+    when (cfg.variant) {
+        WVariant.CLOCK_THIN -> DigitalClock(cfg, bold = false)
+        WVariant.CLOCK_BOLD -> DigitalClock(cfg, bold = true)
+        WVariant.CLOCK_FLIP -> FlipClock(cfg)
+        WVariant.CLOCK_WORDS -> WordsClock(cfg)
+        WVariant.CLOCK_HALF -> HalfDialClock(cfg)
+        WVariant.CLOCK_OVERSIZE -> OversizeClock(cfg)
+        WVariant.CLOCK_RINGS -> RingsClock(cfg)
+        WVariant.SKY_SUN -> SunArcWidget(cfg)
+        WVariant.SKY_DAYLINE -> DayLineWidget(cfg)
+        WVariant.SKY_MOON -> MoonWidget(cfg)
+        WVariant.WEATHER_SKY -> WeatherSkyWidget(cfg)
+        WVariant.BATTERY_LIQUID -> LiquidBattery(cfg)
+        else -> when (cfg.variant.type) {
+            WType.CLOCK -> AnalogClock(cfg)
+            WType.DATE -> DateWidget(cfg)
+            WType.PRAYER -> PrayerWidget(cfg)
+            WType.COUNT -> CountWidget(cfg)
+            WType.WEATHER -> WeatherWidget(cfg)
+            WType.BATTERY -> BatteryWidget(cfg)
+            WType.CONTROLS -> ControlsWidget(cfg)
+            WType.TEXT -> TextWidget(cfg)
+            WType.SKY -> MoonWidget(cfg)
         }
-        WType.DATE -> DateWidget(cfg)
-        WType.PRAYER -> PrayerWidget(cfg)
-        WType.WEATHER -> WeatherWidget(cfg)
-        WType.BATTERY -> BatteryWidget(cfg)
-        WType.CONTROLS -> ControlsWidget(cfg)
-        WType.TEXT -> TextWidget(cfg)
     }
 }
 
@@ -176,49 +186,3 @@ fun WidgetSlotView(
     }
 }
 
-/** منطقة الويدجت فوق الأيقونات بالصفحة الأولى */
-@Composable
-fun WidgetArea(
-    store: WidgetStore,
-    wide: Boolean,
-    cell: Dp,
-    rowHeight: Dp,
-    inset: Dp,
-    tracker: PressTracker,
-    onEdit: (Int) -> Unit,
-) {
-    val slots = store.slots(wide)
-
-    @Composable
-    fun SlotBox(i: Int, cols: Int) {
-        val slot = slots.getOrNull(i) ?: return
-        WidgetSlotView(
-            slot,
-            Modifier.size(cell * cols, rowHeight * 2).padding(inset),
-            tracker,
-            onIndexChange = { store.update(wide, i, slot.copy(index = it)) },
-            onEdit = { onEdit(i) },
-        )
-    }
-
-    if (wide) {
-        Row(Modifier.height(rowHeight * 2)) {
-            SlotBox(0, 4)
-            SlotBox(1, 2)
-        }
-    } else {
-        Column {
-            Row(Modifier.height(rowHeight * 2)) { SlotBox(0, 4) }
-            Row(Modifier.height(rowHeight * 2)) {
-                SlotBox(1, 2)
-                SlotBox(2, 2)
-            }
-        }
-    }
-}
-
-/** كم صف ياخذ الويدجت بالصفحة الأولى */
-fun widgetRows(wide: Boolean) = if (wide) 2 else 4
-
-@Suppress("unused")
-private val unusedW = Modifier.width(0.dp)

@@ -113,14 +113,6 @@ fun DateWidget(cfg: WConfig) {
                 Box(Modifier.width(1.dp).fillMaxHeight(0.6f).background(Faint))
                 DateColumn(today.dayOfMonth.digits(ad), ArabicCalendar.gregMonths[today.monthValue - 1], "م ${today.year.digits(ad)}", unit, cfg, Modifier.weight(1f), accent = false)
             }
-            WVariant.DATE_RAMADAN -> {
-                val (days, start) = ArabicCalendar.daysToRamadan(today)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    WText("رمضان", (unit * 0.13f).sp(), family = WFonts.ruqaa, weight = FontWeight.Bold, color = cfg.accent.color)
-                    WText(days.toInt().digits(ad), (unit * 0.32f).sp(), family = cfg.numFont.family, weight = FontWeight.Light)
-                    WText(if (days == 1L) "يوم باقي" else "يوم باقي · ${start.dayOfMonth.digits(ad)} ${ArabicCalendar.gregMonths[start.monthValue - 1]}", (unit * 0.07f).sp(), color = Soft)
-                }
-            }
             WVariant.DATE_WEEK -> WeekStrip(today, cfg, unit, wide)
             else -> MonthCalendar(today, cfg)
         }

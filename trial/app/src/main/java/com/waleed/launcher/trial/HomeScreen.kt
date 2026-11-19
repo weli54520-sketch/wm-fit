@@ -9,12 +9,35 @@ import com.waleed.launcher.trial.widgets.LocalWidgetEnv
 import com.waleed.launcher.trial.widgets.LocationStore
 import com.waleed.launcher.trial.widgets.Seconds
 import com.waleed.launcher.trial.widgets.WeatherStore
-import com.waleed.launcher.trial.widgets.WidgetArea
 import com.waleed.launcher.trial.widgets.WidgetEditorSheet
 import com.waleed.launcher.trial.widgets.WidgetEnv
 import com.waleed.launcher.trial.widgets.WidgetStore
 import com.waleed.launcher.trial.widgets.rememberNow
-import com.waleed.launcher.trial.widgets.widgetRows
+import com.waleed.launcher.trial.widgets.Placed
+import com.waleed.launcher.trial.widgets.Slot
+import com.waleed.launcher.trial.widgets.WConfig
+import com.waleed.launcher.trial.widgets.WSize
+import com.waleed.launcher.trial.widgets.WVariant
+import com.waleed.launcher.trial.widgets.WidgetCorner
+import com.waleed.launcher.trial.widgets.WidgetSlotView
+import com.waleed.launcher.trial.glass.GlassBackdrop
+import com.waleed.launcher.trial.glass.LiquidGlass
+import com.waleed.launcher.trial.glass.LocalGlassBackdrop
+import com.waleed.launcher.trial.glass.WallpaperLayer
+import com.waleed.launcher.trial.glass.WallpaperStore
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import kotlin.math.roundToInt
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -68,9 +91,6 @@ import kotlinx.coroutines.launch
 private const val SIDE_COUNT = 4
 private const val DOCK_COUNT = 6
 
-// زجاج فاتح شفاف للعمود والشريط
-private val GlassFill = Color.White.copy(alpha = 0.16f)
-private val GlassBorder = Color.White.copy(alpha = 0.30f)
 
 @Composable
 fun HomeScreen(
@@ -79,6 +99,7 @@ fun HomeScreen(
     widgetStore: WidgetStore,
     location: LocationStore,
     weather: WeatherStore,
+    wallpaper: WallpaperStore,
     homePresses: StateFlow<Int>,
 ) {
     val scope = rememberCoroutineScope()
@@ -86,7 +107,8 @@ fun HomeScreen(
     var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
     var showSettings by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<EditSlot?>(null) }
-    var editingWidget by remember { mutableStateOf<Int?>(null) }
+    var editingWidget by remember { mutableStateOf<Long?>(null) }
+    var moving by remember { mutableStateOf<Long?>(null) }
     val tracker = remember { PressTracker() }
     val style = settings.iconStyle
 
@@ -108,6 +130,7 @@ fun HomeScreen(
         showSettings = false
         editingWidget = null
         editing = null
+        moving = null
     }
 
     val layout = remember(apps, settings.sideKeys, settings.dockKeys) {
@@ -137,12 +160,28 @@ fun HomeScreen(
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    // الخلفية من داخل اللانشر (للزجاج السائل الحقيقي)
+    val wallpaperPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) scope.launch { wallpaper.pick(uri) }
+    }
+    LaunchedEffect(Unit) { wallpaper.load() }
+
     // الترتيب ثابت مثل شاشة وليد: العمود الجانبي يمين دايماً
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, LocalWidgetEnv provides widgetEnv) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
+            val screenW = constraints.maxWidth.toFloat()
+            val screenH = constraints.maxHeight.toFloat()
+            val blurred = wallpaper.blurred
+            val backdrop = remember(blurred, screenW, screenH) {
+                blurred?.let { GlassBackdrop(it, wallpaper.blurFactor, screenW, screenH, wallpaper.fullWidth, wallpaper.fullHeight) }
+            }
+            WallpaperLayer(wallpaper)
+
+            CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
             val wide = maxWidth >= 600.dp
+            val widgets = widgetStore.list(wide)
             // الوقت: كل ثانية بس لو فيه عقرب ثواني ظاهر، وإلا كل دقيقة
-            val needSeconds = widgetStore.slots(wide).any { it.current.variant.isAnalog && it.current.seconds != Seconds.OFF }
+            val needSeconds = widgets.any { it.slot.current.variant.isAnalog && it.slot.current.seconds != Seconds.OFF }
             val now = rememberNow(needSeconds)
             val gridColumns = if (wide) 6 else 4
 
@@ -168,32 +207,51 @@ fun HomeScreen(
 
             val rowHeight = cell
             val areaHeight = maxHeight - topInset - dotsHeight - dockHeight - 14.dp - bottomInset
-            val rows = (areaHeight / rowHeight).toInt().coerceIn(SIDE_COUNT, 8)
+            val rows = (areaHeight / rowHeight).toInt().coerceIn(SIDE_COUNT, 9)
             val gridHeight = rowHeight * rows
             // نوزع الفراغ الزايد فوق وتحت عشان كل شي يجي بالنص
             val verticalGap = ((areaHeight - gridHeight) / 2).coerceAtLeast(0.dp)
-
-            val perPage = rows * gridColumns
-            // الصفحة الأولى فيها الويدجت فوق، والباقي أيقونات
-            val firstCap = (rows - widgetRows(wide)).coerceAtLeast(0) * gridColumns
-            val restCount = (layout.pages.size - firstCap).coerceAtLeast(0)
-            val pageCount = 1 + (restCount + perPage - 1) / perPage
             val inset = (cell - iconSize) / 2
-            val pagerState = rememberPagerState(pageCount = { pageCount })
+
+            val plans = remember(widgets, layout, gridColumns, rows) { planPages(gridColumns, rows, widgets, layout.pages) }
+            val pagerState = rememberPagerState(pageCount = { plans.size })
+            val density = LocalDensity.current
+            val cellPx = with(density) { cell.toPx() }
+            val rowPx = with(density) { rowHeight.toPx() }
 
             BackHandler {
-                if (editingWidget != null) editingWidget = null
-                else if (editing != null) editing = null
-                else if (showSettings) showSettings = false
-                else scope.launch { pagerState.animateScrollToPage(0) }
+                when {
+                    moving != null -> moving = null
+                    editingWidget != null -> editingWidget = null
+                    editing != null -> editing = null
+                    showSettings -> showSettings = false
+                    else -> scope.launch { pagerState.animateScrollToPage(0) }
+                }
             }
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
                     showSettings = false
                     editing = null
                     editingWidget = null
+                    moving = null
                     pagerState.animateScrollToPage(0)
                 }
+            }
+
+            fun addWidget() {
+                val page = pagerState.currentPage
+                var target = page
+                var spot = freeSpot(gridColumns, rows, widgets.filter { it.page == page }, WSize.S)
+                while (spot == null && target < plans.size + 1) {
+                    target++
+                    spot = freeSpot(gridColumns, rows, widgets.filter { it.page == target }, WSize.S)
+                }
+                val (x, y) = spot ?: (0 to 0)
+                val id = widgetStore.newId()
+                widgetStore.add(wide, Placed(id, target, x, y, WSize.S, Slot(listOf(WConfig.preset(WVariant.CLOCK_BLUE, WConfig(WVariant.CLOCK_BLUE))))))
+                showSettings = false
+                editingWidget = id
+                if (target != page) scope.launch { pagerState.animateScrollToPage(target) }
             }
 
             Column(Modifier.fillMaxSize()) {
@@ -203,12 +261,11 @@ fun HomeScreen(
                     Modifier
                         .fillMaxWidth()
                         .height(gridHeight)
-                        .padding(start = sidePadding)
                         // ضغطة طويلة على مكان فاضي = الإعدادات
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onLongPress = {
-                                    if (!tracker.iconPressed) {
+                                    if (!tracker.iconPressed && moving == null) {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         showSettings = true
                                     }
@@ -216,28 +273,61 @@ fun HomeScreen(
                             )
                         },
                 ) {
+                    // الصفحات تبدأ من حافة الشاشة نفسها، عشان ما تنقص الأيقونات وأنت تقلب
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.width(cell * gridColumns).height(gridHeight),
+                        userScrollEnabled = moving == null,
+                        modifier = Modifier.width(sidePadding + cell * gridColumns).height(gridHeight),
                     ) { page ->
-                        val start = if (page == 0) 0 else firstCap + (page - 1) * perPage
-                        val end = if (page == 0) firstCap else start + perPage
-                        val items = layout.pages.subList(
-                            minOf(start, layout.pages.size),
-                            minOf(end, layout.pages.size),
-                        )
-                        Column(Modifier.fillMaxSize()) {
-                            if (page == 0) {
-                                CompositionLocalProvider(LocalNow provides now) {
-                                    WidgetArea(widgetStore, wide, cell, rowHeight, inset, tracker) { editingWidget = it }
+                        val plan = plans[page]
+                        Box(Modifier.padding(start = sidePadding).size(cell * gridColumns, gridHeight)) {
+                            plan.apps.forEach { (app, x, y) ->
+                                Box(Modifier.offset(cell * x, rowHeight * y).size(cell, rowHeight), contentAlignment = Alignment.Center) {
+                                    AppIcon(app, repository, iconSize, style, tracker)
                                 }
                             }
-                            items.chunked(gridColumns).forEach { rowItems ->
-                                Row(Modifier.height(rowHeight)) {
-                                    rowItems.forEach { app ->
-                                        Box(Modifier.size(cell, rowHeight), contentAlignment = Alignment.Center) {
-                                            AppIcon(app, repository, iconSize, style, tracker)
-                                        }
+                            plan.widgets.forEach { w ->
+                                val isMoving = moving == w.id
+                                var drag by remember(w.id, isMoving) { mutableStateOf(Offset.Zero) }
+                                Box(
+                                    Modifier
+                                        .zIndex(if (isMoving) 2f else 1f)
+                                        .offset(cell * w.x, rowHeight * w.y)
+                                        .offset { IntOffset(drag.x.roundToInt(), drag.y.roundToInt()) }
+                                        .size(cell * w.size.w, rowHeight * w.size.h)
+                                        .padding(inset),
+                                ) {
+                                    CompositionLocalProvider(LocalNow provides now) {
+                                        WidgetSlotView(
+                                            w.slot, Modifier.fillMaxSize(), tracker,
+                                            onIndexChange = { i -> widgetStore.update(wide, w.id) { it.copy(slot = it.slot.copy(index = i)) } },
+                                            onEdit = { if (moving == null) editingWidget = w.id },
+                                        )
+                                    }
+                                    if (isMoving) {
+                                        // وضع النقل: اسحب الويدجت لمكانه
+                                        Box(
+                                            Modifier
+                                                .matchParentSize()
+                                                .border(2.dp, Color(0xFFE3C285), RoundedCornerShape(WidgetCorner))
+                                                .pointerInput(w.id) {
+                                                    detectDragGestures(
+                                                        onDrag = { change, d ->
+                                                            change.consume()
+                                                            drag += d
+                                                        },
+                                                        onDragEnd = {
+                                                            val nx = ((w.x * cellPx + drag.x) / cellPx).roundToInt()
+                                                            val ny = ((w.y * rowPx + drag.y) / rowPx).roundToInt()
+                                                            val others = widgets.filter { it.page == w.page && it.id != w.id }
+                                                            if (fits(gridColumns, rows, others, nx, ny, w.size)) {
+                                                                widgetStore.update(wide, w.id) { it.copy(x = nx, y = ny) }
+                                                            }
+                                                            drag = Offset.Zero
+                                                        },
+                                                    )
+                                                },
+                                        )
                                     }
                                 }
                             }
@@ -246,7 +336,7 @@ fun HomeScreen(
                 }
 
                 Spacer(Modifier.height(verticalGap))
-                PageDots(count = pageCount, current = pagerState.currentPage, height = dotsHeight)
+                PageDots(count = plans.size, current = pagerState.currentPage, height = dotsHeight)
                 Dock(layout.dock, repository, dockIcon, style, tracker, dockHeight, dockWidth) { i, app ->
                     editing = EditSlot(inSide = false, index = i, current = app)
                 }
@@ -264,11 +354,42 @@ fun HomeScreen(
                 }
             }
 
+            // شريط وضع النقل
+            moving?.let { id ->
+                val w = widgets.firstOrNull { it.id == id }
+                Row(
+                    Modifier.align(Alignment.TopCenter).padding(top = topInset + 6.dp)
+                        .clip(RoundedCornerShape(50)).background(Color(0xEE161618))
+                        .border(1.dp, Color(0xFFE3C285).copy(alpha = 0.6f), RoundedCornerShape(50))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    fun movePage(delta: Int) {
+                        if (w == null) return
+                        val target = (w.page + delta).coerceAtLeast(0)
+                        val spot = freeSpot(gridColumns, rows, widgets.filter { it.page == target && it.id != id }, w.size) ?: return
+                        widgetStore.update(wide, id) { it.copy(page = target, x = spot.first, y = spot.second) }
+                        scope.launch { pagerState.animateScrollToPage(target) }
+                    }
+                    MoveChip("◀ صفحة") { movePage(-1) }
+                    MoveChip("اسحبه لمكانه") { }
+                    MoveChip("صفحة ▶") { movePage(1) }
+                    MoveChip("تم ✓") { moving = null }
+                }
+            }
+
             SettingsSheet(
                 visible = showSettings,
                 settings = settings,
                 previewApps = layout.side.drop(1) + layout.dock,
                 repository = repository,
+                hasWallpaper = wallpaper.image != null,
+                onPickWallpaper = {
+                    showSettings = false
+                    wallpaperPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onClearWallpaper = { wallpaper.clear() },
+                onAddWidget = { addWidget() },
                 onClose = { showSettings = false },
             )
 
@@ -282,16 +403,36 @@ fun HomeScreen(
             )
 
             CompositionLocalProvider(LocalNow provides now) {
-                val idx = editingWidget
+                val id = editingWidget
                 WidgetEditorSheet(
-                    slot = idx?.let { widgetStore.slots(wide).getOrNull(it) },
-                    slotWidth = cell * (if (idx == 0) 4 else 2) - inset * 2,
-                    slotHeight = rowHeight * 2 - inset * 2,
-                    onChange = { newSlot -> idx?.let { widgetStore.update(wide, it, newSlot) } },
+                    placed = id?.let { i -> widgets.firstOrNull { it.id == i } },
+                    cell = cell,
+                    rowHeight = rowHeight,
+                    inset = inset,
+                    maxCols = gridColumns,
+                    onChange = { p -> widgetStore.update(wide, p.id) { _ -> clampWidget(p, gridColumns, rows) } },
+                    onDelete = {
+                        id?.let { widgetStore.remove(wide, it) }
+                        editingWidget = null
+                    },
+                    onMove = {
+                        moving = id
+                        editingWidget = null
+                    },
                     onClose = { editingWidget = null },
                 )
             }
+            }
         }
+    }
+}
+
+@Composable
+private fun MoveChip(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        BasicText(text, style = TextStyle(color = Color(0xFFE3C285), fontSize = 13.sp, fontWeight = FontWeight.Medium))
     }
 }
 
@@ -307,19 +448,15 @@ private fun SideColumn(
     tracker: PressTracker,
     onEdit: (Int, AppEntry) -> Unit,
 ) {
-    val shape = RoundedCornerShape(glassWidth / 2)
-    Column(
-        Modifier
-            .width(glassWidth)
-            .clip(shape)
-            .background(GlassFill)
-            .border(1.dp, GlassBorder, shape)
-            .padding(vertical = 7.dp + gap / 2),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(gap),
-    ) {
-        apps.forEachIndexed { i, app ->
-            AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+    LiquidGlass(Modifier.width(glassWidth), glassWidth / 2) {
+        Column(
+            Modifier.width(glassWidth).padding(vertical = 7.dp + gap / 2),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            apps.forEachIndexed { i, app ->
+                AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+            }
         }
     }
 }
@@ -362,21 +499,16 @@ private fun Dock(
     width: Dp,
     onEdit: (Int, AppEntry) -> Unit,
 ) {
-    val shape = RoundedCornerShape(height * 0.36f)
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Row(
-            Modifier
-                .width(width)
-                .height(height)
-                .clip(shape)
-                .background(GlassFill)
-                .border(1.dp, GlassBorder, shape)
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            apps.take(DOCK_COUNT).forEachIndexed { i, app ->
-                AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+        LiquidGlass(Modifier.width(width).height(height), height * 0.36f) {
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                apps.take(DOCK_COUNT).forEachIndexed { i, app ->
+                    AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+                }
             }
         }
     }
