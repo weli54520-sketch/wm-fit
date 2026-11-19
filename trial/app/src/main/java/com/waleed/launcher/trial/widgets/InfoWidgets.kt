@@ -99,6 +99,7 @@ fun DateWidget(cfg: WConfig) {
     val ad = cfg.arabicDigits
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
         val unit = min(maxWidth.value, maxHeight.value * 1.6f).dp
+        val side = min(maxWidth.value, maxHeight.value).dp
         val wide = maxWidth > maxHeight * 1.4f
         when (cfg.variant) {
             WVariant.DATE_DAY -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -176,8 +177,9 @@ private fun MonthCalendar(today: LocalDate, cfg: WConfig) {
         val rows = (offset + days + 6) / 7
         val cellH = (maxHeight * 0.84f) / rows
         val fs = min(cellW.value * 0.42f, cellH.value * 0.55f).dp
+        val headerH = maxHeight * 0.16f
         Column {
-            Row(Modifier.fillMaxWidth().height(maxHeight * 0.16f), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().height(headerH), verticalAlignment = Alignment.CenterVertically) {
                 WText(ArabicCalendar.gregMonths[today.monthValue - 1], (fs * 1.1f).sp(), weight = FontWeight.SemiBold, color = cfg.accent.color, align = TextAlign.Start, modifier = Modifier.weight(1f))
                 WText(
                     if (hFirst.month == hLast.month) hFirst.monthName else "${hFirst.monthName} – ${hLast.monthName}",
@@ -222,11 +224,12 @@ fun PrayerWidget(cfg: WConfig) {
 
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
         val unit = min(maxWidth.value, maxHeight.value * 1.6f).dp
+        val side = min(maxWidth.value, maxHeight.value).dp
         val wide = maxWidth > maxHeight * 1.4f
         when (cfg.variant) {
             WVariant.PRAYER_RING -> Box(contentAlignment = Alignment.Center) {
                 val progress = ((now - next.previous).toFloat() / (next.time - next.previous).coerceAtLeast(1)).coerceIn(0f, 1f)
-                Canvas(Modifier.size(min(maxWidth.value, maxHeight.value).dp)) {
+                Canvas(Modifier.size(side)) {
                     val sw = size.minDimension * 0.07f
                     drawCircle(Color.White.copy(alpha = 0.12f), size.minDimension / 2 - sw, style = Stroke(sw))
                     drawArc(cfg.accent.color, -90f, 360f * progress, false, Offset(sw, sw), Size(size.width - sw * 2, size.height - sw * 2), style = Stroke(sw, cap = StrokeCap.Round))
@@ -305,6 +308,7 @@ fun WeatherWidget(cfg: WConfig) {
     val ad = cfg.arabicDigits
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
         val unit = min(maxWidth.value, maxHeight.value * 1.6f).dp
+        val side = min(maxWidth.value, maxHeight.value).dp
         val wide = maxWidth > maxHeight * 1.4f
         when (cfg.variant) {
             WVariant.WEATHER_BIG -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -429,9 +433,10 @@ fun BatteryWidget(cfg: WConfig) {
     val color = if (b.level <= 15 && !b.charging) Color(0xFFFF7A7A) else if (b.charging) Color(0xFF9FE3CB) else cfg.accent.color
     BoxWithConstraints(Modifier.fillMaxSize().padding(14.dp), contentAlignment = Alignment.Center) {
         val unit = min(maxWidth.value, maxHeight.value * 1.6f).dp
+        val side = min(maxWidth.value, maxHeight.value).dp
         when (cfg.variant) {
             WVariant.BATTERY_RING -> Box(contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(min(maxWidth.value, maxHeight.value).dp)) {
+                Canvas(Modifier.size(side)) {
                     val sw = size.minDimension * 0.08f
                     drawCircle(Color.White.copy(alpha = 0.12f), size.minDimension / 2 - sw, style = Stroke(sw))
                     drawArc(color, -90f, 3.6f * b.level, false, Offset(sw, sw), Size(size.width - sw * 2, size.height - sw * 2), style = Stroke(sw, cap = StrokeCap.Round))
