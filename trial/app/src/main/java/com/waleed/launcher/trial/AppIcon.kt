@@ -47,6 +47,7 @@ fun AppIcon(
     size: Dp,
     style: IconStyle,
     tracker: PressTracker? = null,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
@@ -79,7 +80,7 @@ fun AppIcon(
                     onTap = { repository.launch(app) },
                     onLongPress = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        repository.openAppInfo(app)
+                        if (onLongPress != null) onLongPress() else repository.openAppInfo(app)
                     },
                 )
             },

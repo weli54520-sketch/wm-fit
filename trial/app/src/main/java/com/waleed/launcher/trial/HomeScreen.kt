@@ -74,9 +74,36 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             if (fresh.map { it.key to it.label } != apps.map { it.key to it.label }) apps = fresh
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { showSettings = false }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        showSettings = false
+        editing = null
+    }
 
-    val layout = remember(apps) { repository.arrange(apps) }
+    var editing by remember { mutableStateOf<EditSlot?>(null) }
+    val layout = remember(apps, settings.sideKeys, settings.dockKeys) {
+        repository.arrange(apps, settings.sideKeys, settings.dockKeys)
+    }
+
+    // نبدل التطبيق بالخانة. لو التطبيق موجود بنفس المكان، نبدلهم ببعض
+    fun pick(slot: EditSlot, chosen: AppEntry) {
+        val keys = (if (slot.inSide) layout.side else layout.dock).map { it.key }.toMutableList()
+        val existing = keys.indexOf(chosen.key)
+        if (existing >= 0) keys[existing] = keys[slot.index]
+        keys[slot.index] = chosen.key
+        // لو كان بالمكان الثاني، نشيله منه
+        if (slot.inSide) {
+            settings.updateSide(keys)
+            if (chosen.key in layout.dock.map { it.key }) {
+                settings.updateDock(layout.dock.map { it.key }.map { if (it == chosen.key) slot.current.key else it })
+            }
+        } else {
+            settings.updateDock(keys)
+            if (chosen.key in layout.side.map { it.key }) {
+                settings.updateSide(layout.side.map { it.key }.map { if (it == chosen.key) slot.current.key else it })
+            }
+        }
+        editing = null
+    }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -86,19 +113,19 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             val wide = maxWidth >= 600.dp
             val gridColumns = if (wide) 6 else 4
 
-            // العمود الجانبي: حجم ثابت صغير، ما يكبر مع الأيقونات
-            val sideIcon = if (wide) 54.dp else 48.dp
-            val sideGlassWidth = sideIcon + 14.dp
-            val sideEdgeMargin = 6.dp
-            val sideReserved = sideGlassWidth + sideEdgeMargin + 10.dp
-
-            // الهوامش: الأيقونات تاخذ المساحة اللي يسار العمود
+            // الشبكة + خانة للعمود الجانبي (مثل ترتيب وليد)
             val sidePadding = if (wide) maxWidth * 0.05f else 16.dp
-            val contentWidth = maxWidth - sidePadding - sideReserved
-            val cell = contentWidth / gridColumns
+            val sideEdgeMargin = 6.dp
+            val cell = (maxWidth - sidePadding - sideEdgeMargin) / (gridColumns + 1)
 
             // حجم الأيقونة: حوالي ٧٨٪ من الخانة، مثل نسبة الآيفون
             val iconSize = minOf(cell * 0.78f, 84.dp)
+
+            // العمود الجانبي: بالخارجية نفس حجم الأيقونات،
+            // وبالداخلية أصغر شوي عشان يتميز
+            val sideIcon = if (wide) iconSize * 0.86f else iconSize
+            val sideGlassWidth = sideIcon + 14.dp
+            val sideGap = sideIcon * 0.24f
 
             // الشريط السفلي: أصغر شوي من أيقونات الشاشة، وأنحف
             val dockIcon = iconSize * 0.86f
@@ -118,12 +145,14 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             val pagerState = rememberPagerState(pageCount = { pageCount })
 
             BackHandler {
-                if (showSettings) showSettings = false
+                if (editing != null) editing = null
+                else if (showSettings) showSettings = false
                 else scope.launch { pagerState.animateScrollToPage(0) }
             }
             LaunchedEffect(Unit) {
                 homePresses.drop(1).collect {
                     showSettings = false
+                    editing = null
                     pagerState.animateScrollToPage(0)
                 }
             }
@@ -135,7 +164,7 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                     Modifier
                         .fillMaxWidth()
                         .height(gridHeight)
-                        .padding(start = sidePadding, end = sideReserved)
+                        .padding(start = sidePadding)
                         // ضغطة طويلة على مكان فاضي = الإعدادات
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -173,7 +202,9 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
 
                 Spacer(Modifier.height(verticalGap))
                 PageDots(count = pageCount, current = pagerState.currentPage, height = dotsHeight)
-                Dock(layout.dock, repository, dockIcon, style, tracker, dockHeight, dockWidth)
+                Dock(layout.dock, repository, dockIcon, style, tracker, dockHeight, dockWidth) { i, app ->
+                    editing = EditSlot(inSide = false, index = i, current = app)
+                }
                 Spacer(Modifier.height(14.dp + bottomInset))
             }
 
@@ -183,7 +214,9 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                     .align(Alignment.CenterEnd)
                     .padding(end = sideEdgeMargin),
             ) {
-                SideColumn(layout.side, repository, sideIcon, sideGlassWidth, style, tracker)
+                SideColumn(layout.side, repository, sideIcon, sideGlassWidth, sideGap, style, tracker) { i, app ->
+                    editing = EditSlot(inSide = true, index = i, current = app)
+                }
             }
 
             SettingsSheet(
@@ -192,6 +225,15 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                 previewApps = layout.side.drop(1) + layout.dock,
                 repository = repository,
                 onClose = { showSettings = false },
+            )
+
+            AppPickerSheet(
+                slot = editing,
+                allApps = apps,
+                repository = repository,
+                style = style,
+                onPick = { chosen -> editing?.let { pick(it, chosen) } },
+                onClose = { editing = null },
             )
         }
     }
@@ -204,8 +246,10 @@ private fun SideColumn(
     repository: AppRepository,
     iconSize: Dp,
     glassWidth: Dp,
+    gap: Dp,
     style: IconStyle,
     tracker: PressTracker,
+    onEdit: (Int, AppEntry) -> Unit,
 ) {
     val shape = RoundedCornerShape(glassWidth / 2)
     Column(
@@ -214,11 +258,13 @@ private fun SideColumn(
             .clip(shape)
             .background(GlassFill)
             .border(1.dp, GlassBorder, shape)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 7.dp + gap / 2),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(gap),
     ) {
-        apps.forEach { app -> AppIcon(app, repository, iconSize, style, tracker) }
+        apps.forEachIndexed { i, app ->
+            AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+        }
     }
 }
 
@@ -258,6 +304,7 @@ private fun Dock(
     tracker: PressTracker,
     height: Dp,
     width: Dp,
+    onEdit: (Int, AppEntry) -> Unit,
 ) {
     val shape = RoundedCornerShape(height * 0.36f)
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -272,7 +319,9 @@ private fun Dock(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            apps.take(DOCK_COUNT).forEach { app -> AppIcon(app, repository, iconSize, style, tracker) }
+            apps.take(DOCK_COUNT).forEachIndexed { i, app ->
+                AppIcon(app, repository, iconSize, style, tracker, onLongPress = { onEdit(i, app) })
+            }
         }
     }
 }

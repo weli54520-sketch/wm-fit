@@ -21,6 +21,25 @@ class LauncherSettings(context: Context) {
     )
         private set
 
+    /** تطبيقات العمود الجانبي والشريط اللي اختارها وليد (فاضية = الافتراضي) */
+    var sideKeys by mutableStateOf(load("side_apps"))
+        private set
+    var dockKeys by mutableStateOf(load("dock_apps"))
+        private set
+
+    private fun load(name: String): List<String> =
+        prefs.getString(name, null)?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+
+    fun updateSide(keys: List<String>) {
+        sideKeys = keys
+        prefs.edit().putString("side_apps", keys.joinToString("|")).apply()
+    }
+
+    fun updateDock(keys: List<String>) {
+        dockKeys = keys
+        prefs.edit().putString("dock_apps", keys.joinToString("|")).apply()
+    }
+
     fun updateIconStyle(style: IconStyle) {
         iconStyle = style
         prefs.edit().putString("icon_style", style.id).apply()

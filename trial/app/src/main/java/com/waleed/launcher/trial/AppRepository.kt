@@ -74,10 +74,16 @@ class AppRepository(private val context: Context) {
     class HomeLayout(val side: List<AppEntry>, val dock: List<AppEntry>, val pages: List<AppEntry>)
 
     /** نقسم التطبيقات: العمود الجانبي + الشريط السفلي + الصفحات */
-    fun arrange(apps: List<AppEntry>): HomeLayout {
+    fun arrange(apps: List<AppEntry>, savedSide: List<String> = emptyList(), savedDock: List<String> = emptyList()): HomeLayout {
         val used = mutableSetOf<AppEntry>()
-        fun pick(packages: List<String>, count: Int): List<AppEntry> {
+        fun pick(packages: List<String>, count: Int, saved: List<String>): List<AppEntry> {
             val result = mutableListOf<AppEntry>()
+            // أول شي اختيارات وليد المحفوظة
+            for (key in saved) {
+                if (result.size == count) break
+                val app = apps.firstOrNull { it.key == key && it !in used }
+                if (app != null) { result += app; used += app }
+            }
             for (pkg in packages + dailyPackages) {
                 if (result.size == count) break
                 // تيك توك له اسمين حسب الدولة
@@ -87,8 +93,8 @@ class AppRepository(private val context: Context) {
             }
             return result
         }
-        val side = pick(sidePackages, 4)
-        val dock = pick(dockPackages, 6)
+        val side = pick(sidePackages, 4, savedSide)
+        val dock = pick(dockPackages, 6, savedDock)
         val rest = apps.filter { it !in used }
         val collator = Collator.getInstance()
         val daily = dailyPackages.mapNotNull { pkg -> rest.firstOrNull { it.packageName == pkg } }
