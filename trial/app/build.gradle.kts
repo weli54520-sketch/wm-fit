@@ -13,8 +13,8 @@ android {
         minSdk = 30
         targetSdk = 35
         // رقم التحديث: كل تحديث نزيد versionCode واحد ونغير versionName
-        versionCode = 5
-        versionName = "0.5"
+        versionCode = 6
+        versionName = "0.6"
     }
 
     // توقيع ثابت عشان كل تحديث ينزل فوق القديم بدون ما يضيع شي
@@ -50,4 +50,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    // حساب مواقيت الصلاة بطريقة أم القرى (بدون إنترنت)
+    implementation("com.batoulapps.adhan:adhan:1.2.1")
 }

@@ -7,6 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.waleed.launcher.trial.widgets.LocationStore
+import com.waleed.launcher.trial.widgets.WeatherStore
+import com.waleed.launcher.trial.widgets.WidgetStore
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
@@ -22,8 +25,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val repository = AppRepository(applicationContext)
         val settings = LauncherSettings(applicationContext)
+        val widgets = WidgetStore(applicationContext)
+        val location = LocationStore(applicationContext)
+        val weather = WeatherStore(applicationContext)
         setContent {
-            HomeScreen(repository = repository, settings = settings, homePresses = homePresses)
+            HomeScreen(
+                repository = repository,
+                settings = settings,
+                widgetStore = widgets,
+                location = location,
+                weather = weather,
+                homePresses = homePresses,
+            )
         }
     }
 

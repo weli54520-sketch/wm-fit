@@ -1,6 +1,20 @@
 package com.waleed.launcher.trial
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.waleed.launcher.trial.widgets.LocalNow
+import com.waleed.launcher.trial.widgets.LocalWidgetEnv
+import com.waleed.launcher.trial.widgets.LocationStore
+import com.waleed.launcher.trial.widgets.Seconds
+import com.waleed.launcher.trial.widgets.WeatherStore
+import com.waleed.launcher.trial.widgets.WidgetArea
+import com.waleed.launcher.trial.widgets.WidgetEditorSheet
+import com.waleed.launcher.trial.widgets.WidgetEnv
+import com.waleed.launcher.trial.widgets.WidgetStore
+import com.waleed.launcher.trial.widgets.rememberNow
+import com.waleed.launcher.trial.widgets.widgetRows
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -59,12 +73,20 @@ private val GlassFill = Color.White.copy(alpha = 0.16f)
 private val GlassBorder = Color.White.copy(alpha = 0.30f)
 
 @Composable
-fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresses: StateFlow<Int>) {
+fun HomeScreen(
+    repository: AppRepository,
+    settings: LauncherSettings,
+    widgetStore: WidgetStore,
+    location: LocationStore,
+    weather: WeatherStore,
+    homePresses: StateFlow<Int>,
+) {
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
     var showSettings by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<EditSlot?>(null) }
+    var editingWidget by remember { mutableStateOf<Int?>(null) }
     val tracker = remember { PressTracker() }
     val style = settings.iconStyle
 
@@ -75,8 +97,16 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             if (fresh.map { it.key to it.label } != apps.map { it.key to it.label }) apps = fresh
         }
     }
+    // الموقع للصلاة والطقس: نطلب الإذن مرة وحدة بس
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) location.refresh()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { location.refresh() }
+    val widgetEnv = remember { WidgetEnv(location, weather) { permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION) } }
+
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         showSettings = false
+        editingWidget = null
         editing = null
     }
 
@@ -108,9 +138,12 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     // الترتيب ثابت مثل شاشة وليد: العمود الجانبي يمين دايماً
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr, LocalWidgetEnv provides widgetEnv) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = maxWidth >= 600.dp
+            // الوقت: كل ثانية بس لو فيه عقرب ثواني ظاهر، وإلا كل دقيقة
+            val needSeconds = widgetStore.slots(wide).any { it.current.variant.isAnalog && it.current.seconds != Seconds.OFF }
+            val now = rememberNow(needSeconds)
             val gridColumns = if (wide) 6 else 4
 
             // الشبكة + خانة للعمود الجانبي (مثل ترتيب وليد)
@@ -141,11 +174,16 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             val verticalGap = ((areaHeight - gridHeight) / 2).coerceAtLeast(0.dp)
 
             val perPage = rows * gridColumns
-            val pageCount = maxOf(1, (layout.pages.size + perPage - 1) / perPage)
+            // الصفحة الأولى فيها الويدجت فوق، والباقي أيقونات
+            val firstCap = (rows - widgetRows(wide)).coerceAtLeast(0) * gridColumns
+            val restCount = (layout.pages.size - firstCap).coerceAtLeast(0)
+            val pageCount = 1 + (restCount + perPage - 1) / perPage
+            val inset = (cell - iconSize) / 2
             val pagerState = rememberPagerState(pageCount = { pageCount })
 
             BackHandler {
-                if (editing != null) editing = null
+                if (editingWidget != null) editingWidget = null
+                else if (editing != null) editing = null
                 else if (showSettings) showSettings = false
                 else scope.launch { pagerState.animateScrollToPage(0) }
             }
@@ -153,6 +191,7 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                 homePresses.drop(1).collect {
                     showSettings = false
                     editing = null
+                    editingWidget = null
                     pagerState.animateScrollToPage(0)
                 }
             }
@@ -181,12 +220,18 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                         state = pagerState,
                         modifier = Modifier.width(cell * gridColumns).height(gridHeight),
                     ) { page ->
-                        val start = page * perPage
+                        val start = if (page == 0) 0 else firstCap + (page - 1) * perPage
+                        val end = if (page == 0) firstCap else start + perPage
                         val items = layout.pages.subList(
                             minOf(start, layout.pages.size),
-                            minOf(start + perPage, layout.pages.size),
+                            minOf(end, layout.pages.size),
                         )
                         Column(Modifier.fillMaxSize()) {
+                            if (page == 0) {
+                                CompositionLocalProvider(LocalNow provides now) {
+                                    WidgetArea(widgetStore, wide, cell, rowHeight, inset, tracker) { editingWidget = it }
+                                }
+                            }
                             items.chunked(gridColumns).forEach { rowItems ->
                                 Row(Modifier.height(rowHeight)) {
                                     rowItems.forEach { app ->
@@ -235,6 +280,17 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                 onPick = { chosen -> editing?.let { pick(it, chosen) } },
                 onClose = { editing = null },
             )
+
+            CompositionLocalProvider(LocalNow provides now) {
+                val idx = editingWidget
+                WidgetEditorSheet(
+                    slot = idx?.let { widgetStore.slots(wide).getOrNull(it) },
+                    slotWidth = cell * (if (idx == 0) 4 else 2) - inset * 2,
+                    slotHeight = rowHeight * 2 - inset * 2,
+                    onChange = { newSlot -> idx?.let { widgetStore.update(wide, it, newSlot) } },
+                    onClose = { editingWidget = null },
+                )
+            }
         }
     }
 }
