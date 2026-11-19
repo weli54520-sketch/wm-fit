@@ -86,10 +86,16 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             val wide = maxWidth >= 600.dp
             val gridColumns = if (wide) 6 else 4
 
-            // الهوامش: أوسع شوي عشان التصميم يتنفس
-            val sidePadding = if (wide) maxWidth * 0.06f else 18.dp
-            val contentWidth = maxWidth - sidePadding * 2
-            val cell = contentWidth / (gridColumns + 1)
+            // العمود الجانبي: حجم ثابت صغير، ما يكبر مع الأيقونات
+            val sideIcon = if (wide) 54.dp else 48.dp
+            val sideGlassWidth = sideIcon + 14.dp
+            val sideEdgeMargin = 6.dp
+            val sideReserved = sideGlassWidth + sideEdgeMargin + 10.dp
+
+            // الهوامش: الأيقونات تاخذ المساحة اللي يسار العمود
+            val sidePadding = if (wide) maxWidth * 0.05f else 16.dp
+            val contentWidth = maxWidth - sidePadding - sideReserved
+            val cell = contentWidth / gridColumns
 
             // حجم الأيقونة: حوالي ٧٨٪ من الخانة، مثل نسبة الآيفون
             val iconSize = minOf(cell * 0.78f, 84.dp)
@@ -97,7 +103,7 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
             // الشريط السفلي: أصغر شوي من أيقونات الشاشة، وأنحف
             val dockIcon = iconSize * 0.86f
             val dockHeight = dockIcon + 20.dp
-            val dockWidth = if (wide) minOf(contentWidth * 0.72f, 640.dp) else contentWidth
+            val dockWidth = if (wide) minOf(maxWidth * 0.66f, 640.dp) else maxWidth - 32.dp
             val dotsHeight = 22.dp
 
             val rowHeight = cell
@@ -129,7 +135,7 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                     Modifier
                         .fillMaxWidth()
                         .height(gridHeight)
-                        .padding(horizontal = sidePadding)
+                        .padding(start = sidePadding, end = sideReserved)
                         // ضغطة طويلة على مكان فاضي = الإعدادات
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -163,14 +169,21 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
                             }
                         }
                     }
-
-                    SideColumn(layout.side, repository, iconSize, style, tracker, cell, rowHeight)
                 }
 
                 Spacer(Modifier.height(verticalGap))
                 PageDots(count = pageCount, current = pagerState.currentPage, height = dotsHeight)
                 Dock(layout.dock, repository, dockIcon, style, tracker, dockHeight, dockWidth)
                 Spacer(Modifier.height(14.dp + bottomInset))
+            }
+
+            // العمود الجانبي: لاصق يمين الشاشة، بالنص بالضبط
+            Box(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = sideEdgeMargin),
+            ) {
+                SideColumn(layout.side, repository, sideIcon, sideGlassWidth, style, tracker)
             }
 
             SettingsSheet(
@@ -184,35 +197,28 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
     }
 }
 
-/** العمود الجانبي يمين: زجاج حقيقي، ٤ تطبيقات */
+/** العمود الجانبي يمين: زجاج حقيقي، ٤ تطبيقات، حجمه ثابت */
 @Composable
 private fun SideColumn(
     apps: List<AppEntry>,
     repository: AppRepository,
     iconSize: Dp,
+    glassWidth: Dp,
     style: IconStyle,
     tracker: PressTracker,
-    cell: Dp,
-    rowHeight: Dp,
 ) {
-    val glassWidth = iconSize + 14.dp
     val shape = RoundedCornerShape(glassWidth / 2)
-    Box(Modifier.width(cell), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier
-                .width(glassWidth)
-                .height(rowHeight * SIDE_COUNT)
-                .clip(shape)
-                .background(GlassFill)
-                .border(1.dp, GlassBorder, shape),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            apps.forEach { app ->
-                Box(Modifier.height(rowHeight), contentAlignment = Alignment.Center) {
-                    AppIcon(app, repository, iconSize, style, tracker)
-                }
-            }
-        }
+    Column(
+        Modifier
+            .width(glassWidth)
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        apps.forEach { app -> AppIcon(app, repository, iconSize, style, tracker) }
     }
 }
 
