@@ -3,7 +3,6 @@ package com.waleed.launcher.trial
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -32,8 +31,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,31 +43,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
-private const val LABEL_HEIGHT_DP = 22
-private const val ROW_GAP_DP = 20
+private const val SIDE_COUNT = 4
+private const val DOCK_COUNT = 6
+
+// زجاج فاتح شفاف مثل العمود اللي في شاشة وليد
+private val GlassFill = Color.White.copy(alpha = 0.18f)
+private val GlassBorder = Color.White.copy(alpha = 0.28f)
 
 @Composable
 fun HomeScreen(repository: AppRepository, homePresses: StateFlow<Int>) {
@@ -83,72 +80,104 @@ fun HomeScreen(repository: AppRepository, homePresses: StateFlow<Int>) {
         }
     }
 
-    val (dock, pageApps) = remember(apps) { repository.arrange(apps) }
-
+    val layout = remember(apps) { repository.arrange(apps) }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // الشاشة الداخلية عريضة، الخارجية ضيقة. كل وحدة لها ترتيب
-        val wide = maxWidth >= 600.dp
-        val columns = if (wide) 6 else 4
-        val sidePadding = if (wide) 56.dp else 20.dp
-        val cellWidth = (maxWidth - sidePadding * 2) / columns
-        val iconSize = minOf(if (wide) 74.dp else 64.dp, cellWidth * 0.80f)
+    // الترتيب ثابت مثل صورة وليد: العمود الجانبي يمين دايماً
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth >= 600.dp
+            val gridColumns = if (wide) 6 else 4
+            val sidePadding = if (wide) 48.dp else 14.dp
+            val contentWidth = maxWidth - sidePadding * 2
+            val cell = contentWidth / (gridColumns + 1)
 
-        val dockHeight = iconSize + 28.dp
-        val dockArea = dockHeight + 12.dp + bottomInset
-        val dotsArea = 26.dp
-        val gridHeight = maxHeight - topInset - 18.dp - dockArea - dotsArea
-        val rowHeight = iconSize + LABEL_HEIGHT_DP.dp + ROW_GAP_DP.dp
-        val rows = (gridHeight / rowHeight).toInt().coerceIn(3, 7)
-        val perPage = rows * columns
-        val pageCount = maxOf(1, (pageApps.size + perPage - 1) / perPage)
+            val dockInnerPadding = 10.dp
+            val dockWidth = if (wide) minOf(contentWidth, 620.dp) else contentWidth
+            val dockCell = (dockWidth - dockInnerPadding * 2) / DOCK_COUNT
+            val iconSize = minOf(cell * 0.84f, dockCell * 0.9f, 80.dp)
 
-        val pagerState = rememberPagerState(pageCount = { pageCount })
+            val rowHeight = cell
+            val dockHeight = iconSize + 22.dp
+            val dotsHeight = 24.dp
+            val gridHeight = maxHeight - topInset - 16.dp - dotsHeight - dockHeight - 12.dp - bottomInset
+            val rows = (gridHeight / rowHeight).toInt().coerceIn(SIDE_COUNT, 9)
+            val perPage = rows * gridColumns
+            val pageCount = maxOf(1, (layout.pages.size + perPage - 1) / perPage)
+            val pagerState = rememberPagerState(pageCount = { pageCount })
 
-        BackHandler { scope.launch { pagerState.animateScrollToPage(0) } }
-        LaunchedEffect(Unit) {
-            homePresses.drop(1).collect { pagerState.animateScrollToPage(0) }
-        }
+            BackHandler { scope.launch { pagerState.animateScrollToPage(0) } }
+            LaunchedEffect(Unit) {
+                homePresses.drop(1).collect { pagerState.animateScrollToPage(0) }
+            }
 
-        Column(Modifier.fillMaxSize()) {
-            Spacer(Modifier.height(topInset + 18.dp))
+            Column(Modifier.fillMaxSize()) {
+                Spacer(Modifier.height(topInset + 16.dp))
 
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxWidth().height(gridHeight),
-            ) { page ->
-                val start = page * perPage
-                val items = pageApps.subList(
-                    minOf(start, pageApps.size),
-                    minOf(start + perPage, pageApps.size),
-                )
-                Column(
-                    Modifier.fillMaxSize().padding(horizontal = sidePadding),
-                    verticalArrangement = Arrangement.spacedBy(ROW_GAP_DP.dp),
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(gridHeight)
+                        .padding(horizontal = sidePadding),
                 ) {
-                    items.chunked(columns).forEach { rowItems ->
-                        Row(Modifier.fillMaxWidth()) {
-                            rowItems.forEach { app ->
-                                Box(Modifier.width(cellWidth), contentAlignment = Alignment.TopCenter) {
-                                    AppIcon(app, repository, iconSize, showLabel = true)
+                    // الصفحات: تتقلب يمين ويسار
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.width(cell * gridColumns).height(gridHeight),
+                    ) { page ->
+                        val start = page * perPage
+                        val items = layout.pages.subList(
+                            minOf(start, layout.pages.size),
+                            minOf(start + perPage, layout.pages.size),
+                        )
+                        Column(Modifier.fillMaxSize()) {
+                            items.chunked(gridColumns).forEach { rowItems ->
+                                Row(Modifier.height(rowHeight)) {
+                                    rowItems.forEach { app ->
+                                        Box(Modifier.size(cell, rowHeight), contentAlignment = Alignment.Center) {
+                                            AppIcon(app, repository, iconSize)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+
+                    // العمود الجانبي: ثابت ما يتقلب مع الصفحات
+                    SideColumn(layout.side, repository, iconSize, cell, rowHeight)
+                }
+
+                PageDots(count = pageCount, current = pagerState.currentPage, height = dotsHeight)
+
+                Dock(layout.dock, repository, iconSize, dockHeight, dockWidth, dockInnerPadding)
+
+                Spacer(Modifier.height(12.dp + bottomInset))
+            }
+        }
+    }
+}
+
+/** العمود الجانبي يمين: زجاج حقيقي، ٤ تطبيقات */
+@Composable
+private fun SideColumn(apps: List<AppEntry>, repository: AppRepository, iconSize: Dp, cell: Dp, rowHeight: Dp) {
+    val glassWidth = iconSize + 16.dp
+    val shape = RoundedCornerShape(glassWidth / 2)
+    Box(Modifier.width(cell), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier
+                .width(glassWidth)
+                .height(rowHeight * SIDE_COUNT)
+                .clip(shape)
+                .background(GlassFill)
+                .border(1.dp, GlassBorder, shape),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            apps.forEach { app ->
+                Box(Modifier.height(rowHeight), contentAlignment = Alignment.Center) {
+                    AppIcon(app, repository, iconSize)
                 }
             }
-
-            PageDots(count = pageCount, current = pagerState.currentPage, height = dotsArea)
-
-            Dock(
-                apps = dock,
-                repository = repository,
-                iconSize = iconSize,
-                height = dockHeight,
-                wide = wide,
-            )
         }
     }
 }
@@ -162,9 +191,8 @@ private fun PageDots(count: Int, current: Int, height: Dp) {
     ) {
         if (count > 1) {
             repeat(count) { index ->
-                val active = index == current
                 val color by animateColorAsState(
-                    if (active) Color.White else Color.White.copy(alpha = 0.35f),
+                    if (index == current) Color.White else Color.White.copy(alpha = 0.4f),
                     animationSpec = tween(250),
                     label = "dot",
                 )
@@ -180,41 +208,38 @@ private fun PageDots(count: Int, current: Int, height: Dp) {
     }
 }
 
-/** الشريط السفلي: مثل الآيفون، زجاج بزوايا ناعمة لاصق تحت */
+/** الشريط السفلي: زجاج بزوايا ناعمة، ٦ تطبيقات */
 @Composable
 private fun Dock(
     apps: List<AppEntry>,
     repository: AppRepository,
     iconSize: Dp,
     height: Dp,
-    wide: Boolean,
+    width: Dp,
+    innerPadding: Dp,
 ) {
     val shape = RoundedCornerShape(32.dp)
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Row(
             Modifier
-                .padding(horizontal = 10.dp)
-                .then(if (wide) Modifier.widthIn(max = 560.dp) else Modifier)
+                .widthIn(max = width)
                 .fillMaxWidth()
                 .height(height)
                 .clip(shape)
-                .background(Color.White.copy(alpha = 0.14f))
-                .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
-                .padding(horizontal = 12.dp),
+                .background(GlassFill)
+                .border(1.dp, GlassBorder, shape)
+                .padding(horizontal = innerPadding),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            apps.forEach { app -> AppIcon(app, repository, iconSize, showLabel = false) }
+            apps.forEach { app -> AppIcon(app, repository, iconSize) }
         }
     }
-    Spacer(
-        Modifier.height(12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
-    )
 }
 
-/** أيقونة واحدة: الشعار الأصلي كامل، Squircle، ظل خفيف، وضغطة نابضة */
+/** أيقونة واحدة: مثل ما يعطيها الجوال بالضبط، مع ضغطة نابضة */
 @Composable
-private fun AppIcon(app: AppEntry, repository: AppRepository, size: Dp, showLabel: Boolean) {
+private fun AppIcon(app: AppEntry, repository: AppRepository, size: Dp) {
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
     val haptics = LocalHapticFeedback.current
     val icon: ImageBitmap? by produceState(repository.cachedIcon(app, sizePx), app.key, sizePx) {
@@ -231,11 +256,10 @@ private fun AppIcon(app: AppEntry, repository: AppRepository, size: Dp, showLabe
         },
         label = "press",
     )
-    val shadowSize by animateDpAsState(if (pressed) 2.dp else 6.dp, label = "shadow")
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+    Box(
+        Modifier
+            .size(size)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -255,41 +279,8 @@ private fun AppIcon(app: AppEntry, repository: AppRepository, size: Dp, showLabe
                 )
             },
     ) {
-        Box(
-            Modifier
-                .size(size)
-                .shadow(
-                    elevation = shadowSize,
-                    shape = SquircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.35f),
-                    spotColor = Color.Black.copy(alpha = 0.55f),
-                )
-                .clip(SquircleShape)
-                .background(Color(0xFF1C1C1E)),
-        ) {
-            icon?.let {
-                Image(
-                    bitmap = it,
-                    contentDescription = app.label,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds,
-                )
-            }
-        }
-        if (showLabel) {
-            Spacer(Modifier.height(6.dp))
-            BasicText(
-                text = app.label,
-                modifier = Modifier.width(size + 18.dp).height((LABEL_HEIGHT_DP - 6).dp),
-                style = TextStyle(
-                    color = Color.White,
-                    fontSize = 11.5.sp,
-                    textAlign = TextAlign.Center,
-                    shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 4f),
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        icon?.let {
+            Image(bitmap = it, contentDescription = app.label, modifier = Modifier.fillMaxSize())
         }
     }
 }

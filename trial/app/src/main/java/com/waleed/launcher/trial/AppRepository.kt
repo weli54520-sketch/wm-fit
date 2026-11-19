@@ -5,7 +5,6 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.util.LruCache
@@ -43,12 +42,22 @@ class AppRepository(private val context: Context) {
         "com.openai.chatgpt",
     )
 
-    /** الشريط السفلي: ٤ تطبيقات */
-    private val dockPackages = listOf(
+    /** العمود الجانبي يمين: ٤ تطبيقات (نفس ترتيب وليد) */
+    private val sidePackages = listOf(
+        "com.samsung.android.dialer",
         "com.whatsapp",
-        "org.telegram.messenger",
         "com.google.android.youtube",
+        "com.google.android.apps.bard",
+    )
+
+    /** الشريط السفلي: ٦ تطبيقات (نفس ترتيب وليد) */
+    private val dockPackages = listOf(
+        "com.twitter.android",
+        "com.zhiliaoapp.musically",
         "com.anthropic.claude",
+        "com.samsung.android.app.notes",
+        "com.android.vending",
+        "com.pinterest",
     )
 
     suspend fun loadApps(): List<AppEntry> = withContext(Dispatchers.IO) {
@@ -57,19 +66,29 @@ class AppRepository(private val context: Context) {
             .map { AppEntry(it) }
     }
 
-    /** نقسم التطبيقات: الشريط السفلي + الصفحات */
-    fun arrange(apps: List<AppEntry>): Pair<List<AppEntry>, List<AppEntry>> {
-        val byPackage = apps.groupBy { it.packageName }
-        val dock = mutableListOf<AppEntry>()
-        for (pkg in dockPackages + dailyPackages) {
-            if (dock.size == 4) break
-            byPackage[pkg]?.firstOrNull()?.let { if (it !in dock) dock += it }
+    class HomeLayout(val side: List<AppEntry>, val dock: List<AppEntry>, val pages: List<AppEntry>)
+
+    /** نقسم التطبيقات: العمود الجانبي + الشريط السفلي + الصفحات */
+    fun arrange(apps: List<AppEntry>): HomeLayout {
+        val used = mutableSetOf<AppEntry>()
+        fun pick(packages: List<String>, count: Int): List<AppEntry> {
+            val result = mutableListOf<AppEntry>()
+            for (pkg in packages + dailyPackages) {
+                if (result.size == count) break
+                // تيك توك له اسمين حسب الدولة
+                val alt = if (pkg == "com.zhiliaoapp.musically") "com.ss.android.ugc.trill" else pkg
+                val app = apps.firstOrNull { (it.packageName == pkg || it.packageName == alt) && it !in used }
+                if (app != null) { result += app; used += app }
+            }
+            return result
         }
-        val rest = apps.filter { it !in dock }
+        val side = pick(sidePackages, 4)
+        val dock = pick(dockPackages, 6)
+        val rest = apps.filter { it !in used }
         val collator = Collator.getInstance()
         val daily = dailyPackages.mapNotNull { pkg -> rest.firstOrNull { it.packageName == pkg } }
         val others = rest.filter { it !in daily }.sortedWith { a, b -> collator.compare(a.label, b.label) }
-        return dock to (daily + others)
+        return HomeLayout(side, dock, daily + others)
     }
 
     fun cachedIcon(app: AppEntry, sizePx: Int): ImageBitmap? = iconCache.get("${app.key}@$sizePx")
@@ -86,30 +105,14 @@ class AppRepository(private val context: Context) {
     }
 
     /**
-     * الأيقونة كاملة تعبي المربع مثل الآيفون.
-     * نرسم طبقات الأيقونة الأصلية بنفسنا، والقص بشكل Squircle يصير بالواجهة.
+     * نرسم الأيقونة مثل ما يعطيها الجوال بالضبط، بدون أي خلفية أو قص.
+     * كذا تطلع أيقونات Theme Park لو سامسونج تعطيها للانشر.
      */
     private fun renderFullIcon(drawable: Drawable, size: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        if (drawable is AdaptiveIconDrawable) {
-            // طبقات أندرويد أكبر من الجزء الظاهر بـ ٥٠٪، فنوسعها ربع من كل جهة
-            val inset = size / 4
-            drawable.background?.let {
-                it.setBounds(-inset, -inset, size + inset, size + inset)
-                it.draw(canvas)
-            }
-            drawable.foreground?.let {
-                it.setBounds(-inset, -inset, size + inset, size + inset)
-                it.draw(canvas)
-            }
-        } else {
-            // أيقونة قديمة: خلفية بيضاء والشعار بالنص
-            canvas.drawColor(android.graphics.Color.WHITE)
-            val pad = (size * 0.12f).toInt()
-            drawable.setBounds(pad, pad, size - pad, size - pad)
-            drawable.draw(canvas)
-        }
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(canvas)
         return bitmap
     }
 
