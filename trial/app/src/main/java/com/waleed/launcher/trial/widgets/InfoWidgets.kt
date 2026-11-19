@@ -616,12 +616,3 @@ fun TextWidget(cfg: WConfig) {
         )
     }
 }
-
-@Suppress("unused")
-private fun unusedAbs() = abs(0) + sin(0.0).toInt()
-
-@Suppress("unused")
-private fun DrawScope.unusedDraw() = Unit
-
-@Suppress("unused")
-private fun Context.unusedCtx() = Unit

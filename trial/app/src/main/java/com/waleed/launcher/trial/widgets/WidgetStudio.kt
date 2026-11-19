@@ -42,6 +42,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
@@ -62,100 +65,101 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.absoluteValue
 
-private val EditorGold = Color(0xFFE3C285)
+internal val EditorGold = Color(0xFFE3C285)
 
-/** لوحة تعديل الويدجت: تختار النوع والشكل والألوان والخط */
+/**
+ * قاعدة موحدة للوحات اللي تطلع من تحت (المعرض والاستوديو):
+ * خلفية معتمة + لوحة داكنة بزوايا ناعمة + حركة نابضة.
+ */
 @Composable
-fun WidgetEditorSheet(
-    placed: Placed?,
-    cell: Dp,
-    rowHeight: Dp,
-    inset: Dp,
-    maxCols: Int,
-    onChange: (Placed) -> Unit,
-    onDelete: () -> Unit,
-    onMove: () -> Unit,
+fun BottomSheet(
+    visible: Boolean,
+    heightFraction: Float,
     onClose: () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    val slot = placed?.slot
     val noRipple = remember { MutableInteractionSource() }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Box(Modifier.fillMaxSize()) {
-            AnimatedVisibility(slot != null, enter = fadeIn(tween(220)), exit = fadeOut(tween(200))) {
+            AnimatedVisibility(visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(200))) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(interactionSource = noRipple, indication = null) { onClose() })
             }
             AnimatedVisibility(
-                slot != null,
+                visible,
                 modifier = Modifier.align(Alignment.BottomCenter),
                 enter = slideInVertically(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { it },
                 exit = slideOutVertically(tween(220)) { it },
             ) {
-                val s = slot ?: return@AnimatedVisibility
                 val shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                     Column(
                         Modifier
                             .widthIn(max = 700.dp)
                             .fillMaxWidth()
-                            .fillMaxHeight(0.88f)
+                            .fillMaxHeight(heightFraction)
                             .clip(shape)
                             .background(Color(0xF7141416))
                             .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
                             .clickable(interactionSource = noRipple, indication = null) { }
-                            .verticalScroll(rememberScrollState())
-                            .padding(top = 16.dp, bottom = 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
-                    ) {
-                        val p = placed!!
-                        EditorBody(
-                            s, cell * p.size.w - inset * 2, rowHeight * p.size.h - inset * 2,
-                            onChange = { newSlot -> onChange(p.copy(slot = newSlot)) }, onClose = onClose,
-                        )
-                        Section("المقاس")
-                        ChipRow {
-                            WSize.entries.filter { it.w <= maxCols }.forEach { z ->
-                                Chip(z.title, p.size == z) { onChange(p.copy(size = z, x = p.x.coerceAtMost(maxCols - z.w))) }
-                            }
-                        }
-                        Section("المكان")
-                        ChipRow {
-                            Chip("✥ نقل الويدجت", false) { onMove() }
-                            Chip("حذف الويدجت", false) { onDelete() }
-                        }
-                    }
+                            .padding(top = 16.dp, bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                        content = content,
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * استوديو الويدجت: هنا التصميم العميق (الشكل، المينا، المعدن، الخطوط، الألوان).
+ * المقاس والمكان والحذف مو هنا، هذي على الشاشة نفسها.
+ */
 @Composable
-private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slot) -> Unit, onClose: () -> Unit) {
-    val cfg = slot.current
-    fun set(newCfg: WConfig) {
-        onChange(slot.copy(items = slot.items.toMutableList().also { it[slot.index.coerceIn(0, it.size - 1)] = newCfg }))
+fun WidgetStudio(
+    cfg: WConfig?,
+    previewWidth: Dp,
+    previewHeight: Dp,
+    onChange: (WConfig) -> Unit,
+    onSaveDesign: (WConfig) -> Unit,
+    onClose: () -> Unit,
+) {
+    // نحتفظ بآخر قيمة عشان اللوحة ما تختفي فجأة وهي تنزل
+    var last by remember { mutableStateOf(cfg) }
+    if (cfg != null) last = cfg
+    BottomSheet(visible = cfg != null, heightFraction = 0.9f, onClose = onClose) {
+        val c = last ?: return@BottomSheet
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            EditorBody(c, previewWidth, previewHeight, onChange, onSaveDesign, onClose)
+        }
     }
+}
 
-    // العنوان + المكدس
+@Composable
+private fun EditorBody(
+    cfg: WConfig,
+    slotWidth: Dp,
+    slotHeight: Dp,
+    onChange: (WConfig) -> Unit,
+    onSaveDesign: (WConfig) -> Unit,
+    onClose: () -> Unit,
+) {
+    fun set(newCfg: WConfig) = onChange(newCfg)
+    var saved by remember(cfg) { mutableStateOf(false) }
+
+    // العنوان
     Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            WText("تعديل الويدجت", 19.sp, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Start, shadow = false)
-            if (slot.items.size > 1) {
-                WText("ويدجت ${slot.index + 1} من ${slot.items.size} · قلّبها لفوق وتحت", 12.sp, color = Soft, align = androidx.compose.ui.text.style.TextAlign.Start, shadow = false)
+            WText("استوديو الويدجت", 19.sp, weight = FontWeight.SemiBold, align = androidx.compose.ui.text.style.TextAlign.Start, shadow = false)
+            WText("صمم براحتك، واحفظه بتصاميمك", 12.sp, color = Soft, align = androidx.compose.ui.text.style.TextAlign.Start, shadow = false)
+        }
+        Chip(if (saved) "انحفظ ✓" else "حفظ كتصميم", selected = saved) {
+            if (!saved) {
+                onSaveDesign(cfg)
+                saved = true
             }
         }
+        Spacer(Modifier.size(8.dp))
         Chip("تم", selected = true) { onClose() }
-    }
-    Spacer(Modifier.height(14.dp))
-    Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Chip("+ أضف ويدجت للمكدس", selected = false) {
-            onChange(Slot(slot.items + WConfig.preset(WVariant.CLOCK_BLUE, WConfig(WVariant.CLOCK_BLUE, glass = cfg.glass)), slot.items.size))
-        }
-        if (slot.items.size > 1) {
-            Chip("حذف هذا", selected = false) {
-                val list = slot.items.toMutableList().also { it.removeAt(slot.index) }
-                onChange(Slot(list, (slot.index - 1).coerceAtLeast(0)))
-            }
-        }
     }
 
     Section("النوع")
@@ -361,7 +365,7 @@ private fun EditorBody(slot: Slot, slotWidth: Dp, slotHeight: Dp, onChange: (Slo
 }
 
 @Composable
-private fun Section(title: String) {
+internal fun Section(title: String) {
     Spacer(Modifier.height(18.dp))
     WText(
         title, 13.sp, color = Soft, shadow = false,
@@ -372,7 +376,7 @@ private fun Section(title: String) {
 }
 
 @Composable
-private fun ChipRow(content: @Composable () -> Unit) {
+internal fun ChipRow(content: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -381,7 +385,7 @@ private fun ChipRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Chip(text: String, selected: Boolean, family: FontFamily = WFonts.kufi, onClick: () -> Unit) {
+internal fun Chip(text: String, selected: Boolean, family: FontFamily = WFonts.kufi, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
     Box(
         Modifier

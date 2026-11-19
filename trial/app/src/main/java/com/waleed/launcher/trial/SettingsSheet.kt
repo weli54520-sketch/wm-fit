@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.sp
 
 private val Gold = Color(0xFFE3C285)
 
-/** لوحة الإعدادات: تطلع من تحت لما تضغط ضغطة طويلة على مكان فاضي */
+/** لوحة الإعدادات: من زر "الإعدادات" بوضع الترتيب */
 @Composable
 fun SettingsSheet(
     visible: Boolean,
@@ -56,7 +56,7 @@ fun SettingsSheet(
     hasWallpaper: Boolean,
     onPickWallpaper: () -> Unit,
     onClearWallpaper: () -> Unit,
-    onAddWidget: () -> Unit,
+    onOpenStudio: () -> Unit,
     onClose: () -> Unit,
 ) {
     val noRipple = remember { MutableInteractionSource() }
@@ -104,7 +104,7 @@ fun SettingsSheet(
                         )
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            SheetButton("+ إضافة ويدجت", Modifier.weight(1f), onAddWidget)
+                            SheetButton("استوديو الويدجت", Modifier.weight(1f), onOpenStudio)
                             SheetButton("اختيار خلفية", Modifier.weight(1f), onPickWallpaper)
                         }
                         if (hasWallpaper) {

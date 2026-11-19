@@ -240,21 +240,28 @@ data class WConfig(
     }
 }
 
-/** خانة ويدجت: فيها مكدس (كذا ويدجت فوق بعض) */
-data class Slot(val items: List<WConfig>, val index: Int = 0) {
+/** خانة ويدجت: فيها مكدس (كذا ويدجت فوق بعض). التقليب التلقائي مطفي إلا لو شغلته */
+data class Slot(val items: List<WConfig>, val index: Int = 0, val autoRotate: Boolean = false) {
     val current: WConfig get() = items[index.coerceIn(0, items.size - 1)]
+
+    fun withCurrent(cfg: WConfig) = copy(items = items.toMutableList().also { it[index.coerceIn(0, it.size - 1)] = cfg })
 }
 
 /** ويدجت محطوط بمكان: الصفحة، العمود، الصف، والمقاس */
 data class Placed(val id: Long, val page: Int, val x: Int, val y: Int, val size: WSize, val slot: Slot)
 
-/** يحفظ ويدجت كل شاشة لحالها (الخارجية والداخلية) */
+/**
+ * يحفظ ويدجت كل شاشة لحالها (الخارجية والداخلية) + تصاميم وليد المحفوظة.
+ * الشاشة تبدأ فاضية: وليد يضيف اللي يبيه من المعرض.
+ */
 class WidgetStore(context: Context) {
-    private val prefs = context.getSharedPreferences("widgets_v2", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("widgets_v3", Context.MODE_PRIVATE)
 
-    var outer by mutableStateOf(load("outer") ?: defaultOuter())
+    var outer by mutableStateOf(load("outer"))
         private set
-    var inner by mutableStateOf(load("inner") ?: defaultInner())
+    var inner by mutableStateOf(load("inner"))
+        private set
+    var designs by mutableStateOf(loadDesigns())
         private set
 
     fun list(wide: Boolean): List<Placed> = if (wide) inner else outer
@@ -271,44 +278,48 @@ class WidgetStore(context: Context) {
 
     fun add(wide: Boolean, p: Placed) = replace(wide, list(wide) + p)
 
-    fun newId(): Long = System.currentTimeMillis()
+    fun newId(): Long = System.nanoTime()
 
-    private fun load(key: String): List<Placed>? = runCatching {
-        val arr = JSONArray(prefs.getString(key, null) ?: return null)
-        (0 until arr.length()).map { i ->
+    fun addDesign(cfg: WConfig) {
+        designs = designs + cfg
+        prefs.edit().putString("designs", JSONArray().apply { designs.forEach { put(it.toJson()) } }.toString()).apply()
+    }
+
+    fun removeDesign(index: Int) {
+        designs = designs.filterIndexed { i, _ -> i != index }
+        prefs.edit().putString("designs", JSONArray().apply { designs.forEach { put(it.toJson()) } }.toString()).apply()
+    }
+
+    private fun loadDesigns(): List<WConfig> = runCatching {
+        val a = JSONArray(prefs.getString("designs", null) ?: return emptyList())
+        (0 until a.length()).mapNotNull { WConfig.fromJson(a.getJSONObject(it)) }
+    }.getOrDefault(emptyList())
+
+    private fun load(key: String): List<Placed> = runCatching {
+        val arr = JSONArray(prefs.getString(key, null) ?: return emptyList())
+        (0 until arr.length()).mapNotNull { i ->
             val o = arr.getJSONObject(i)
             val items = o.getJSONArray("items").let { a -> (0 until a.length()).mapNotNull { WConfig.fromJson(a.getJSONObject(it)) } }
+            if (items.isEmpty()) return@mapNotNull null
             Placed(
                 o.getLong("id"), o.optInt("page"), o.optInt("x"), o.optInt("y"),
                 runCatching { WSize.valueOf(o.getString("size")) }.getOrDefault(WSize.S),
-                Slot(items.ifEmpty { listOf(WConfig(WVariant.CLOCK_BLUE)) }, o.optInt("index", 0)),
+                Slot(items, o.optInt("index", 0), o.optBoolean("rotate", false)),
             )
         }
-    }.getOrNull()
+    }.getOrDefault(emptyList())
 
     private fun save(key: String, list: List<Placed>) {
         val arr = JSONArray()
         list.forEach { p ->
             arr.put(
                 JSONObject().put("id", p.id).put("page", p.page).put("x", p.x).put("y", p.y).put("size", p.size.name)
-                    .put("index", p.slot.index).put("items", JSONArray().apply { p.slot.items.forEach { put(it.toJson()) } }),
+                    .put("index", p.slot.index).put("rotate", p.slot.autoRotate)
+                    .put("items", JSONArray().apply { p.slot.items.forEach { put(it.toJson()) } }),
             )
         }
         prefs.edit().putString(key, arr.toString()).apply()
     }
-
-    private fun clock(v: WVariant) = WConfig.preset(v, WConfig(v))
-
-    private fun defaultOuter() = listOf(
-        Placed(1, 0, 0, 0, WSize.WIDE, Slot(listOf(WConfig(WVariant.SKY_SUN), WConfig(WVariant.WEATHER_SKY), WConfig(WVariant.SKY_DAYLINE)))),
-        Placed(2, 0, 0, 2, WSize.S, Slot(listOf(clock(WVariant.CLOCK_BLUE), clock(WVariant.CLOCK_WALEED), clock(WVariant.CLOCK_PEARL)))),
-        Placed(3, 0, 2, 2, WSize.S, Slot(listOf(WConfig(WVariant.SKY_MOON), WConfig(WVariant.CLOCK_RINGS), WConfig(WVariant.BATTERY_LIQUID)))),
-    )
-
-    private fun defaultInner() = listOf(
-        Placed(11, 0, 0, 0, WSize.WIDE, Slot(listOf(WConfig(WVariant.SKY_SUN), WConfig(WVariant.WEATHER_SKY), WConfig(WVariant.DATE_MONTH)))),
-        Placed(12, 0, 4, 0, WSize.S, Slot(listOf(clock(WVariant.CLOCK_EMERALD), clock(WVariant.CLOCK_NOMOS), WConfig(WVariant.SKY_MOON)))),
-    )
 }
 
 /** أرقام عربية (١٢٣) أو إنجليزية (123) */

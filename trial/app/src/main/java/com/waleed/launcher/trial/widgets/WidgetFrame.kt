@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.waleed.launcher.trial.PressTracker
 import com.waleed.launcher.trial.glass.GlassTone
 import com.waleed.launcher.trial.glass.LiquidGlass
@@ -115,14 +116,19 @@ fun WidgetContent(cfg: WConfig) {
     }
 }
 
-/** خانة واحدة: مكدس ويدجت تقلبه لفوق وتحت */
+/**
+ * خانة واحدة: مكدس ويدجت تقلبه لفوق وتحت بإصبعك.
+ * التقليب التلقائي ما يشتغل إلا لو وليد شغله.
+ * بوضع الترتيب (interactive = false) ما يستقبل ضغطات، عشان السحب يكون للترتيب بس.
+ */
 @Composable
 fun WidgetSlotView(
     slot: Slot,
     modifier: Modifier,
     tracker: PressTracker,
+    interactive: Boolean,
     onIndexChange: (Int) -> Unit,
-    onEdit: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
     val context = LocalContext.current
     val pager = rememberPagerState(initialPage = slot.index.coerceIn(0, slot.items.size - 1), pageCount = { slot.items.size })
@@ -134,40 +140,56 @@ fun WidgetSlotView(
         val target = slot.index.coerceIn(0, slot.items.size - 1)
         if (pager.currentPage != target) pager.animateScrollToPage(target)
     }
+    // التقليب التلقائي (اختياري): ويدجت كل دقيقة
+    if (slot.autoRotate && slot.items.size > 1 && interactive) {
+        LaunchedEffect(slot.items.size) {
+            while (true) {
+                delay(60_000)
+                pager.animateScrollToPage((pager.currentPage + 1) % slot.items.size)
+            }
+        }
+    }
 
     fun open(cfg: WConfig) {
         val intent = when (cfg.variant.type) {
             WType.CLOCK -> Intent(AlarmClock.ACTION_SHOW_ALARMS)
-            WType.DATE -> Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
+            WType.DATE, WType.SKY -> Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR)
             WType.BATTERY -> Intent(Intent.ACTION_POWER_USAGE_SUMMARY)
-            WType.TEXT -> null
             else -> null
-        }
-        if (intent == null) {
-            if (cfg.variant.type == WType.TEXT) onEdit()
-            return
-        }
+        } ?: return
         runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
 
     Box(modifier) {
-        VerticalPager(state = pager, modifier = Modifier.fillMaxSize(), pageSpacing = 14.dp, beyondViewportPageCount = 0) { page ->
+        VerticalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            pageSpacing = 14.dp,
+            beyondViewportPageCount = 0,
+            userScrollEnabled = interactive,
+        ) { page ->
             val cfg = slot.items[page]
             GlassPanel(
                 cfg,
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(cfg) {
-                        detectTapGestures(
-                            onPress = {
-                                tracker.iconPressed = true
-                                tryAwaitRelease()
-                                tracker.iconPressed = false
-                            },
-                            onTap = { open(cfg) },
-                            onLongPress = { onEdit() },
-                        )
-                    },
+                    .then(
+                        if (interactive) {
+                            Modifier.pointerInput(cfg) {
+                                detectTapGestures(
+                                    onPress = {
+                                        tracker.iconPressed = true
+                                        tryAwaitRelease()
+                                        tracker.iconPressed = false
+                                    },
+                                    onTap = { open(cfg) },
+                                    onLongPress = { onLongPress() },
+                                )
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
             ) { WidgetContent(cfg) }
         }
         if (slot.items.size > 1) {
@@ -185,4 +207,3 @@ fun WidgetSlotView(
         }
     }
 }
-
