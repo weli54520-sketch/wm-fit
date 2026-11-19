@@ -256,14 +256,15 @@ fun OversizeClock(cfg: WConfig) {
     val mm = String.format(Locale.US, "%02d", t.minute).digits(ad)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val big = maxHeight * 1.05f
+        val mh = maxHeight
         WText(
             hh, big.sp(), family = cfg.numFont.family, weight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.92f), shadow = false, align = TextAlign.Start,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp).width(maxWidth * 1.2f),
         )
         Column(Modifier.align(Alignment.TopEnd).padding(14.dp), horizontalAlignment = Alignment.End) {
-            WText(mm, (maxHeight * 0.32f).sp(), family = cfg.numFont.family, weight = FontWeight.Light, color = cfg.accent.color)
-            if (cfg.showDate) WText(ArabicCalendar.dayName(t.dayOfWeek), (maxHeight * 0.09f).sp(), color = Soft)
+            WText(mm, (mh * 0.32f).sp(), family = cfg.numFont.family, weight = FontWeight.Light, color = cfg.accent.color)
+            if (cfg.showDate) WText(ArabicCalendar.dayName(t.dayOfWeek), (mh * 0.09f).sp(), color = Soft)
         }
     }
 }
