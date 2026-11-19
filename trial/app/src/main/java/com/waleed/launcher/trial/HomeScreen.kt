@@ -64,6 +64,7 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
     val haptics = LocalHapticFeedback.current
     var apps by remember { mutableStateOf<List<AppEntry>>(emptyList()) }
     var showSettings by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<EditSlot?>(null) }
     val tracker = remember { PressTracker() }
     val style = settings.iconStyle
 
@@ -79,7 +80,6 @@ fun HomeScreen(repository: AppRepository, settings: LauncherSettings, homePresse
         editing = null
     }
 
-    var editing by remember { mutableStateOf<EditSlot?>(null) }
     val layout = remember(apps, settings.sideKeys, settings.dockKeys) {
         repository.arrange(apps, settings.sideKeys, settings.dockKeys)
     }
