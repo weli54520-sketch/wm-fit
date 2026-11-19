@@ -84,7 +84,7 @@ fun WidgetBack(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SmallPill("الاستوديو", onStudio)
+                    SmallPill("الاستوديو", onClick = onStudio)
                     SmallPill("تم ✓", onClick = onDone, selected = true)
                 }
             }
@@ -109,7 +109,7 @@ private fun Cycler(label: String, value: String, onPrev: () -> Unit, onNext: () 
 }
 
 @Composable
-private fun SmallPill(text: String, onClick: () -> Unit, selected: Boolean = false) {
+private fun SmallPill(text: String, selected: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(50))
             .background(if (selected) BackGold.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f))
