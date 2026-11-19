@@ -85,7 +85,7 @@ fun WidgetBack(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     SmallPill("الاستوديو", onStudio)
-                    SmallPill("تم ✓", onDone, selected = true)
+                    SmallPill("تم ✓", onClick = onDone, selected = true)
                 }
             }
         }
