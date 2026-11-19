@@ -21,8 +21,9 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         val repository = AppRepository(applicationContext)
+        val settings = LauncherSettings(applicationContext)
         setContent {
-            HomeScreen(repository = repository, homePresses = homePresses)
+            HomeScreen(repository = repository, settings = settings, homePresses = homePresses)
         }
     }
 

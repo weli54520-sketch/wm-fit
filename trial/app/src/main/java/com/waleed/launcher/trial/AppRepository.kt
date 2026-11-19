@@ -5,7 +5,9 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Process
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
@@ -13,6 +15,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.Collator
+import java.util.concurrent.ConcurrentHashMap
 
 /** تطبيق واحد على الجوال */
 class AppEntry(val info: LauncherActivityInfo) {
@@ -25,6 +28,8 @@ class AppRepository(private val context: Context) {
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val iconCache = LruCache<String, ImageBitmap>(300)
+    private val glyphCache = LruCache<String, ImageBitmap>(300)
+    private val noGlyph = ConcurrentHashMap.newKeySet<String>()
 
     /** تطبيقات وليد اليومية بالترتيب (تطلع أول شي) */
     private val dailyPackages = listOf(
@@ -113,6 +118,59 @@ class AppRepository(private val context: Context) {
         val canvas = Canvas(bitmap)
         drawable.setBounds(0, 0, size, size)
         drawable.draw(canvas)
+        return bitmap
+    }
+
+    fun cachedGlyph(app: AppEntry, sizePx: Int): ImageBitmap? = glyphCache.get("${app.key}@$sizePx")
+
+    /**
+     * رمز التطبيق بلون واحد (للأيقونات الزجاجية Liquid Glass).
+     * نستخدم الرمز الأحادي الرسمي (Monochrome) لو التطبيق يوفره،
+     * وإلا نطلع شكل الشعار من الطبقة الأمامية. لو ما ينفع نرجع null.
+     */
+    suspend fun glyph(app: AppEntry, sizePx: Int): ImageBitmap? {
+        val cacheKey = "${app.key}@$sizePx"
+        glyphCache.get(cacheKey)?.let { return it }
+        if (app.key in noGlyph) return null
+        return withContext(Dispatchers.Default) {
+            val bitmap = runCatching { buildGlyph(app, sizePx) }.getOrNull()
+            if (bitmap == null) {
+                noGlyph += app.key
+                null
+            } else {
+                bitmap.asImageBitmap().also { glyphCache.put(cacheKey, it) }
+            }
+        }
+    }
+
+    /** الأيقونة الخام من ملفات التطبيق نفسه (بدون ثيم سامسونج) */
+    private fun rawIcon(app: AppEntry): Drawable? {
+        val pm = context.packageManager
+        @Suppress("DEPRECATION")
+        val activityInfo = pm.getActivityInfo(app.info.componentName, 0)
+        val iconId = activityInfo.iconResource
+        if (iconId == 0) return null
+        val resources = pm.getResourcesForApplication(activityInfo.applicationInfo)
+        return resources.getDrawableForDensity(iconId, context.resources.displayMetrics.densityDpi, null)
+    }
+
+    private fun buildGlyph(app: AppEntry, size: Int): Bitmap? {
+        val raw = rawIcon(app) as? AdaptiveIconDrawable ?: return null
+        val mono = if (Build.VERSION.SDK_INT >= 33) raw.monochrome else null
+        val layer = mono ?: raw.foreground ?: return null
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val inset = size / 4
+        layer.setBounds(-inset, -inset, size + inset, size + inset)
+        layer.draw(canvas)
+        if (mono == null) {
+            // لو الطبقة الأمامية مليانة (مو شعار) ما تنفع كرمز
+            val pixels = IntArray(size * size)
+            bitmap.getPixels(pixels, 0, size, 0, 0, size, size)
+            val solid = pixels.count { (it ushr 24) > 128 }
+            val ratio = solid.toFloat() / pixels.size
+            if (ratio > 0.42f || ratio < 0.02f) return null
+        }
         return bitmap
     }
 
