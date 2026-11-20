@@ -208,14 +208,16 @@ fun HomeScreen(
             val backdrop = remember(blurred, screenW, screenH) {
                 blurred?.let { GlassBackdrop(it, wallpaper.blurFactor, screenW, screenH, wallpaper.fullWidth, wallpaper.fullHeight) }
             }
+            val screenMaxW = maxWidth
+            val screenMaxH = maxHeight
             // انتقال الطي بالزجاج المضبب: يلف الشاشة كلها (الخلفية + الأيقونات + الويدجت)
             FoldTransitionHost(
-                inner = maxWidth >= 600.dp,
+                inner = screenMaxW >= 600.dp,
                 showAngle = true,
                 background = { WallpaperLayer(wallpaper) },
             ) {
             CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
-                val wide = maxWidth >= 600.dp
+                val wide = screenMaxW >= 600.dp
                 val widgets = widgetStore.list(wide)
                 // الوقت: كل ثانية بس لو فيه عقرب ثواني ظاهر، وإلا كل دقيقة
                 val needSeconds = widgets.any { it.slot.current.variant.isAnalog && it.slot.current.seconds != Seconds.OFF }
@@ -223,9 +225,9 @@ fun HomeScreen(
                 val gridColumns = if (wide) 6 else 4
 
                 // الشبكة + خانة للعمود الجانبي (مثل ترتيب وليد)
-                val sidePadding = if (wide) maxWidth * 0.05f else 16.dp
+                val sidePadding = if (wide) screenMaxW * 0.05f else 16.dp
                 val sideEdgeMargin = 6.dp
-                val cell = (maxWidth - sidePadding - sideEdgeMargin) / (gridColumns + 1)
+                val cell = (screenMaxW - sidePadding - sideEdgeMargin) / (gridColumns + 1)
                 // حجم الأيقونة: حوالي ٧٨٪ من الخانة، مثل نسبة الآيفون
                 val iconSize = minOf(cell * 0.78f, 84.dp)
                 // العمود الجانبي: بالخارجية نفس حجم الأيقونات، وبالداخلية أصغر شوي عشان يتميز
@@ -235,11 +237,11 @@ fun HomeScreen(
                 // الشريط السفلي: أصغر شوي من أيقونات الشاشة، وأنحف
                 val dockIcon = iconSize * 0.86f
                 val dockHeight = dockIcon + 20.dp
-                val dockWidth = if (wide) minOf(maxWidth * 0.66f, 640.dp) else maxWidth - 32.dp
+                val dockWidth = if (wide) minOf(screenMaxW * 0.66f, 640.dp) else screenMaxW - 32.dp
                 val dotsHeight = 22.dp
 
                 val rowHeight = cell
-                val areaHeight = maxHeight - topInset - dotsHeight - dockHeight - 14.dp - bottomInset
+                val areaHeight = screenMaxH - topInset - dotsHeight - dockHeight - 14.dp - bottomInset
                 val rows = (areaHeight / rowHeight).toInt().coerceIn(SIDE_COUNT, 9)
                 val gridHeight = rowHeight * rows
                 // نوزع الفراغ الزايد فوق وتحت عشان كل شي يجي بالنص
