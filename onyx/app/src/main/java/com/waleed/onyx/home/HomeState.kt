@@ -46,6 +46,10 @@ class Drag(val item: Item, val grab: Offset, startPage: Int, val snap: ImageBitm
     var cand by mutableStateOf<Cell?>(null)
     var solution by mutableStateOf<Map<Long, Cell>?>(null)
     var slot by mutableStateOf<Slot?>(null)
+    /** أيقونات تطلع من الصفحة المليانة وتنتقل للي بعدها */
+    var overflow by mutableStateOf<List<Long>>(emptyList())
+    /** الإصبع عند حافة الشاشة: -1 يسار، 1 يمين (للمعة اللي تبين إن الصفحة بتتقلب) */
+    var edge by mutableIntStateOf(0)
 }
 
 data class Menu(val item: Item, val bounds: Rect, val slot: Slot?, val snap: ImageBitmap? = null)
@@ -106,6 +110,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun lastPage() = items.filter { it.container == Container.GRID }.maxOfOrNull { it.page } ?: 0
 
     /** المكان المؤقت لعنصر وأنت تسحب أو تكبر ويدجت (قبل ما تفلت) */
+    /** أيقونة بتطلع من الصفحة وأنت تسحب (الصفحة مليانة) */
+    fun isOverflow(id: Long): Boolean = drag?.overflow?.contains(id) == true
+
     fun previewCell(page: Int, id: Long): Cell? {
         val d = drag
         if (d != null && d.page == page && d.item.id != id) return d.solution?.get(id)
@@ -159,6 +166,15 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         drag = Drag(item, Offset((pointer.x - b.left) / scale, (pointer.y - b.top) / scale), item.page, snap).also { it.pointer = pointer }
         menu = null
         buzz()
+        settlePager()
+    }
+
+    /** لو الصفحة واقفة بالنص لأي سبب، ترجع لمكانها بنعومة */
+    fun settlePager() {
+        if (!::pager.isInitialized) return
+        if (pager.currentPageOffsetFraction != 0f && !pager.isScrollInProgress) {
+            scope.launch { pager.animateScrollToPage(pager.currentPage) }
+        }
     }
 
     private fun pageScale(page: Int): Float {
@@ -178,44 +194,64 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun dragMove(pointer: Offset) {
         val d = drag ?: return
         d.pointer = pointer
+        // حافة الشاشة لها الأولوية (حتى لو فوق العمود الجانبي): تقلب الصفحة
+        if (edgeCheck(d)) return
         // الويدجت ما ينحط بالعمود أو الشريط
         val slot = if (d.item.kind == Kind.WIDGET) null
-        else slotBounds.entries.firstOrNull { it.value.inflate(geo.cellW * 0.12f).contains(pointer) }?.key
+        else slotBounds.entries.firstOrNull { it.value.contains(pointer) }?.key
         if (slot != null) {
             if (d.slot != slot) buzz()
-            d.slot = slot; d.cand = null; d.solution = null
+            d.slot = slot; d.cand = null; d.solution = null; d.overflow = emptyList()
             return
         }
         d.slot = null
-        edgeCheck(d)
         val tl = localTopLeft(d, d.page) ?: return
         val c = GridEngine.cellAt(tl.x, tl.y, geo.cellW, geo.cellH, d.item.w, d.item.h, geo.cols, geo.rows)
-        if (c == d.cand) return
+        if (c == d.cand && d.solution != null) return
         d.cand = c
         val others = gridItems(d.page).filter { it.id != d.item.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }
-        d.solution = GridEngine.solve(others, Span(d.item.id, c.x, c.y, d.item.w, d.item.h), geo.cols, geo.rows)
+        val moving = Span(d.item.id, c.x, c.y, d.item.w, d.item.h)
+        if (d.item.w == 1 && d.item.h == 1) {
+            // الأيقونات تزحف بالترتيب مثل الآيفون
+            val from = if (d.page == d.item.page && d.item.container == Container.GRID) Cell(d.item.x, d.item.y) else null
+            val r = GridEngine.reorder(others, moving, geo.cols, geo.rows, from)
+            if (r == null) return // فوق ويدجت: نخلي آخر مكان صح
+            d.solution = r.cells
+            d.overflow = r.overflow
+        } else {
+            d.solution = GridEngine.solve(others, moving, geo.cols, geo.rows)
+            d.overflow = emptyList()
+        }
     }
 
-    private fun edgeCheck(d: Drag) {
+    /** يرجع true لو الإصبع بحافة الشاشة (والصفحة بتتقلب بعد شوي) */
+    private fun edgeCheck(d: Drag): Boolean {
+        val np0 = d.page
         val dir = when {
-            d.pointer.x < geo.edgePx -> -1
-            d.pointer.x > geo.screenW - geo.edgePx -> 1
+            d.pointer.x < geo.edgePx && np0 > 0 -> -1
+            d.pointer.x > geo.screenW - geo.edgePx && np0 + 1 < pager.pageCount -> 1
             else -> 0
         }
-        if (dir == 0) { edgeJob?.cancel(); edgeJob = null; return }
-        if (edgeJob?.isActive == true) return
+        if (dir == 0) { edgeJob?.cancel(); edgeJob = null; d.edge = 0; return false }
+        if (d.edge != dir) {
+            d.edge = dir
+            // الأيقونة ما تنحط بالصفحة اللي بنطلع منها
+            d.slot = null; d.cand = null; d.solution = null; d.overflow = emptyList()
+        }
+        if (edgeJob?.isActive == true) return true
         edgeJob = scope.launch {
-            delay(520)
+            delay(420)
             val np = d.page + dir
             if (drag === d && np >= 0 && np < pager.pageCount) {
-                d.cand = null; d.solution = null; d.page = np
+                d.cand = null; d.solution = null; d.overflow = emptyList(); d.page = np
                 buzz()
                 pager.animateScrollToPage(np)
-                delay(60)
                 edgeJob = null
+                d.edge = 0
                 dragMove(d.pointer)
             }
         }
+        return true
     }
 
     fun dragEnd() {
@@ -233,12 +269,28 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             val sol = d.solution
             if (c != null && sol != null) {
                 localTopLeft(d, d.page)?.let { dropFrom[it0.id] = IntOffset(it.x.roundToInt(), it.y.roundToInt()) }
+                val placed = HashMap<Long, Item>()
                 for (o in gridItems(d.page)) {
-                    if (o.id == it0.id) continue
+                    if (o.id == it0.id || o.id in d.overflow) continue
                     val q = sol[o.id] ?: continue
-                    if (q.x != o.x || q.y != o.y) upd += o.copy(x = q.x, y = q.y)
+                    if (q.x != o.x || q.y != o.y) placed[o.id] = o.copy(x = q.x, y = q.y)
                 }
-                upd += it0.copy(container = Container.GRID, page = d.page, x = c.x, y = c.y)
+                placed[it0.id] = it0.copy(container = Container.GRID, page = d.page, x = c.x, y = c.y)
+                // اللي طلع من الصفحة المليانة: أول مكان فاضي بالصفحات اللي بعدها
+                for (id in d.overflow) {
+                    val o = items.firstOrNull { it.id == id } ?: continue
+                    var p = d.page + 1
+                    while (true) {
+                        val taken = items.filter { it.container == Container.GRID && it.id != id }
+                            .map { placed[it.id] ?: it }
+                            .filter { it.page == p }
+                            .map { Span(it.id, it.x, it.y, it.w, it.h) }
+                        val spot = GridEngine.freeSpot(taken, 1, 1, geo.cols, geo.rows)
+                        if (spot != null) { placed[id] = o.copy(page = p, x = spot.x, y = spot.y); break }
+                        p++
+                    }
+                }
+                upd += placed.values
                 buzz()
             } else {
                 // ما فيه مكان: يرجع لمكانه بنعومة
@@ -249,6 +301,17 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         dropTick++
         drag = null
         if (upd.isNotEmpty()) scope.launch { repo.save(upd) }
+        settlePager()
+    }
+
+    /** السحب لتحت: يفتح لوحة الإشعارات مثل سامسونج */
+    fun openNotifications() {
+        try {
+            val sb = app.getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("expandNotificationsPanel").invoke(sb)
+        } catch (e: Exception) {
+            say("ما قدرت أفتح الإشعارات")
+        }
     }
 
     fun takeDropFrom(id: Long): IntOffset? = dropFrom.remove(id)

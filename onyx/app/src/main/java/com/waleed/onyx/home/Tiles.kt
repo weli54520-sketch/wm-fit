@@ -226,15 +226,14 @@ fun Modifier.tileGestures(
         while (true) {
             val e = awaitPointerEvent()
             val c = e.changes.firstOrNull { it.id == down.id } ?: break
+            // بعد الضغطة الطويلة اللمسة كلها لنا: الصفحات ما تتحرك وتعلق بالنص
+            c.consume()
             if (!c.pressed) break
             if (!dragging && canDrag && (c.position - down.position).getDistance() > slop * 1.5f) {
                 onDragStart(root(c.position))
                 dragging = state.drag != null
             }
-            if (dragging) {
-                c.consume()
-                state.dragMove(root(c.position))
-            }
+            if (dragging) state.dragMove(root(c.position))
         }
         state.tilePressed = false
         if (dragging) state.dragEnd()

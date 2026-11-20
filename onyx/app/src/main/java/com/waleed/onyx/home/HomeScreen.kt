@@ -39,6 +39,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -121,13 +123,19 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             val gridW = cellW * cols
 
             with(density) {
-                state.geo = Geo(cols, rows, cellW.toPx(), cellH.toPx(), maxWidth.toPx(), 22.dp.toPx())
+                state.geo = Geo(cols, rows, cellW.toPx(), cellH.toPx(), maxWidth.toPx(), 34.dp.toPx())
             }
 
             val gridItems = state.items.filter { it.container == Container.GRID }
             val pageCount = (gridItems.maxOfOrNull { it.page } ?: 0) + 1 + (if (state.editing) 1 else 0)
             val pager = rememberPagerState(pageCount = { pageCount })
             state.pager = pager
+            // الصفحة ما توقف بالنص أبد: لو وقفت، ترجع لأقرب صفحة
+            LaunchedEffect(pager) {
+                snapshotFlow { pager.isScrollInProgress }.collect { moving ->
+                    if (!moving && state.drag == null) state.settlePager()
+                }
+            }
 
             BackHandler(enabled = true) {
                 when {
@@ -164,7 +172,13 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                             detectVerticalDragGestures(
                                 onDragStart = { dy = 0f },
                                 onVerticalDrag = { _, d -> dy += d },
-                                onDragEnd = { if (dy < -90f) state.drawerOpen = true },
+                                onDragEnd = {
+                                    when {
+                                        dy < -90f -> state.drawerOpen = true
+                                        // لتحت: الإشعارات مثل سامسونج
+                                        dy > 90f -> state.openNotifications()
+                                    }
+                                },
                             )
                         }
                     },
@@ -222,10 +236,12 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             if (sideOn) {
                 // العمود يمشي على صفوف الشبكة بالضبط، وبنص العمود الخامس المحجوز له
                 val n = settings.sideCount
-                val sideW = sideIcon + 14.dp
-                val sideH = cellH * (n - 1) + sideIcon + 14.dp
+                // الزجاج لاصق على الأيقونات: هامش 5 بس
+                val sidePad = 5.dp
+                val sideW = sideIcon + sidePad * 2
+                val sideH = cellH * (n - 1) + sideIcon + sidePad * 2
                 val startRow = (rows - n).coerceAtLeast(0) / 2f
-                val sideTop = gridTop + cellH * startRow + (cellH - sideIcon) / 2 - 7.dp
+                val sideTop = gridTop + cellH * startRow + (cellH - sideIcon) / 2 - sidePad
                 val sideLeft = min(padStart + gridW + cellW / 2 - sideW / 2, maxWidth - sideW - 2.dp)
                 Box(
                     Modifier
@@ -235,7 +251,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                 ) {
                     for (i in 0 until n) {
                         val slot = Slot(Container.SIDE, i)
-                        Box(Modifier.offset(x = 7.dp, y = 7.dp + cellH * i)) {
+                        Box(Modifier.offset(x = sidePad, y = sidePad + cellH * i)) {
                             SlotTile(state, slot, sideIcon)
                         }
                     }
@@ -263,6 +279,8 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             state.slotBounds.keys.removeAll { it.container == Container.DOCK && it.index >= dn }
             state.slotBounds.keys.removeAll { it.container == Container.SIDE && it.index >= settings.sideCount }
 
+            // لمعة الحافة: الصفحة بتتقلب
+            EdgeGlow(state, gridTop, gridH)
             // اللي يتسحب يطلع فوق كل شي
             DragOverlay(state, cellW, cellH, icon)
 
@@ -293,6 +311,8 @@ private fun GridTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: 
     val dragged = d?.item?.id == item.id
     val coords = rememberCoordsHolder()
     val press by animateFloatAsState(if (state.pressedKey == item.id) 0.88f else 1f, pressSpec(state.pressedKey == item.id, settings), label = "press")
+    // الأيقونة اللي بتطلع للصفحة اللي بعدها (الصفحة مليانة): تختفي بنعومة
+    val out by animateFloatAsState(if (state.isOverflow(item.id)) 0f else 1f, Motion.smooth(settings), label = "out")
     val appInfo = state.catalog.byKey(item.appKey)
     val jiggle = state.editing && settings.editStyle == 1 && !settings.reduceMotion
     val rot = if (jiggle) {
@@ -304,9 +324,10 @@ private fun GridTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: 
             .offset { anim.value }
             .size(cellW, cellH)
             .graphicsLayer {
-                alpha = if (dragged) 0f else 1f
+                alpha = if (dragged) 0f else out
                 rotationZ = rot
-                scaleX = press; scaleY = press
+                val k = press * (0.6f + 0.4f * out)
+                scaleX = k; scaleY = k
             }
             .trackBounds { r, c -> coords[0] = c; state.tileBounds[item.id] = r }
             .tileGestures(
@@ -453,5 +474,33 @@ fun WidgetLifted(snap: androidx.compose.ui.graphics.ImageBitmap?, frame: Boolean
                 contentScale = ContentScale.FillBounds,
             )
         }
+    }
+}
+
+/** لمعة ناعمة بحافة الشاشة لما الإصبع هناك وأنت تسحب: يعني الصفحة بتتقلب */
+@Composable
+private fun EdgeGlow(state: HomeState, top: Dp, height: Dp) {
+    val d = state.drag
+    val dir = d?.edge ?: 0
+    val a by animateFloatAsState(if (dir != 0) 1f else 0f, Motion.smooth(state.settings), label = "edge")
+    val last = remember { intArrayOf(0) }
+    if (dir != 0) last[0] = dir
+    if (a < 0.01f) return
+    BoxWithConstraints(Modifier.offset(y = top).fillMaxWidth().height(height)) {
+        val w = 34.dp
+        val left = last[0] < 0
+        Box(
+            Modifier
+                .offset(x = if (left) 0.dp else maxWidth - w)
+                .width(w)
+                .fillMaxSize()
+                .graphicsLayer { alpha = a }
+                .background(
+                    Brush.horizontalGradient(
+                        if (left) listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
+                        else listOf(Color.Transparent, Color.White.copy(alpha = 0.22f)),
+                    ),
+                ),
+        )
     }
 }

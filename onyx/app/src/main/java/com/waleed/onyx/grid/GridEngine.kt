@@ -9,6 +9,9 @@ data class Span(val id: Long, val x: Int, val y: Int, val w: Int = 1, val h: Int
 
 data class Cell(val x: Int, val y: Int)
 
+/** نتيجة الترتيب: المكان الجديد لكل عنصر، واللي ما لقى مكان بالصفحة */
+data class Reorder(val cells: Map<Long, Cell>, val overflow: List<Long>)
+
 /**
  * محرك الشبكة: كود صافي بدون رسم.
  * يقرر وين يركب العنصر، مين يتزحزح، ووين أقرب مكان فاضي.
@@ -62,6 +65,67 @@ object GridEngine {
             result[o.id] = b
         }
         return result
+    }
+
+    /**
+     * ترتيب الأيقونات مثل الآيفون: [moving] (خانة وحدة) ينحط بخانة [moving].x,y،
+     * واللي بينه وبين أقرب فاضي يزحف خانة وحدة بترتيب القراءة.
+     * الويدجت (أي عنصر أكبر من خانة) ثابتة، والزحف يتخطاها.
+     * [from] = مكان الأيقونة الأصلي لو هي من نفس الصفحة: الزحف يروح باتجاهه.
+     * لو الصفحة مليانة: آخر أيقونة تطلع بـ overflow (تنتقل للصفحة اللي بعدها).
+     * يرجع null لو الخانة تحت ويدجت.
+     */
+    fun reorder(others: List<Span>, moving: Span, cols: Int, rows: Int, from: Cell? = null): Reorder? {
+        if (!fits(moving.x, moving.y, 1, 1, cols, rows)) return null
+        val blocked = Array(rows) { BooleanArray(cols) }
+        val fixed = HashMap<Long, Cell>()
+        for (o in others) {
+            if (o.w == 1 && o.h == 1) continue
+            fixed[o.id] = Cell(o.x, o.y)
+            for (yy in o.y until minOf(rows, o.y + o.h)) for (xx in o.x until minOf(cols, o.x + o.w)) if (yy >= 0 && xx >= 0) blocked[yy][xx] = true
+        }
+        if (blocked[moving.y][moving.x]) return null
+        // الخانات المتاحة بترتيب القراءة
+        val slots = ArrayList<Cell>()
+        val index = HashMap<Cell, Int>()
+        for (y in 0 until rows) for (x in 0 until cols) if (!blocked[y][x]) { index[Cell(x, y)] = slots.size; slots += Cell(x, y) }
+        val occ = arrayOfNulls<Long>(slots.size)
+        val stray = ArrayList<Long>()
+        for (o in others) {
+            if (o.w != 1 || o.h != 1) continue
+            val i = index[Cell(o.x, o.y)]
+            if (i == null || occ[i] != null) stray += o.id else occ[i] = o.id
+        }
+        val b = index.getValue(Cell(moving.x, moving.y))
+        val a = from?.let { index[it] }
+        val overflow = ArrayList<Long>()
+        if (occ[b] != null) {
+            fun forwardEmpty(): Int? { for (i in b + 1 until occ.size) if (occ[i] == null) return i; return null }
+            fun backwardEmpty(): Int? { for (i in b - 1 downTo 0) if (occ[i] == null) return i; return null }
+            val back = a != null && a < b
+            val fe: Int?
+            val be: Int?
+            if (back) { be = backwardEmpty(); fe = if (be == null) forwardEmpty() else null }
+            else { fe = forwardEmpty(); be = if (fe == null) backwardEmpty() else null }
+            when {
+                fe != null -> { for (i in fe downTo b + 1) occ[i] = occ[i - 1] }
+                be != null -> { for (i in be until b) occ[i] = occ[i + 1] }
+                else -> {
+                    // مليانة: آخر وحدة تطلع، والباقي يزحف لقدام
+                    occ[occ.size - 1]?.let { overflow += it }
+                    for (i in occ.size - 1 downTo b + 1) occ[i] = occ[i - 1]
+                }
+            }
+            occ[b] = null
+        }
+        val cells = HashMap<Long, Cell>(fixed)
+        occ.forEachIndexed { i, id -> if (id != null) cells[id] = slots[i] }
+        // عناصر بمكان غلط (نادر): أول فاضي، وإلا تطلع
+        for (id in stray) {
+            val i = occ.indices.firstOrNull { occ[it] == null && it != b }
+            if (i != null) { occ[i] = id; cells[id] = slots[i] } else overflow += id
+        }
+        return Reorder(cells, overflow)
     }
 
     /** أول مكان فاضي يكفي عنصر بهالمقاس (ترتيب القراءة) */
