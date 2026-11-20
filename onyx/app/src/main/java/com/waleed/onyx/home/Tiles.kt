@@ -181,8 +181,12 @@ fun Modifier.tileGestures(
         state.tilePressed = true
         val slop = viewConfiguration.touchSlop
         val editing = state.editing
+        val holdMs = maxOf(viewConfiguration.longPressTimeoutMillis, 450L)
+        // لو الصفحات لسا تتحرك، اللمسة توقفها بس وما تفتح شي
+        val pagesMoving = state.pager.isScrollInProgress
+        if (!editing && !pagesMoving) state.pressedKey = key
         var lastPos = down.position
-        val first: Int? = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+        val first: Int? = withTimeoutOrNull(holdMs) {
             var r = -1
             while (r < 0) {
                 val e = awaitPointerEvent()
@@ -202,12 +206,17 @@ fun Modifier.tileGestures(
             r
         }
         var dragging = false
+        state.pressedKey = null
         when (first) {
-            0 -> { state.tilePressed = false; onTap(); return@awaitEachGesture }
-            3 -> { state.tilePressed = false; return@awaitEachGesture }
+            0 -> {
+                state.tilePressed = false; state.pressedKey = null
+                if (!pagesMoving && !state.pager.isScrollInProgress) onTap()
+                return@awaitEachGesture
+            }
+            3 -> { state.tilePressed = false; state.pressedKey = null; return@awaitEachGesture }
             2 -> {
                 if (editing && canDrag) { onDragStart(root(lastPos)); dragging = state.drag != null }
-                else { state.tilePressed = false; return@awaitEachGesture }
+                else { state.tilePressed = false; state.pressedKey = null; return@awaitEachGesture }
             }
             null -> {
                 if (editing && canDrag) { onDragStart(root(lastPos)); dragging = state.drag != null }

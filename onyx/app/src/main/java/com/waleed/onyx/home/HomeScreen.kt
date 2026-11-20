@@ -212,19 +212,22 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
 
             // العمود الجانبي: لاصق يمين، بالنص
             if (sideOn) {
+                // العمود يمشي على صفوف الشبكة بالضبط، وبنص العمود الخامس المحجوز له
                 val n = settings.sideCount
-                val gap = sideIcon * 0.24f
                 val sideW = sideIcon + 14.dp
-                val sideH = sideIcon * n + gap * (n - 1) + 14.dp
+                val sideH = cellH * (n - 1) + sideIcon + 14.dp
+                val startRow = (rows - n).coerceAtLeast(0) / 2f
+                val sideTop = gridTop + cellH * startRow + (cellH - sideIcon) / 2 - 7.dp
+                val sideLeft = min(padStart + gridW + cellW / 2 - sideW / 2, maxWidth - sideW - 2.dp)
                 Box(
                     Modifier
-                        .offset(x = maxWidth - edge - sideW, y = gridTop + (gridH - sideH) / 2)
+                        .offset(x = sideLeft, y = sideTop)
                         .size(sideW, sideH)
                         .smokeGlass(RoundedCornerShape(50), elevation = 0.dp),
                 ) {
                     for (i in 0 until n) {
                         val slot = Slot(Container.SIDE, i)
-                        Box(Modifier.offset(x = 7.dp, y = 7.dp + (sideIcon + gap) * i)) {
+                        Box(Modifier.offset(x = 7.dp, y = 7.dp + cellH * i)) {
                             SlotTile(state, slot, sideIcon)
                         }
                     }
@@ -280,6 +283,7 @@ private fun GridTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: 
     }
     val dragged = d?.item?.id == item.id
     val coords = rememberCoordsHolder()
+    val press by animateFloatAsState(if (state.pressedKey == item.id) 0.88f else 1f, pressSpec(state.pressedKey == item.id, settings), label = "press")
     val appInfo = state.catalog.byKey(item.appKey)
     val jiggle = state.editing && settings.editStyle == 1 && !settings.reduceMotion
     val rot = if (jiggle) {
@@ -293,6 +297,7 @@ private fun GridTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: 
             .graphicsLayer {
                 alpha = if (dragged) 0f else 1f
                 rotationZ = rot
+                scaleX = press; scaleY = press
             }
             .trackBounds { r, c -> coords[0] = c; state.tileBounds[item.id] = r }
             .tileGestures(
@@ -344,7 +349,8 @@ private fun SlotTile(state: HomeState, slot: Slot, icon: Dp) {
     val appInfo = item?.let { state.catalog.byKey(it.appKey) }
     val coords = rememberCoordsHolder()
     val hover = state.drag?.slot == slot
-    val scale by animateFloatAsState(if (hover) 1.12f else 1f, Motion.bouncy(state.settings), label = "slotHover")
+    val pressed = state.pressedKey == slot
+    val scale by animateFloatAsState(if (hover) 1.12f else if (pressed) 0.88f else 1f, pressSpec(pressed, state.settings), label = "slotHover")
     Box(
         Modifier
             .size(icon)
@@ -412,3 +418,7 @@ private fun PageDots(count: Int, current: Int, modifier: Modifier) {
         }
     }
 }
+
+/** ضغطة الأيقونة: تصغر بسرعة (0.12 ثانية) وترجع بنعومة نابضة */
+private fun pressSpec(pressed: Boolean, settings: com.waleed.onyx.data.Settings): androidx.compose.animation.core.AnimationSpec<Float> =
+    if (pressed) tween(120) else Motion.bouncy(settings)

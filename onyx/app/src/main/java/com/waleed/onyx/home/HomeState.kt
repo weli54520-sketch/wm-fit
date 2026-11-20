@@ -66,6 +66,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
 
     /** تطبيق مضغوط الحين، عشان الضغطة الطويلة على الفاضي ما تشتغل معه */
     var tilePressed = false
+
+    /** الأيقونة المضغوطة الحين (عشان تصغر تحت الإصبع) */
+    var pressedKey by mutableStateOf<Any?>(null)
     var geo by mutableStateOf(Geo(4, 6, 1f, 1f, 1f, 1f))
     lateinit var pager: PagerState
 
