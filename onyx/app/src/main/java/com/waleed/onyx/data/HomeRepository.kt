@@ -4,6 +4,8 @@ import com.waleed.onyx.apps.AppCatalog
 import com.waleed.onyx.apps.AppInfo
 import com.waleed.onyx.grid.GridEngine
 import com.waleed.onyx.grid.Span
+import com.waleed.onyx.widget.WidgetData
+import com.waleed.onyx.widget.Widgets
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -12,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
  * ترتيب الشاشة: أول تشغيل، التطبيقات اللي تنزل أو تنحذف، وحفظ أي تغيير.
  * كل الكتابة تمر من هنا عشان ما يصير تعارض.
  */
-class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, private val settings: Settings) {
+class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, private val settings: Settings, private val widgets: Widgets) {
     private val lock = Mutex()
 
     fun observe(screen: Int): Flow<List<Item>> = dao.observe(screen)
@@ -78,6 +80,12 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
 
     suspend fun save(update: List<Item>, delete: List<Item> = emptyList(), insert: List<Item> = emptyList()) = lock.withLock {
         dao.apply(insert = insert, update = update, delete = delete)
+        releaseWidgets(delete)
+    }
+
+    /** الويدجت اللي تنشال: نرجع رقمها للنظام عشان التطبيق يوقف يحدثها */
+    private fun releaseWidgets(deleted: List<Item>) {
+        for (it in deleted) if (it.kind == Kind.WIDGET) WidgetData.parse(it.data)?.let { d -> widgets.delete(d.id) }
     }
 
     /** بعد ما تتغير الشبكة: كل شي يبقى بمكانه لو يركب، والباقي ينتقل */
@@ -103,10 +111,13 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
         dao.apply(emptyList(), upd, emptyList())
     }
 
-    /** ينسخ ترتيب شاشة للثانية */
+    /**
+     * ينسخ ترتيب التطبيقات لشاشة الثانية. الويدجت ما تنتسخ (كل ويدجت له رقم واحد عند النظام)،
+     * وويدجت الشاشة الثانية تبقى، واللي يتصادم معها ينتقل لأقرب فاضي.
+     */
     suspend fun copyLayout(from: Int, to: Int) = lock.withLock {
-        val src = dao.all(from)
-        val old = dao.all(to)
+        val src = dao.all(from).filter { it.kind == Kind.APP }
+        val old = dao.all(to).filter { it.kind == Kind.APP }
         val copy = src.map { it.copy(id = 0, screen = to) }
         dao.apply(insert = copy, update = emptyList(), delete = old)
     }

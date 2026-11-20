@@ -12,11 +12,21 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.IntOffset
 import com.waleed.onyx.OnyxApp
 import com.waleed.onyx.apps.AppInfo
+import android.appwidget.AppWidgetProviderInfo
+import android.view.View
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.view.drawToBitmap
 import com.waleed.onyx.data.Container
 import com.waleed.onyx.data.Item
+import com.waleed.onyx.data.Kind
 import com.waleed.onyx.grid.Cell
 import com.waleed.onyx.grid.GridEngine
 import com.waleed.onyx.grid.Span
+import com.waleed.onyx.grid.SpanLimits
+import com.waleed.onyx.grid.WidgetSpan
+import com.waleed.onyx.widget.WidgetData
+import com.waleed.onyx.widget.Widgets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,7 +40,7 @@ data class Geo(val cols: Int, val rows: Int, val cellW: Float, val cellH: Float,
 data class Slot(val container: Int, val index: Int)
 
 /** عنصر يتسحب الحين */
-class Drag(val item: Item, val grab: Offset, startPage: Int) {
+class Drag(val item: Item, val grab: Offset, startPage: Int, val snap: ImageBitmap? = null) {
     var pointer by mutableStateOf(Offset.Zero)
     var page by mutableIntStateOf(startPage)
     var cand by mutableStateOf<Cell?>(null)
@@ -38,7 +48,14 @@ class Drag(val item: Item, val grab: Offset, startPage: Int) {
     var slot by mutableStateOf<Slot?>(null)
 }
 
-data class Menu(val item: Item, val bounds: Rect, val slot: Slot?)
+data class Menu(val item: Item, val bounds: Rect, val slot: Slot?, val snap: ImageBitmap? = null)
+
+/** ويدجت نكبره أو نصغره الحين بسحب الزاوية */
+class Resize(val item: Item, val limits: SpanLimits) {
+    var w by mutableIntStateOf(item.w)
+    var h by mutableIntStateOf(item.h)
+    var solution by mutableStateOf<Map<Long, Cell>?>(null)
+}
 
 /**
  * حالة الشاشة الرئيسية: وضع الترتيب، السحب، القوائم، واللوحات.
@@ -60,6 +77,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     var drawerOpen by mutableStateOf(false)
     var picker by mutableStateOf<Slot?>(null)
     var settingsOpen by mutableStateOf(false)
+    var galleryOpen by mutableStateOf(false)
+    var resize by mutableStateOf<Resize?>(null)
+        private set
     var toast by mutableStateOf<String?>(null)
     var dropTick by mutableIntStateOf(0)
         private set
@@ -75,12 +95,24 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     val pageBounds = HashMap<Int, Rect>()
     val tileBounds = HashMap<Long, Rect>()
     val slotBounds = HashMap<Slot, Rect>()
+    /** شكل كل ويدجت على الشاشة، عشان نصوره لما يرتفع أو يتسحب */
+    val widgetViews = HashMap<Long, View>()
+    private val widgets: Widgets get() = app.widgets
     private val dropFrom = HashMap<Long, IntOffset>()
     private var edgeJob: Job? = null
 
     fun gridItems(page: Int) = items.filter { it.container == Container.GRID && it.page == page }
     fun slotItem(slot: Slot) = items.firstOrNull { it.container == slot.container && it.page == slot.index }
     fun lastPage() = items.filter { it.container == Container.GRID }.maxOfOrNull { it.page } ?: 0
+
+    /** المكان المؤقت لعنصر وأنت تسحب أو تكبر ويدجت (قبل ما تفلت) */
+    fun previewCell(page: Int, id: Long): Cell? {
+        val d = drag
+        if (d != null && d.page == page && d.item.id != id) return d.solution?.get(id)
+        val r = resize
+        if (r != null && r.item.page == page && r.item.id != id) return r.solution?.get(id)
+        return null
+    }
 
     fun buzz() {
         if (settings.haptics) haptic?.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -102,6 +134,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (!editing) return
         editing = false
         drag = null
+        resize = null
         scope.launch { repo.compactPages(screen) }
     }
 
@@ -110,6 +143,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         drawerOpen = false
         picker = null
         settingsOpen = false
+        galleryOpen = false
         exitEdit()
     }
 
@@ -120,8 +154,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (item.container != Container.GRID) return
         if (!editing) enterEdit()
         val b = tileBounds[item.id] ?: return
-        val scale = (b.width / geo.cellW).coerceAtLeast(0.01f)
-        drag = Drag(item, Offset((pointer.x - b.left) / scale, (pointer.y - b.top) / scale), item.page).also { it.pointer = pointer }
+        val scale = (b.width / (geo.cellW * item.w)).coerceAtLeast(0.01f)
+        val snap = if (item.kind == Kind.WIDGET) snapshot(item.id) else null
+        drag = Drag(item, Offset((pointer.x - b.left) / scale, (pointer.y - b.top) / scale), item.page, snap).also { it.pointer = pointer }
         menu = null
         buzz()
     }
@@ -143,7 +178,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun dragMove(pointer: Offset) {
         val d = drag ?: return
         d.pointer = pointer
-        val slot = slotBounds.entries.firstOrNull { it.value.inflate(geo.cellW * 0.12f).contains(pointer) }?.key
+        // الويدجت ما ينحط بالعمود أو الشريط
+        val slot = if (d.item.kind == Kind.WIDGET) null
+        else slotBounds.entries.firstOrNull { it.value.inflate(geo.cellW * 0.12f).contains(pointer) }?.key
         if (slot != null) {
             if (d.slot != slot) buzz()
             d.slot = slot; d.cand = null; d.solution = null
@@ -226,11 +263,120 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
 
     fun openMenu(item: Item, slot: Slot?) {
         val b = if (slot != null) slotBounds[slot] else tileBounds[item.id]
-        menu = Menu(item, b ?: return, slot)
+        val snap = if (item.kind == Kind.WIDGET) snapshot(item.id) else null
+        menu = Menu(item, b ?: return, slot, snap)
         buzz()
     }
 
+    /** صورة للويدجت مثل ما هو الحين. بعض الويدجت ما تنصور، فنرسم مكانها زجاج بس */
+    private fun snapshot(id: Long): ImageBitmap? {
+        val v = widgetViews[id] ?: return null
+        if (v.width <= 0 || v.height <= 0) return null
+        return try { v.drawToBitmap().asImageBitmap() } catch (e: Exception) { null }
+    }
+
+    // ───────── الويدجت ─────────
+
+    fun widgetData(item: Item): WidgetData? = WidgetData.parse(item.data)
+
+    /** من المعرض: نطلب الإذن والإعداد، وبعدين نحطه بأول مكان يكفيه */
+    fun addWidget(info: AppWidgetProviderInfo) {
+        val g = geo
+        val (w, h) = WidgetSpan.defaultSpan(info.targetCellWidth, info.targetCellHeight, info.minWidth, info.minHeight, g.cellW, g.cellH, g.cols, g.rows)
+        val scr = screen
+        val frame = settings.widgetFrame
+        galleryOpen = false
+        widgets.begin(info) { id ->
+            if (scr != screen) { widgets.delete(id); say("الشاشة تغيرت، جرب مرة ثانية"); return@begin }
+            var page = pager.currentPage.coerceAtMost(lastPage())
+            var spot: Cell?
+            while (true) {
+                spot = GridEngine.freeSpot(gridItems(page).map { Span(it.id, it.x, it.y, it.w, it.h) }, w, h, geo.cols, geo.rows)
+                if (spot != null) break
+                if (page > lastPage()) { spot = Cell(0, 0); break }
+                page++
+            }
+            val s = spot!!
+            val data = WidgetData(id, Widgets.providerKey(info.provider), frame).encode()
+            val row = Item(screen = scr, container = Container.GRID, page = page, x = s.x, y = s.y, w = w, h = h, kind = Kind.WIDGET, data = data)
+            scope.launch {
+                repo.save(emptyList(), insert = listOf(row))
+                // ننتظر الصفحة الجديدة تطلع قبل ما نروح لها
+                delay(150)
+                pager.animateScrollToPage(page)
+            }
+            say("انضاف الويدجت")
+        }
+    }
+
+    fun toggleFrame(item: Item) {
+        val d = widgetData(item) ?: return
+        val u = item.copy(data = d.copy(frame = !d.frame).encode())
+        applyLocal(listOf(u))
+        scope.launch { repo.save(listOf(u)) }
+    }
+
+    fun reconfigure(item: Item) {
+        widgetData(item)?.let { widgets.reconfigure(it.id) }
+    }
+
+    fun canReconfigure(item: Item): Boolean = widgetData(item)?.let { widgets.canReconfigure(widgets.info(it.id)) } == true
+
+    fun canResize(item: Item): Boolean {
+        val info = widgetData(item)?.let { widgets.info(it.id) } ?: return false
+        return info.resizeMode != AppWidgetProviderInfo.RESIZE_NONE
+    }
+
+    fun resizeStart(item: Item) {
+        if (settings.lock) { say("الترتيب مقفل من الإعدادات"); return }
+        val info = widgetData(item)?.let { widgets.info(it.id) } ?: return
+        val g = geo
+        val lim = WidgetSpan.limits(
+            item.w, item.h,
+            info.minResizeWidth, info.minResizeHeight, info.maxResizeWidth, info.maxResizeHeight,
+            info.resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0,
+            info.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0,
+            g.cellW, g.cellH, g.cols, g.rows,
+        )
+        resize = Resize(item, lim).also { it.solution = emptyMap() }
+        buzz()
+    }
+
+    /** [dx] [dy] بالبكسل من بداية السحب */
+    fun resizeMove(dx: Float, dy: Float) {
+        val r = resize ?: return
+        val g = geo
+        val (w, h) = WidgetSpan.resized(r.item.w, r.item.h, dx, dy, g.cellW, g.cellH, r.item.x, r.item.y, g.cols, g.rows, r.limits)
+        if (w == r.w && h == r.h) return
+        val others = gridItems(r.item.page).filter { it.id != r.item.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }
+        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, w, h), g.cols, g.rows) ?: return
+        r.w = w; r.h = h; r.solution = sol
+        buzz()
+    }
+
+    fun resizeEnd() {
+        val r = resize ?: return
+        resize = null
+        val sol = r.solution ?: return
+        if (r.w == r.item.w && r.h == r.item.h) return
+        val upd = ArrayList<Item>()
+        for (o in gridItems(r.item.page)) {
+            if (o.id == r.item.id) continue
+            val q = sol[o.id] ?: continue
+            if (q.x != o.x || q.y != o.y) upd += o.copy(x = q.x, y = q.y)
+        }
+        upd += r.item.copy(w = r.w, h = r.h)
+        applyLocal(upd)
+        scope.launch { repo.save(upd) }
+    }
+
     fun removeFromHome(item: Item) {
+        if (item.kind == Kind.WIDGET) {
+            items = items.filter { it.id != item.id }
+            scope.launch { repo.save(emptyList(), delete = listOf(item)) }
+            say("انشال الويدجت")
+            return
+        }
         val u = item.copy(container = Container.HIDDEN)
         applyLocal(listOf(u))
         scope.launch { repo.save(listOf(u)) }

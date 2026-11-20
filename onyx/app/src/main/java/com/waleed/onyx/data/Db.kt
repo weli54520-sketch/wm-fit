@@ -32,7 +32,8 @@ object Screen {
 
 object Kind {
     const val APP = 0
-    const val WIDGET = 1 // جاي بنسخة 0.2
+    /** ويدجت تطبيق ثاني (بياناته بـ data) */
+    const val WIDGET = 1
 }
 
 /** سطر لكل عنصر على الشاشة */

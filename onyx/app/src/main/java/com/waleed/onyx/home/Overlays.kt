@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.waleed.onyx.data.Container
+import com.waleed.onyx.data.Kind
 import com.waleed.onyx.ui.Motion
 import com.waleed.onyx.ui.Onyx
 import com.waleed.onyx.ui.smokeGlass
@@ -82,7 +83,9 @@ fun EditBar(state: HomeState, top: Dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Pill("الإعدادات") { state.settingsOpen = true }
                 Spacer(Modifier.width(8.dp))
-                Pill("كل التطبيقات") { state.drawerOpen = true }
+                Pill("التطبيقات") { state.drawerOpen = true }
+                Spacer(Modifier.width(8.dp))
+                Pill("+ ويدجت") { state.galleryOpen = true }
                 Spacer(Modifier.weight(1f))
                 Pill("تم", filled = true) { state.exitEdit() }
             }
@@ -111,7 +114,8 @@ fun ContextMenu(state: HomeState) {
         )
         val b = menu.bounds
         val appInfo = state.catalog.byKey(menu.item.appKey)
-        // الأيقونة مرفوعة بمكانها
+        val isWidget = menu.item.kind == Kind.WIDGET
+        // الأيقونة (أو الويدجت) مرفوعة بمكانها
         with(density) {
             val iconSize = (if (menu.slot != null) b.width else minOf(b.width, b.height) * 0.76f * state.settings.iconScale).toDp()
             Box(
@@ -119,17 +123,27 @@ fun ContextMenu(state: HomeState) {
                     .offset { IntOffset(b.left.roundToInt(), b.top.roundToInt()) }
                     .size(b.width.toDp(), b.height.toDp())
                     .graphicsLayer {
-                        val s = 1f + 0.08f * shown
+                        val s = 1f + (if (isWidget) 0.03f else 0.08f) * shown
                         scaleX = s; scaleY = s; alpha = shown
                     },
                 contentAlignment = Alignment.Center,
-            ) { AppIcon(appInfo, state.catalog, iconSize, state.settings.iconStyle) }
+            ) {
+                if (isWidget) WidgetLifted(menu.snap, state.widgetData(menu.item)?.frame != false, Modifier.fillMaxSize().padding(WidgetMargin))
+                else AppIcon(appInfo, state.catalog, iconSize, state.settings.iconStyle)
+            }
 
             val menuW = 230.dp
-            val itemsCount = if (menu.slot != null) 2 else 3
+            val canResize = isWidget && state.canResize(menu.item)
+            val canConfig = isWidget && state.canReconfigure(menu.item)
+            val itemsCount = when {
+                menu.slot != null -> 2
+                isWidget -> 3 + (if (canResize) 1 else 0) + (if (canConfig) 1 else 0)
+                else -> 3
+            }
             val menuH = (46 * itemsCount + 12).dp
             val below = b.bottom + 14.dp.toPx() + menuH.toPx() < constraints.maxHeight - 40.dp.toPx()
-            val y = if (below) b.bottom + 14.dp.toPx() else b.top - 14.dp.toPx() - menuH.toPx()
+            val y = (if (below) b.bottom + 14.dp.toPx() else b.top - 14.dp.toPx() - menuH.toPx())
+                .coerceIn(40.dp.toPx(), (constraints.maxHeight - menuH.toPx() - 24.dp.toPx()).coerceAtLeast(40.dp.toPx()))
             val x = (b.center.x - menuW.toPx() / 2).coerceIn(12.dp.toPx(), constraints.maxWidth - menuW.toPx() - 12.dp.toPx())
             Box(
                 Modifier
@@ -146,7 +160,14 @@ fun ContextMenu(state: HomeState) {
             ) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Column {
-                        if (menu.slot != null) {
+                        if (isWidget) {
+                            val framed = state.widgetData(menu.item)?.frame != false
+                            if (canResize) MenuRow("المقاس") { state.enterEdit(); state.say("اسحب الزاوية اللي تحت عشان تكبره أو تصغره") }
+                            MenuRow(if (framed) "شيل الإطار الزجاجي" else "حط إطار زجاجي") { state.menu = null; state.toggleFrame(menu.item) }
+                            if (canConfig) MenuRow("إعدادات الويدجت") { state.menu = null; state.reconfigure(menu.item) }
+                            MenuRow("ترتيب الشاشة") { state.enterEdit() }
+                            MenuRow("شيل الويدجت", red = true) { state.menu = null; state.removeFromHome(menu.item) }
+                        } else if (menu.slot != null) {
                             MenuRow("بدّل التطبيق") { state.menu = null; state.picker = menu.slot; state.drawerOpen = true }
                             MenuRow("ترتيب الشاشة") { state.enterEdit() }
                         } else {

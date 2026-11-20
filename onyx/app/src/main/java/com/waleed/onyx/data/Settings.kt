@@ -78,6 +78,12 @@ class Settings(context: Context) {
         get() = _lock.value
         set(v) { _lock.value = v; p.edit().putBoolean("lock", v).apply() }
 
+    // الويدجت الجديدة تنحط بإطار زجاج مدخّن؟ (كل ويدجت تقدر تغيره من قائمته)
+    private val _widgetFrame = bool("widgetFrame", true)
+    var widgetFrame: Boolean
+        get() = _widgetFrame.value
+        set(v) { _widgetFrame.value = v; p.edit().putBoolean("widgetFrame", v).apply() }
+
     // الشبكة لكل شاشة
     private val _outerCols = int("outerCols", 4)
     private val _outerRows = int("outerRows", 6)

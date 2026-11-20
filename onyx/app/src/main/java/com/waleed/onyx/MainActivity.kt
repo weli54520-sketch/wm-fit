@@ -22,12 +22,38 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         val app = application as OnyxApp
+        app.widgets.activity = this
         setContent { HomeScreen(app, homePresses) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         homePresses.value = homePresses.value + 1
+    }
+
+    // الويدجت تتحدث بس والشاشة ظاهرة (توفير بطارية)
+    override fun onStart() {
+        super.onStart()
+        (application as OnyxApp).widgets.startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        (application as OnyxApp).widgets.stopListening()
+    }
+
+    override fun onDestroy() {
+        val w = (application as OnyxApp).widgets
+        if (w.activity === this) w.activity = null
+        super.onDestroy()
+    }
+
+    // نتيجة نافذة إذن الويدجت أو إعداداته
+    @Deprecated("AppWidgetHost uses request codes")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        (application as OnyxApp).widgets.onActivityResult(requestCode, resultCode)
     }
 
     override fun onResume() {

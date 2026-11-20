@@ -138,6 +138,10 @@ fun SettingsSheet(state: HomeState) {
                             Toggle("اهتزاز اللمس", s.haptics) { s.haptics = it }
                             Toggle("تقليل الحركة", s.reduceMotion) { s.reduceMotion = it }
                         }
+                        Section("الويدجت") {
+                            Toggle("إطار زجاج مدخّن للويدجت الجديدة", s.widgetFrame) { s.widgetFrame = it }
+                            BasicText("كل ويدجت تقدر تشيل إطاره أو تحطه من قائمته (ضغطة طويلة عليه).", style = Note)
+                        }
                         Section("الترتيب") {
                             Toggle("قفل الترتيب", s.lock) { s.lock = it }
                             Spacer(Modifier.height(8.dp))
@@ -145,14 +149,16 @@ fun SettingsSheet(state: HomeState) {
                             if (!confirmCopy) {
                                 WideButton("انسخ ترتيب هالشاشة للشاشة $other") { confirmCopy = true }
                             } else {
-                                BasicText("الترتيب الحالي للشاشة $other بينمسح ويصير نسخة من هذي.", style = Note)
+                                BasicText("ترتيب التطبيقات بالشاشة $other بينمسح ويصير نسخة من هذي. الويدجت اللي هناك تبقى.", style = Note)
                                 Spacer(Modifier.height(8.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(Modifier.weight(1f)) {
                                         WideButton("إيه انسخ", filled = true) {
                                             confirmCopy = false
                                             scope.launch {
-                                                state.app.repo.copyLayout(scr, if (scr == Screen.INNER) Screen.OUTER else Screen.INNER)
+                                                val to = if (scr == Screen.INNER) Screen.OUTER else Screen.INNER
+                                                state.app.repo.copyLayout(scr, to)
+                                                state.app.repo.reflow(to)
                                                 state.say("انتسخ الترتيب")
                                             }
                                         }
@@ -162,8 +168,8 @@ fun SettingsSheet(state: HomeState) {
                             }
                         }
                         Section("عن اللانشر") {
-                            BasicText("WM Onyx · الإصدار 0.1", style = Title)
-                            BasicText("الأساس: الشبكة الموحدة، السحب، الشاشتين. الويدجت جاية بالنسخ الجاية.", style = Note, modifier = Modifier.padding(top = 4.dp))
+                            BasicText("WM Onyx · الإصدار ${state.app.packageManager.getPackageInfo(state.app.packageName, 0).versionName}", style = Title)
+                            BasicText("الشبكة الموحدة، السحب، الشاشتين، وويدجت التطبيقات الثانية.", style = Note, modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }

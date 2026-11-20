@@ -64,9 +64,13 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.waleed.onyx.OnyxApp
 import com.waleed.onyx.data.Container
 import com.waleed.onyx.data.Item
+import com.waleed.onyx.data.Kind
 import com.waleed.onyx.data.Screen
 import com.waleed.onyx.sheets.AppDrawer
 import com.waleed.onyx.sheets.SettingsSheet
+import com.waleed.onyx.sheets.WidgetGallery
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import com.waleed.onyx.ui.Motion
 import com.waleed.onyx.ui.smokeGlass
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +132,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             BackHandler(enabled = true) {
                 when {
                     state.menu != null -> state.menu = null
+                    state.galleryOpen -> state.galleryOpen = false
                     state.picker != null -> { state.picker = null; state.drawerOpen = false }
                     state.drawerOpen -> state.drawerOpen = false
                     state.settingsOpen -> state.settingsOpen = false
@@ -166,7 +171,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             ) {
                 HorizontalPager(
                     state = pager,
-                    userScrollEnabled = state.drag == null,
+                    userScrollEnabled = state.drag == null && state.resize == null,
                     beyondViewportPageCount = 3,
                     modifier = Modifier
                         .fillMaxSize()
@@ -196,7 +201,10 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                             GhostCell(state, page, cellW, cellH, icon)
                             for (item in state.items) {
                                 if (item.container != Container.GRID || item.page != page) continue
-                                key(item.id) { GridTile(state, item, page, cellW, cellH, icon) }
+                                key(item.id) {
+                                    if (item.kind == Kind.WIDGET) WidgetTile(state, item, page, cellW, cellH)
+                                    else GridTile(state, item, page, cellW, cellH, icon)
+                                }
                             }
                         }
                     }
@@ -261,6 +269,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             EditBar(state, top)
             ContextMenu(state)
             AppDrawer(state, inner, icon)
+            WidgetGallery(state, inner)
             SettingsSheet(state)
             ToastPill(state, bottom + dockH + 30.dp)
         }
@@ -272,7 +281,7 @@ private fun GridTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: 
     val settings = state.settings
     val density = LocalDensity.current
     val d = state.drag
-    val preview = if (d != null && d.page == page && d.item.id != item.id) d.solution?.get(item.id) else null
+    val preview = state.previewCell(page, item.id)
     val cx = preview?.x ?: item.x
     val cy = preview?.y ?: item.y
     val target = with(density) { IntOffset((cellW * cx).roundToPx(), (cellH * cy).roundToPx()) }
@@ -323,15 +332,19 @@ private fun GhostCell(state: HomeState, page: Int, cellW: Dp, cellH: Dp, icon: D
     if (d.page != page || d.slot != null) return
     val ok = d.solution != null
     val density = LocalDensity.current
-    val target = with(density) { IntOffset((cellW * c.x + (cellW - icon) / 2).roundToPx(), (cellH * c.y + (cellH - icon) / 2).roundToPx()) }
+    val widget = d.item.kind == Kind.WIDGET
+    // الويدجت: الظل بمقاسه كامل. التطبيق: بمقاس الأيقونة
+    val gw = if (widget) cellW * d.item.w - WidgetMargin * 2 else icon
+    val gh = if (widget) cellH * d.item.h - WidgetMargin * 2 else icon
+    val target = with(density) { IntOffset((cellW * c.x + (cellW * d.item.w - gw) / 2).roundToPx(), (cellH * c.y + (cellH * d.item.h - gh) / 2).roundToPx()) }
     val anim = remember { Animatable(target, IntOffset.VectorConverter) }
     LaunchedEffect(target) { anim.animateTo(target, Motion.smooth(state.settings)) }
     Box(
         Modifier
             .offset { anim.value }
-            .size(icon)
+            .size(gw, gh)
             .drawBehind {
-                val r = CornerRadius(size.minDimension * 0.31f)
+                val r = if (widget) CornerRadius(WidgetCorner.toPx()) else CornerRadius(size.minDimension * 0.31f)
                 drawRoundRect(Color.White.copy(alpha = if (ok) 0.10f else 0.04f), cornerRadius = r)
                 drawRoundRect(
                     if (ok) Color.White.copy(alpha = 0.5f) else Color(0xFFFF7A7A),
@@ -382,22 +395,26 @@ private fun DragOverlay(state: HomeState, cellW: Dp, cellH: Dp, icon: Dp) {
     val density = LocalDensity.current
     val s = state.dragScale()
     val appInfo = state.catalog.byKey(d.item.appKey)
-    val lift by animateFloatAsState(if (d.slot != null) 0.9f else 1.08f, Motion.bouncy(state.settings), label = "lift")
+    val widget = d.item.kind == Kind.WIDGET
+    val lift by animateFloatAsState(if (d.slot != null) 0.9f else if (widget) 1.04f else 1.08f, Motion.bouncy(state.settings), label = "lift")
     Box(
         Modifier
             .offset {
                 IntOffset((d.pointer.x - d.grab.x * s).roundToInt(), (d.pointer.y - d.grab.y * s).roundToInt())
             }
-            .size(cellW * s, cellH * s)
+            .size(cellW * d.item.w * s, cellH * d.item.h * s)
             .graphicsLayer {
                 scaleX = lift; scaleY = lift
-                shadowElevation = with(density) { 18.dp.toPx() }
-                shape = RoundedCornerShape(percent = 31)
+                if (!widget) {
+                    shadowElevation = with(density) { 18.dp.toPx() }
+                    shape = RoundedCornerShape(percent = 31)
+                }
                 clip = false
             },
         contentAlignment = Alignment.Center,
     ) {
-        AppIcon(appInfo, state.catalog, icon * s, state.settings.iconStyle)
+        if (widget) WidgetLifted(d.snap, state.widgetData(d.item)?.frame != false, Modifier.fillMaxSize().padding(WidgetMargin * s), s)
+        else AppIcon(appInfo, state.catalog, icon * s, state.settings.iconStyle)
     }
 }
 
@@ -422,3 +439,19 @@ private fun PageDots(count: Int, current: Int, modifier: Modifier) {
 /** ضغطة الأيقونة: تصغر بسرعة (0.12 ثانية) وترجع بنعومة نابضة */
 private fun pressSpec(pressed: Boolean, settings: com.waleed.onyx.data.Settings): androidx.compose.animation.core.AnimationSpec<Float> =
     if (pressed) tween(120) else Motion.bouncy(settings)
+
+/** الويدجت وهو مرفوع (يتسحب أو بالقائمة): صورته فوق زجاج، أو زجاج بس لو ما انصور */
+@Composable
+fun WidgetLifted(snap: androidx.compose.ui.graphics.ImageBitmap?, frame: Boolean, modifier: Modifier, scale: Float = 1f) {
+    val shape = RoundedCornerShape(WidgetCorner * scale)
+    val inset = if (frame) FramePad * scale else 0.dp
+    Box(modifier.then(if (frame || snap == null) Modifier.smokeGlass(shape, strong = true, elevation = 16.dp) else Modifier)) {
+        if (snap != null) {
+            Image(
+                snap, null,
+                Modifier.fillMaxSize().padding(inset).clip(RoundedCornerShape(WidgetCorner * scale - inset)),
+                contentScale = ContentScale.FillBounds,
+            )
+        }
+    }
+}
