@@ -1,0 +1,1 @@
+All fonts in app/src/main/res/font are from Google Fonts (github.com/google/fonts) and licensed under the SIL Open Font License 1.1.
