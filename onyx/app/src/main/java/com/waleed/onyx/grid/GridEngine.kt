@@ -95,14 +95,14 @@ object GridEngine {
                 var s = s0.copy(x = s0.x.coerceIn(0, cols - w), y = s0.y.coerceIn(0, rows - h), w = w, h = h)
                 var p = pageIndex
                 while (true) {
-                    while (placed.size <= p) placed += ArrayList()
+                    while (placed.size <= p) placed.add(ArrayList())
                     val list = placed[p]
                     if (list.none { it.overlaps(s) }) break
                     val spot = freeSpot(list, w, h, cols, rows)
                     if (spot != null) { s = s.copy(x = spot.x, y = spot.y); break }
                     p++
                 }
-                placed[p] += s
+                placed[p].add(s)
                 out[s.id] = p to Cell(s.x, s.y)
             }
         }
