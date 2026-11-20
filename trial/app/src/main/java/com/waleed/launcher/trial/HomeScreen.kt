@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.waleed.launcher.trial.fold.FoldTransitionHost
 import com.waleed.launcher.trial.glass.GlassBackdrop
 import com.waleed.launcher.trial.glass.GlassTone
 import com.waleed.launcher.trial.glass.LiquidGlass
@@ -207,8 +208,12 @@ fun HomeScreen(
             val backdrop = remember(blurred, screenW, screenH) {
                 blurred?.let { GlassBackdrop(it, wallpaper.blurFactor, screenW, screenH, wallpaper.fullWidth, wallpaper.fullHeight) }
             }
-            WallpaperLayer(wallpaper)
-
+            // انتقال الطي بالزجاج المضبب: يلف الشاشة كلها (الخلفية + الأيقونات + الويدجت)
+            FoldTransitionHost(
+                inner = maxWidth >= 600.dp,
+                showAngle = true,
+                background = { WallpaperLayer(wallpaper) },
+            ) {
             CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
                 val wide = maxWidth >= 600.dp
                 val widgets = widgetStore.list(wide)
@@ -636,6 +641,7 @@ fun HomeScreen(
                         onClose = { studio = null },
                     )
                 }
+            }
             }
         }
     }
