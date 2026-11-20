@@ -122,23 +122,44 @@ class AppCatalog(private val context: Context) {
     }
 
     /**
-     * رمز التطبيق لحاله (أبيض) للزجاج الشفاف والداكن.
-     * نستخدم الرمز الأحادي من أندرويد ١٣ لو موجود، وإلا الطبقة الأمامية.
-     * لو الأيقونة مو متكيفة، نرجع null ونعرض الأصلية أصغر.
+     * رمز التطبيق لحاله للزجاج الشفاف والداكن.
+     * ناخذه من ملفات التطبيق نفسه (قبل ثيم سامسونج)، لأن أيقونة Theme Park مو متكيفة.
+     * نستخدم الرمز الأحادي (أندرويد ١٣) لو موجود، وإلا الطبقة الأمامية لو كانت شعار مو مليانة.
+     * لو ما فيه رمز صالح نرجع null، والأيقونة الأصلية تنعرض صغيرة داخل الزجاج.
      */
     suspend fun glyph(app: AppInfo, size: Int): ImageBitmap? = withContext(Dispatchers.Default) {
         val k = "${app.key}@$size"
         glyphs.get(k) ?: run {
-            val d = app.info.getIcon(context.resources.displayMetrics.densityDpi)
-            val adaptive = d as? AdaptiveIconDrawable ?: return@run null
-            val layer: Drawable = (if (Build.VERSION.SDK_INT >= 33) adaptive.monochrome else null)
-                ?: adaptive.foreground ?: return@run null
-            val m = layer.mutate()
-            m.colorFilter = PorterDuffColorFilter(android.graphics.Color.WHITE, PorterDuff.Mode.SRC_IN)
-            // الطبقة ١٠٨ والجزء الظاهر ٧٢: نكبرها شوي عشان الرمز يعبي
-            val pad = (size * 0.25f).toInt()
-            draw(m, size, Rect(-pad, -pad, size + pad, size + pad)).also { glyphs.put(k, it) }
+            val adaptive = (runCatching { rawIcon(app) }.getOrNull() as? AdaptiveIconDrawable)
+                ?: (app.info.getIcon(context.resources.displayMetrics.densityDpi) as? AdaptiveIconDrawable)
+                ?: return@run null
+            val mono = if (Build.VERSION.SDK_INT >= 33) adaptive.monochrome else null
+            val layer = (mono ?: adaptive.foreground ?: return@run null).mutate()
+            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val inset = size / 4
+            layer.setBounds(-inset, -inset, size + inset, size + inset)
+            layer.colorFilter = PorterDuffColorFilter(android.graphics.Color.WHITE, PorterDuff.Mode.SRC_IN)
+            layer.draw(Canvas(bmp))
+            if (mono == null) {
+                // الطبقة الأمامية لو مليانة (صورة مو شعار) ما تنفع كرمز
+                val px = IntArray(size * size)
+                bmp.getPixels(px, 0, size, 0, 0, size, size)
+                val ratio = px.count { (it ushr 24) > 128 }.toFloat() / px.size
+                if (ratio > 0.42f || ratio < 0.02f) return@run null
+            }
+            bmp.asImageBitmap().also { glyphs.put(k, it) }
         }
+    }
+
+    /** الأيقونة الخام من ملفات التطبيق (بدون ثيم) */
+    @Suppress("DEPRECATION")
+    private fun rawIcon(app: AppInfo): Drawable? {
+        val pm = context.packageManager
+        val ai = pm.getActivityInfo(app.component, 0)
+        val id = if (ai.icon != 0) ai.icon else ai.applicationInfo.icon
+        if (id == 0) return null
+        val res = pm.getResourcesForApplication(ai.applicationInfo)
+        return res.getDrawableForDensity(id, context.resources.displayMetrics.densityDpi, null)
     }
 
     private fun draw(d: Drawable, size: Int, bounds: Rect): ImageBitmap {
