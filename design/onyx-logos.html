@@ -1,0 +1,143 @@
+<title>شعارات WM Onyx</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700&family=Space+Grotesk:wght@300;500;600&family=Bodoni+Moda:wght@500;600&display=swap">
+<style>
+/* Layout: single-look dark page (the launcher is dark-first); each concept = big icon + wordmark + tiny phone preview */
+:root{
+  --bg:#07070a; --card:#101015; --line:rgba(255,255,255,.1); --fg:#ededf2; --muted:#9a9cab; --gold:#e3c285; --blue:#9db0ff;
+  --ui:"Noto Kufi Arabic",system-ui,sans-serif; --latin:"Space Grotesk",system-ui,sans-serif; --serif:"Bodoni Moda",Georgia,serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);line-height:1.8;font-size:15px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+main{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:clamp(24px,5vw,32px);font-weight:700}
+.lead{color:var(--muted);margin:6px 0 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+.c{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.top{display:flex;align-items:center;gap:18px}
+.icon{width:120px;height:120px;flex:none}
+.icon svg{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+.meta h2{margin:0;font-size:17px}
+.meta p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.tag{font-family:var(--latin);font-size:13px;color:var(--gold);font-weight:600}
+.word{direction:ltr;text-align:center;padding:10px 0 4px;border-top:1px solid var(--line)}
+.phone{direction:ltr;border-radius:22px;padding:16px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px 10px;
+  background:radial-gradient(120% 90% at 20% 0%,#1b1730 0%,#0a0a10 55%,#050507 100%);border:1px solid var(--line)}
+.phone .app{aspect-ratio:1;border-radius:32%;background:linear-gradient(160deg,#2a2b33,#15161b);border:1px solid rgba(255,255,255,.08)}
+.phone .me{aspect-ratio:1}
+.phone .me svg{width:100%;height:100%;display:block}
+.phone .lbl{grid-column:1/-1;text-align:center;font-size:11px;color:var(--muted);font-family:var(--ui);margin-top:-4px}
+.note{color:var(--muted);font-size:13.5px}
+</style>
+
+<main dir="rtl" lang="ar">
+<header>
+  <h1>شعار WM Onyx</h1>
+  <p class="lead">٤ أفكار. كل وحدة بحجم كبير، وتحتها كيف بتطلع بين أيقوناتك على الشاشة. اختار رقم.</p>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="sq"><path d="M60 0C108 0 120 12 120 60S108 120 60 120 0 108 0 60 12 0 60 0Z"/></clipPath>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b2c34"/><stop offset=".5" stop-color="#0c0c10"/><stop offset="1" stop-color="#000"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".45" stop-color="#fff" stop-opacity=".06"/><stop offset="1" stop-color="#9db0ff" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e2b0"/><stop offset=".55" stop-color="#d3ab62"/><stop offset="1" stop-color="#9c7434"/></linearGradient>
+    <linearGradient id="facetA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3c47"/><stop offset="1" stop-color="#111217"/></linearGradient>
+    <linearGradient id="facetB" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1d24"/><stop offset="1" stop-color="#050507"/></linearGradient>
+    <radialGradient id="orb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff" stop-opacity=".35"/><stop offset=".35" stop-color="#9db0ff" stop-opacity=".12"/><stop offset="1" stop-color="#000" stop-opacity=".0"/></radialGradient>
+    <radialGradient id="bgGlow" cx=".5" cy=".0" r="1"><stop offset="0" stop-color="#2a2550"/><stop offset="1" stop-color="#07070a"/></radialGradient>
+
+    <!-- 1: faceted onyx stone, glass rim -->
+    <symbol id="L1" viewBox="0 0 120 120">
+      <g clip-path="url(#sq)">
+        <rect width="120" height="120" fill="url(#stone)"/>
+        <polygon points="60,22 92,46 60,98" fill="url(#facetB)"/>
+        <polygon points="60,22 28,46 60,98" fill="url(#facetA)"/>
+        <polygon points="28,46 60,22 92,46 60,54" fill="#4a4c59" opacity=".9"/>
+        <polyline points="28,46 60,54 92,46" fill="none" stroke="#9db0ff" stroke-opacity=".55" stroke-width="1"/>
+        <polygon points="60,22 92,46 60,98 28,46" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.2" stroke-linejoin="round"/>
+        <line x1="60" y1="54" x2="60" y2="98" stroke="#fff" stroke-opacity=".18"/>
+      </g>
+      <path d="M60 .6C107.6.6 119.4 12.4 119.4 60S107.6 119.4 60 119.4 .6 107.6 .6 60 12.4 .6 60 .6Z" fill="none" stroke="url(#rim)" stroke-width="1.2"/>
+    </symbol>
+
+    <!-- 2: gold WM monogram on black -->
+    <symbol id="L2" viewBox="0 0 120 120">
+      <g clip-path="url(#sq)">
+        <rect width="120" height="120" fill="#0a0a0c"/>
+        <rect width="120" height="60" fill="#fff" opacity=".025"/>
+        <path d="M26 40 L38 80 L50 52 L62 80 L74 40" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linejoin="miter" stroke-linecap="square"/>
+        <path d="M58 80 L58 40 L76 66 L94 40 L94 80" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linejoin="miter" stroke-linecap="square" opacity=".92"/>
+        <line x1="26" y1="92" x2="94" y2="92" stroke="url(#gold)" stroke-width="1" opacity=".6"/>
+      </g>
+      <path d="M60 .6C107.6.6 119.4 12.4 119.4 60S107.6 119.4 60 119.4 .6 107.6 .6 60 12.4 .6 60 .6Z" fill="none" stroke="#e3c285" stroke-opacity=".35" stroke-width="1"/>
+    </symbol>
+
+    <!-- 3: minimal white ring (the "O" of Onyx) -->
+    <symbol id="L3" viewBox="0 0 120 120">
+      <g clip-path="url(#sq)">
+        <rect width="120" height="120" fill="#000"/>
+        <circle cx="60" cy="60" r="30" fill="none" stroke="#f2f2f5" stroke-width="7"/>
+        <circle cx="60" cy="60" r="5" fill="#f2f2f5"/>
+      </g>
+      <path d="M60 .6C107.6.6 119.4 12.4 119.4 60S107.6 119.4 60 119.4 .6 107.6 .6 60 12.4 .6 60 .6Z" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1"/>
+    </symbol>
+
+    <!-- 4: liquid glass orb over deep violet -->
+    <symbol id="L4" viewBox="0 0 120 120">
+      <g clip-path="url(#sq)">
+        <rect width="120" height="120" fill="url(#bgGlow)"/>
+        <circle cx="60" cy="62" r="34" fill="#050507"/>
+        <circle cx="60" cy="62" r="34" fill="url(#orb)"/>
+        <circle cx="60" cy="62" r="33.4" fill="none" stroke="url(#rim)" stroke-width="1.4"/>
+        <path d="M38 50 Q46 34 64 32" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="2.4" stroke-linecap="round"/>
+        <text x="60" y="70" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-weight="500" font-size="22" letter-spacing="1" fill="#ededf2">WM</text>
+      </g>
+      <path d="M60 .6C107.6.6 119.4 12.4 119.4 60S107.6 119.4 60 119.4 .6 107.6 .6 60 12.4 .6 60 .6Z" fill="none" stroke="url(#rim)" stroke-width="1.1"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="grid">
+  <section class="c">
+    <div class="top">
+      <div class="icon"><svg><use href="#L1"/></svg></div>
+      <div class="meta"><span class="tag">1</span><h2>حجر الأونيكس</h2><p>حجر أسود مقصوص بحافة زجاج مضيئة. فخم ويوصل معنى الاسم.</p></div>
+    </div>
+    <div class="word" style="font-family:var(--latin);font-weight:300;font-size:24px;letter-spacing:.32em">WM&nbsp;ONYX</div>
+    <div class="phone"><div class="app"></div><div class="app"></div><div class="me"><svg><use href="#L1"/></svg></div><div class="app"></div><div class="lbl">على شاشتك</div></div>
+  </section>
+
+  <section class="c">
+    <div class="top">
+      <div class="icon"><svg><use href="#L2"/></svg></div>
+      <div class="meta"><span class="tag">2</span><h2>حروف ذهب</h2><p>W و M متداخلين بالذهب على أسود. كلاسيكي مثل شعارات الساعات.</p></div>
+    </div>
+    <div class="word" style="font-family:var(--serif);font-weight:500;font-size:26px;letter-spacing:.12em;color:var(--gold)">WM Onyx</div>
+    <div class="phone"><div class="app"></div><div class="app"></div><div class="me"><svg><use href="#L2"/></svg></div><div class="app"></div><div class="lbl">على شاشتك</div></div>
+  </section>
+
+  <section class="c">
+    <div class="top">
+      <div class="icon"><svg><use href="#L3"/></svg></div>
+      <div class="meta"><span class="tag">3</span><h2>الحلقة</h2><p>حرف O بخط أبيض واحد على أسود صافي. بسيط جداً مثل أبل، ويوفر بطارية.</p></div>
+    </div>
+    <div class="word" style="font-family:var(--latin);font-weight:500;font-size:24px;letter-spacing:.04em">wm onyx</div>
+    <div class="phone"><div class="app"></div><div class="app"></div><div class="me"><svg><use href="#L3"/></svg></div><div class="app"></div><div class="lbl">على شاشتك</div></div>
+  </section>
+
+  <section class="c">
+    <div class="top">
+      <div class="icon"><svg><use href="#L4"/></svg></div>
+      <div class="meta"><span class="tag">4</span><h2>كرة الزجاج</h2><p>كرة سوداء بلمعة زجاج سائل، وحروف WM بالنص. نفس روح واجهة اللانشر.</p></div>
+    </div>
+    <div class="word" style="font-family:var(--latin);font-weight:600;font-size:24px;letter-spacing:.18em">WM ONYX</div>
+    <div class="phone"><div class="app"></div><div class="app"></div><div class="me"><svg><use href="#L4"/></svg></div><div class="app"></div><div class="lbl">على شاشتك</div></div>
+  </section>
+</div>
+
+<p class="note">تقدر تخلط: مثلاً شكل رقم ١ مع خط الاسم من رقم ٢. والشعار اللي تختاره أسويه بعدين أيقونة حقيقية للتطبيق بكل المقاسات.</p>
+</main>

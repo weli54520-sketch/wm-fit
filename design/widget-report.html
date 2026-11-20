@@ -1,0 +1,198 @@
+<title>إعادة بناء ويدجت اللانشر</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@300;400;600;700&family=Space+Grotesk:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, glass cards only for the "cause" and "phase" blocks; dark-first like the launcher itself */
+:root{
+  --bg:#0b0c10; --surface:rgba(255,255,255,.055); --line:rgba(255,255,255,.14);
+  --fg:#ececf1; --muted:#a3a6b4; --gold:#e3c285; --blue:#9db0ff; --mint:#9fe3cb; --warn:#f7a867; --bad:#ff8f8f;
+  --ui:"Noto Kufi Arabic",system-ui,sans-serif; --num:"Space Grotesk","Noto Kufi Arabic",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f4f4f7; --surface:rgba(20,22,40,.045); --line:rgba(20,22,40,.13);
+  --fg:#16171d; --muted:#5b5e6c; --gold:#9a7228; --blue:#3b55c9; --mint:#1d8565; --warn:#b5600f; --bad:#c23b3b; color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#f4f4f7; --surface:rgba(20,22,40,.045); --line:rgba(20,22,40,.13);
+  --fg:#16171d; --muted:#5b5e6c; --gold:#9a7228; --blue:#3b55c9; --mint:#1d8565; --warn:#b5600f; --bad:#c23b3b; color-scheme:light}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.9;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+h1{font-size:clamp(26px,5vw,36px);line-height:1.4;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:21px;margin:0 0 14px;font-weight:700;text-wrap:balance}
+h3{font-size:16px;margin:0 0 4px;font-weight:600}
+p{margin:0}
+.lead{color:var(--muted);font-size:16px;margin-top:10px}
+.eyebrow{font-size:12px;letter-spacing:.04em;color:var(--gold);font-weight:600}
+.en{font-family:var(--num);direction:ltr;unicode-bidi:isolate;font-size:.92em;color:var(--blue)}
+.num{font-family:var(--num)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px 18px;min-width:0}
+.cause{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+.cause .n{font-family:var(--num);font-weight:600;color:var(--gold);font-size:20px;line-height:1.5}
+.cause .feel{color:var(--fg)}
+.cause .why{color:var(--muted);font-size:13.5px;margin-top:4px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:18px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12.5px}
+tr:last-child td{border-bottom:0}
+td.us{color:var(--mint);font-weight:600}
+.chip{display:inline-block;font-size:12px;padding:1px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.ok{color:var(--mint);border-color:color-mix(in srgb,var(--mint) 45%,transparent)}
+.chip.lim{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.chip.no{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+ul{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px}
+.layers{display:flex;flex-direction:column;gap:8px}
+.layer{display:grid;grid-template-columns:150px 1fr;gap:14px;padding:12px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface)}
+.layer b{color:var(--gold);font-weight:600}
+.layer span{color:var(--muted);font-size:13.5px}
+@media (max-width:520px){.layer{grid-template-columns:1fr;gap:2px}}
+.phase{display:grid;grid-template-columns:auto 1fr;gap:4px 14px}
+.phase .v{font-family:var(--num);font-weight:600;color:var(--blue);font-size:18px}
+.phase p{grid-column:2;color:var(--muted);font-size:13.5px}
+.q{border-inline-start:3px solid var(--gold);padding-inline-start:14px}
+.src a{color:var(--blue);word-break:break-word}
+.src li{font-size:13px}
+.summary{font-size:16.5px}
+.summary strong{color:var(--gold);font-weight:600}
+</style>
+
+<main dir="rtl" lang="ar">
+
+<header>
+  <div class="eyebrow">تقرير · ٢٠ نوفمبر ٢٠٢٦ · لانشر وليد</div>
+  <h1>ليش الويدجت للحين بدائي، وكيف نبنيه صح من الأساس</h1>
+  <p class="lead">راجعت كود التجربة كامل (٥٬٦٧٧ سطر)، وبحثت كيف الآيفون وOne UI ولانشر أندرويد الأصلي يسوونها. هذي النتيجة.</p>
+</header>
+
+<section class="card summary">
+  <p>المشكلة <strong>مو بالشكل بس</strong>. المشكلة بالأساس: التجربة انبنت قطعة فوق قطعة، وكل ميزة انلصقت على اللي قبلها. عشان كذا مهما حسّنا الشكل، الإحساس يبقى بدائي.</p>
+  <p style="margin-top:10px">الحل الجذري: <strong>لانشر معتمد جديد من الصفر</strong>، بأساس واحد يجمع التطبيقات وويدجتنا وويدجت التطبيقات الثانية بنفس الشبكة، وبحركة نابضة بكل خطوة.</p>
+</section>
+
+<section>
+  <h2>السبب: ٩ أشياء بالكود الحالي</h2>
+  <div class="stack">
+    <div class="card cause"><div class="n">1</div><div>
+      <h3 class="feel">التطبيقات تقفز كل ما تحرك ويدجت</h3>
+      <p class="why">التطبيقات ما لها مكان ثابت. تتعبى تلقائي بالفراغات (دالة <span class="en">planPages</span>). أي تغيير بالويدجت يرتبها كلها من جديد. وما تقدر تحط تطبيق بمكان تختاره.</p></div></div>
+    <div class="card cause"><div class="n">2</div><div>
+      <h3 class="feel">السحب ينط لما تفلت إصبعك</h3>
+      <p class="why">الويدجت يمشي مع إصبعك، بس لما تفلته ينقل لمكانه فجأة بدون حركة. ما فيه ظل يوريك وين بينزل، والعناصر الثانية ما تتزحزح له (<span class="en">Reorder</span>: إعادة ترتيب تلقائية). ولو المكان مشغول، يرجع مكانه وكأن شي ما صار.</p></div></div>
+    <div class="card cause"><div class="n">3</div><div>
+      <h3 class="feel">ما تقدر تنقل ويدجت لصفحة ثانية بالسحب</h3>
+      <p class="why">السحب داخل الصفحة بس. ما فيه انتقال لما توصل لحافة الشاشة مثل الآيفون وسامسونج.</p></div></div>
+    <div class="card cause"><div class="n">4</div><div>
+      <h3 class="feel">المقاسات محدودة ومقبض المقاس خشن</h3>
+      <p class="why">٦ مقاسات ثابتة بس. المقبض الذهبي يقفز بين المقاسات، والتطبيقات تحت ما تفسح له وأنت تكبّره.</p></div></div>
+    <div class="card cause"><div class="n">5</div><div>
+      <h3 class="feel">الاهتزاز يعطي إحساس لعبة</h3>
+      <p class="why">بوضع الترتيب كل الويدجت تهتز بلا توقف (<span class="en">infinite wobble</span>). هذا يتعب العين ويصرف بطارية.</p></div></div>
+    <div class="card cause"><div class="n">6</div><div>
+      <h3 class="feel">خيارات الويدجت عامة ومو مصممة له</h3>
+      <p class="why">كل الويدجت تشترك بإعداد واحد فيه ٢٥ خيار (<span class="en">WConfig</span>). يعني لوحة التعديل وحدة لكل شي، وما فيه خيارات خاصة وذكية لكل ويدجت.</p></div></div>
+    <div class="card cause"><div class="n">7</div><div>
+      <h3 class="feel">ثقل وتعليق بسيط</h3>
+      <p class="why">الشاشة كلها بملف واحد ضخم (٧٤٢ سطر). أي تغيير صغير يعيد رسم الشاشة كاملة. وكل ويدجت يرسم الزجاج لحاله ومعه صفحات تقليب خاصة فيه، حتى لو ما فيه مكدس.</p></div></div>
+    <div class="card cause"><div class="n">8</div><div>
+      <h3 class="feel">ما فيه ويدجت التطبيقات الثانية أبد</h3>
+      <p class="why">ما فيه <span class="en">AppWidgetHost</span> (الجزء اللي يعرض ويدجت يوتيوب ونوت والطقس وغيرها داخل اللانشر). هذا أساس ما ينضاف بعدين بسهولة.</p></div></div>
+    <div class="card cause"><div class="n">9</div><div>
+      <h3 class="feel">الحفظ هش</h3>
+      <p class="why">كل شي محفوظ كنص واحد طويل (<span class="en">SharedPreferences JSON</span>). كل حركة تعيد كتابته كامل، وأي تغيير بالتصميم ممكن يضيّع ترتيبك.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>وش يسوون الكبار</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>الميزة</th><th>الآيفون</th><th>One UI</th><th>التجربة الحالية</th><th>المعتمد الجديد</th></tr></thead>
+    <tbody>
+      <tr><td>مكان التطبيقات</td><td>شبكة وحدة للكل</td><td>شبكة وحدة للكل</td><td>تتعبى لحالها</td><td class="us">شبكة وحدة، تحط أي شي وين ما تبي</td></tr>
+      <tr><td>السحب</td><td>العناصر تفسح بنعومة</td><td>العناصر تفسح + ظل للمكان</td><td>ينط عند الإفلات</td><td class="us">ظل + إزاحة نابضة + بين الصفحات</td></tr>
+      <tr><td>المقاس</td><td>مقاسات من القائمة</td><td>سحب نقطة الإطار، لين ٤×٤ بـ One UI 8</td><td>٦ مقاسات، قفز</td><td class="us">سحب حر بالخانات + معاينة حية</td></tr>
+      <tr><td>وضع التعديل</td><td>اهتزاز</td><td>الصفحة تصغر شوي</td><td>اهتزاز دايم</td><td class="us">الصفحة تصغر بنعومة، بدون اهتزاز</td></tr>
+      <tr><td>الشكل</td><td>شفاف / ملون / داكن (iOS 26)</td><td>شفافية بسيطة</td><td>زجاج لكل ويدجت لحاله</td><td class="us">زجاج سائل موحد، يرسم مرة وحدة</td></tr>
+      <tr><td>ويدجت التطبيقات الثانية</td><td>نعم</td><td>نعم</td><td>لا</td><td class="us">نعم + إطار زجاجي اختياري</td></tr>
+      <tr><td>المكدس</td><td>مكدس ذكي</td><td>مكدس</td><td>موجود بس خشن</td><td class="us">مكدس يجمع ويدجتنا وويدجتهم</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lead" style="font-size:13px">ملاحظة: ما لقيت مصدر أكيد إن الآيفون يسمح بسحب حر للمقاس. المعروف إنك تختار المقاس من قائمة.</p>
+</section>
+
+<section>
+  <h2>الحل الجذري: اللانشر المعتمد</h2>
+  <p style="margin-bottom:14px">تطبيق جديد نظيف بمجلد <span class="en">launcher/</span>، ما ناخذ سطر من التجربة. التجربة تبقى عندك مثل ما هي لين يصير المعتمد جاهز. مبني من ٥ طبقات، كل وحدة لها شغل واحد:</p>
+  <div class="layers">
+    <div class="layer"><b>١. البيانات</b><span>قاعدة بيانات حقيقية (<span class="en">Room</span>: مكتبة قاعدة بيانات من قوقل). كل عنصر له سطر: الشاشة، الصفحة، المكان، المقاس، النوع. نفس طريقة لانشر أندرويد الأصلي. التحديثات ما تضيع ترتيبك.</span></div>
+    <div class="layer"><b>٢. محرك الشبكة</b><span>كود صافي بدون رسم: وين يركب العنصر، مين يتزحزح، وين أقرب مكان فاضي. نقدر نختبره على GitHub قبل ما يوصل جوالك.</span></div>
+    <div class="layer"><b>٣. محرك السحب</b><span>طبقة فوق كل الصفحات. العنصر يرتفع من مكانه، يطلع ظل للمكان الجديد، الباقي يفسح بحركة نابضة، وتنقل بين الصفحات من الحافة.</span></div>
+    <div class="layer"><b>٤. نظام الويدجت</b><span>كل ويدجت ملف مستقل فيه: شكله، مقاساته المسموحة، وخياراته الخاصة. ويدجت التطبيقات الثانية تدخل بنفس النظام وتنحط بنفس الشبكة.</span></div>
+    <div class="layer"><b>٥. الرسم</b><span>زجاج سائل واحد مشترك، يتحسب مرة وحدة للخلفية. الوقت يتحدث كل دقيقة، وعقرب الثواني يتحرك بدون ما يعيد رسم الويدجت. كل شي يوقف لما الشاشة تنطفي.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>كيف بتحس فيه يومياً</h2>
+  <div class="stack">
+    <div class="card"><h3>ضغطة طويلة على ويدجت</h3><p class="why" style="color:var(--muted)">الويدجت يرتفع شوي والخلفية تتضبب، وتطلع قائمة صغيرة: تعديل، المقاس (صور صغيرة للمقاسات)، مكدس، حذف. لو سحبت إصبعك بدل ما تفلت، تبدأ تنقله على طول.</p></div>
+    <div class="card"><h3>وضع التعديل</h3><p style="color:var(--muted)">ضغطة طويلة على فاضي: الصفحة تصغر بنعومة، يطلع زر + وزر تم. تسحب أي شي، تكبّر من الزاوية، تحط ويدجت فوق ويدجت يصيرون مكدس.</p></div>
+    <div class="card"><h3>معرض الويدجت</h3><p style="color:var(--muted)">لوحة من تحت فيها بحث. ويدجتنا فوق، وتحتها ويدجت تطبيقاتك مرتبة حسب التطبيق. بطاقات المقاسات تكبر لما تكون بالنص. تسحب البطاقة على الشاشة مباشرة.</p></div>
+    <div class="card"><h3>تعديل الويدجت</h3><p style="color:var(--muted)">لوحة خاصة لكل ويدجت، والمعاينة حية فوق. الساعة لها خيارات ساعة، والصلاة لها خيارات صلاة. وتقدر تحفظ أي تصميم بـ "تصاميمي".</p></div>
+    <div class="card"><h3>ويدجت التطبيقات الثانية</h3><p style="color:var(--muted)">تنحط وتتكبر مثل ويدجتنا بالضبط. تقدر تحط لها إطار زجاجي وزوايا ناعمة توحد شكلها مع الباقي. بس اللي داخلها تصميم التطبيق نفسه، ما نقدر نغيره.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>حدود لازم تعرفها</h2>
+  <div class="stack">
+    <div class="card"><span class="chip lim">مرة وحدة</span> <span>أول ما تضيف ويدجت تطبيق ثاني، أندرويد يسألك "تسمح لـ اللانشر يسوي ويدجت؟". تختار "دايماً" وخلاص. هذا لأن اللانشر حقنا مو تطبيق نظام.</span></div>
+    <div class="card"><span class="chip no">ممكن ما يشتغل</span> <span>بعض الويدجت ترفض أي لانشر غير الأصلي. لقيت شكاوى عن ويدجت سبوتيفاي وبطارية سامسونج مع Nova. ما نقدر نصلحها من عندنا، نعرض رسالة واضحة بدالها.</span></div>
+    <div class="card"><span class="chip lim">ما نقدر</span> <span>نغير شكل ويدجت التطبيقات من داخل، أو نتحكم بالشاشة الدائمة (AOD) والإعدادات السريعة.</span></div>
+    <div class="card"><span class="chip ok">ممكن</span> <span>الشاشتين كل وحدة لها ترتيب مستقل، أيقونات Theme Park تطلع مثل ما هي، والبناء كله على GitHub بدون كمبيوتر.</span></div>
+    <div class="card"><span class="chip lim">تجربة منك</span> <span>أنا أبني وأختبر المنطق على GitHub، بس ما أقدر أشغله على جوال. كل نسخة لازم تجربها وتقول لي.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>خطة البناء</h2>
+  <p style="margin-bottom:14px;color:var(--muted)">كل مرحلة نسخة تنزلها وتجربها. ما ننتقل للي بعدها إلا لما ترضى.</p>
+  <div class="stack">
+    <div class="card phase"><span class="v">0.1</span><h3>الأساس</h3><p>قاعدة البيانات، الشبكة الموحدة، الأيقونات، العمود الجانبي، الشريط، الشاشتين، وسحب التطبيقات بالحركة الجديدة. هنا تحكم على السلاسة قبل أي ويدجت.</p></div>
+    <div class="card phase"><span class="v">0.2</span><h3>الويدجت الخارجية + وضع التعديل</h3><p>المعرض، إضافة ويدجت التطبيقات، المقاس بالسحب، القائمة، الحذف.</p></div>
+    <div class="card phase"><span class="v">0.3</span><h3>ويدجتنا بالتصميم الجديد</h3><p>الساعات، التاريخ الهجري والميلادي، الصلاة، الطقس، البطارية. كل واحد بلوحة خيارات خاصة فيه.</p></div>
+    <div class="card phase"><span class="v">0.4</span><h3>المكدس والباقي</h3><p>المكدس، التحكم، كتابتك، تصاميمي، والزجاج السائل النهائي.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>أحتاج منك قبل ما أكتب كود</h2>
+  <div class="stack">
+    <div class="q"><b>١.</b> توافق على الخطة والمراحل؟</div>
+    <div class="q"><b>٢.</b> وش اسم اللانشر المعتمد اللي يطلع تحت الأيقونة؟</div>
+    <div class="q"><b>٣.</b> وضع التعديل: الصفحة تصغر (مثل سامسونج)، أو اهتزاز خفيف (مثل الآيفون)؟</div>
+    <div class="q"><b>٤.</b> وش أهم ٣ ويدجت تطبيقات تبيها تشتغل عندك أكيد؟ (عشان أركز عليها بالتجربة)</div>
+  </div>
+</section>
+
+<section class="src">
+  <h2>المصادر</h2>
+  <ul>
+    <li><a href="https://developer.android.com/develop/ui/views/appwidgets/host" target="_blank" rel="noopener">Android: Build a widget host</a></li>
+    <li><a href="https://developer.android.com/develop/ui/views/appwidgets/previews" target="_blank" rel="noopener">Android: Add previews to your widget picker</a></li>
+    <li><a href="https://gerrit.omnirom.org/plugins/gitiles/android_packages_apps_Launcher3/+/e4c0345747a7b8e509631b1fe6a5d11830684137%5E%21" target="_blank" rel="noopener">Launcher3: Decoupling the reorder logic from CellLayout</a></li>
+    <li><a href="https://android.googlesource.com/platform/packages/apps/Launcher3/+/d97da07a54/res/raw/downgrade_schema.json" target="_blank" rel="noopener">Launcher3: favorites table schema</a></li>
+    <li><a href="https://www.macrumors.com/guide/ios-26-home-screen/" target="_blank" rel="noopener">MacRumors: iOS 26 Home Screen</a></li>
+    <li><a href="https://www.macstories.net/stories/ios-and-ipados-26-the-macstories-review/4" target="_blank" rel="noopener">MacStories: iOS 26 Home Screen review</a></li>
+    <li><a href="https://www.androidauthority.com/one-ui-8-widget-sizes-3562054/" target="_blank" rel="noopener">Android Authority: One UI 8 widget sizes</a></li>
+    <li><a href="https://www.samsung.com/us/support/troubleshoot/TSG10010297/" target="_blank" rel="noopener">Samsung: resizing and stacking widgets</a></li>
+    <li><a href="https://eu.community.samsung.com/t5/galaxy-s23-series/new-battery-widgets-are-not-working-with-nova-launcher/td-p/7000202/page/2" target="_blank" rel="noopener">Samsung Community: battery widgets with Nova</a></li>
+    <li><a href="https://community.spotify.com/t5/Android/Android-widget-not-working-on-3rd-party-launchers/td-p/5690438/highlight/true/page/3" target="_blank" rel="noopener">Spotify Community: widget on 3rd-party launchers</a></li>
+    <li><a href="https://developer.android.com/develop/ui/compose/performance/bestpractices" target="_blank" rel="noopener">Android: Compose performance best practices</a></li>
+  </ul>
+</section>
+
+</main>
