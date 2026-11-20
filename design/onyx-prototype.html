@@ -54,6 +54,10 @@ input,textarea{font:inherit;color:inherit}
 .lg.noglow::before{opacity:.35}
 .lg.tint{background:linear-gradient(165deg,color-mix(in srgb,var(--wac,var(--accent)) 34%,transparent),color-mix(in srgb,var(--wac,var(--accent)) 10%,transparent))}
 .lg.dark{background:linear-gradient(165deg,rgba(18,18,24,.62),rgba(6,6,10,.5))}
+.smoke{background:linear-gradient(180deg,rgba(34,34,38,.30) 0%,rgba(8,8,10,.58) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 12px 28px rgba(0,0,0,.30)}
+.smoke::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(170deg,rgba(255,255,255,.36),rgba(255,255,255,.07) 45%,rgba(255,255,255,.14));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.smoke.noglow::before{opacity:.45}
+.saver .smoke{background:rgba(14,14,16,.84)}
 .bgclear{background:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .bgclear::before{display:none}
 .bgclear .wcont{text-shadow:0 1px 10px rgba(0,0,0,.55)}
@@ -454,60 +458,61 @@ function minWords(m){if(m===0)return'تماماً';if(m===15)return'والربع
 /* ═══════════ widgets registry ═══════════ */
 const COMMON=['bg','glow'];
 const W={
-  clock:{n:'الساعة',cat:'الوقت',sizes:'SMLBTX',styles:{digital:'رقمية',analog:'عقارب',classic:'سوداء وذهب',half:'مقصوصة',flip:'قلابة',words:'بالكلام'},
-    def:{style:'digital',digits:'en',font:'grotesk',afont:'ruqaa',weight:'thin',face:'auto',accent:'orange',seconds:'sweep',showDate:true,h24:false,dial:'وليد'},
-    opts:s=>['style',...(s==='words'?['afontOnly']:['digits','font']),...(s==='digital'||s==='flip'?['weight','h24']:[]),...(s==='analog'?['face','seconds']:[]),...(s==='classic'?['seconds','dial']:[]),...(s==='flip'||s==='half'?[]:['showDate']),'accent',...COMMON]},
-  date:{n:'التقويم',cat:'التاريخ',sizes:'SMLBTX',styles:{today:'اليوم',dual:'هجري وميلادي',month:'الشهر',week:'الأسبوع'},
-    def:{style:'today',digits:'en',font:'grotesk',afont:'amiri',accent:'red',hijriDays:true},opts:s=>['style','digits','font',...(s==='month'||s==='today'?['hijriDays']:[]),'accent',...COMMON]},
-  prayer:{n:'الصلاة',cat:'الصلاة',sizes:'SMLT',styles:{next:'القادمة',arc:'قوس الشمس',list:'المواقيت',countdown:'عد تنازلي'},
-    def:{style:'next',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
+  clock:{n:'الساعة',cat:'الوقت',sizes:'SMLBTX',styles:{digital:'رقمية',dots:'نقاط',inner:'مصغّرة',analog:'أرقام',rosette:'نجمة دمشقية',arabesque:'أرابيسك',mashriq:'مشرق',ayah:'تسبيح',classic:'سوداء وذهب',half:'مقصوصة',flip:'قلابة',words:'بالكلام'},
+    def:{style:'digital',digits:'en',font:'grotesk',afont:'ruqaa',weight:'thin',face:'glass',accent:'white',seconds:'sweep',showDate:true,h24:false,dial:'وليد'},
+    opts:s=>['style',...(s==='words'?['afontOnly']:['digits','font']),...(s==='digital'||s==='flip'?['weight','h24']:[]),...(s==='analog'?['face']:[]),...(DIALS.has(s)?['seconds']:[]),...(s==='classic'?['dial']:[]),...(s==='flip'||s==='half'?[]:['showDate']),'accent',...COMMON]},
+  date:{n:'التقويم',cat:'التاريخ',sizes:'SMLBTX',styles:{callig:'خط عربي',dualc:'مزدوج بالخط',english:'إنجليزي فخم',today:'اليوم',dual:'هجري وميلادي',month:'الشهر',week:'الأسبوع'},
+    def:{style:'callig',digits:'en',font:'grotesk',afont:'ruqaa',accent:'white',hijriDays:true,eng:'month'},opts:s=>['style',...(s==='callig'||s==='dualc'?['afontOnly']:[]),...(s==='english'?['eng']:[]),'digits','font',...(s==='month'||s==='today'?['hijriDays']:[]),'accent',...COMMON]},
+  prayer:{n:'الصلاة',cat:'الصلاة',sizes:'SMLT',styles:{callig:'بالخط',next:'القادمة',arc:'قوس الشمس',list:'المواقيت',countdown:'عد تنازلي'},
+    def:{style:'callig',digits:'en',font:'grotesk',afont:'ruqaa',accent:'white'},opts:s=>['style',...(s==='callig'?['afontOnly']:[]),'digits','font','accent',...COMMON]},
   count:{n:'عدادات',cat:'التاريخ',sizes:'SMB',styles:{ramadan:'رمضان',salary:'الراتب',custom:'مناسبتك'},
-    def:{style:'ramadan',digits:'en',font:'grotesk',afont:'kufi',accent:'gold',salary:27,title:'رحلة الصيف',date:'2027-07-01'},
+    def:{style:'ramadan',digits:'en',font:'grotesk',afont:'kufi',accent:'white',salary:27,title:'رحلة الصيف',date:'2027-07-01'},
     opts:s=>['style',...(s==='salary'?['salary']:s==='custom'?['title','date']:[]),'digits','font','accent',...COMMON]},
   weather:{n:'الطقس',cat:'الطقس',sizes:'SMLTBX',styles:{today:'اليوم',curve:'منحنى الحرارة',minimal:'بسيط'},
-    def:{style:'today',digits:'en',font:'grotesk',afont:'kufi',accent:'orange',bg:'auto'},opts:()=>['style','digits','font','accent',...COMMON]},
+    def:{style:'today',digits:'en',font:'grotesk',afont:'kufi',accent:'white'},opts:()=>['style','digits','font','accent',...COMMON]},
   battery:{n:'البطاريات',cat:'البطارية',sizes:'SMBT',styles:{rings:'حلقات',list:'قائمة',big:'البطارية'},
-    def:{style:'rings',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
+    def:{style:'rings',digits:'en',font:'grotesk',afont:'kufi',accent:'white'},opts:()=>['style','digits','font','accent',...COMMON]},
   controls:{n:'التحكم',cat:'التحكم',sizes:'SM',styles:{circles:'أزرار'},def:{style:'circles',accent:'white'},opts:()=>['accent',...COMMON]},
-  music:{n:'الموسيقى',cat:'الموسيقى',sizes:'SMB',styles:{now:'يشتغل الحين',disc:'أسطوانة'},def:{style:'now',accent:'pink',bg:'auto'},opts:()=>['style','accent',...COMMON]},
-  text:{n:'كتابتك',cat:'كتابتك',sizes:'SMBLX',styles:{quote:'جملتك'},def:{style:'quote',text:'خلك قريب من اللي يشبهك',author:'',afont:'ruqaa',tsize:60,align:'right',accent:'gold'},
+  music:{n:'الموسيقى',cat:'الموسيقى',sizes:'SMB',styles:{now:'يشتغل الحين',disc:'أسطوانة'},def:{style:'now',accent:'white'},opts:()=>['style','accent',...COMMON]},
+  text:{n:'كتابتك',cat:'كتابتك',sizes:'SMBLX',styles:{quote:'جملتك'},def:{style:'quote',text:'خلك قريب من اللي يشبهك',author:'',afont:'ruqaa',tsize:60,align:'right',accent:'white'},
     opts:()=>['text','author','afontText','tsize','align','accent',...COMMON]},
+  sports:{n:'المباريات',cat:'الرياضة',sizes:'SMB',styles:{next:'المباراة الجاية',live:'مباشر',table:'الترتيب',scorers:'الهدافين'},def:{style:'next',digits:'en',font:'grotesk',afont:'kufi',accent:'white'},opts:()=>['style','digits','font','accent',...COMMON]},
   'ext-notes':{n:'الملاحظات',cat:'تطبيقاتك',ext:true,app:'notes',sizes:'SML',styles:{v:'قائمة الملاحظات'},def:{frame:'glass'},opts:()=>['frame']},
   'ext-cal':{n:'التقويم',cat:'تطبيقاتك',ext:true,app:'calendar',sizes:'SML',styles:{v:'مواعيد اليوم'},def:{frame:'glass'},opts:()=>['frame']},
   'ext-steps':{n:'الخطوات',cat:'تطبيقاتك',ext:true,app:'health',sizes:'SM',styles:{v:'خطوات اليوم'},def:{frame:'none'},opts:()=>['frame']},
   'ext-search':{n:'البحث',cat:'تطبيقاتك',ext:true,app:'browser',sizes:'MB',styles:{v:'شريط البحث'},def:{frame:'none'},opts:()=>['frame']},
 };
-const CATS=['الكل','الوقت','التاريخ','الصلاة','الطقس','البطارية','التحكم','الموسيقى','كتابتك','تطبيقاتك'];
-function mkW(kind,over={}){const S=(st&&st.s)||DEFS;const base={kind,bg:S.wBg,glow:S.glow,...W[kind].def,...over};if(W[kind].ext)base.bg='glass';
+const CATS=['الكل','الوقت','التاريخ','الصلاة','الطقس','الرياضة','البطارية','التحكم','الموسيقى','كتابتك','تطبيقاتك'];
+function mkW(kind,over={}){const S=(st&&st.s)||DEFS;const base={kind,bg:S.wBg,glow:S.glow,...W[kind].def,...over};if(W[kind].ext)base.bg='smoke';
   if(!W[kind].ext&&base.digits!==undefined&&over.digits===undefined)base.digits=S.wDigits;return base}
 function allowedSizes(kind,cols,rows){return [...W[kind].sizes].map(k=>({k,w:SIZES[k][0],h:SIZES[k][1]})).filter(z=>z.w<=cols&&z.h<=rows)}
 
 /* ═══════════ state ═══════════ */
 const DEV={outer:{W:372,H:820,cols:[4,5],rows:[5,7]},inner:{W:704,H:780,cols:[5,7],rows:[4,6]}};
-const KEY='wm-onyx-proto-v2';
+const KEY='wm-onyx-proto-v3';
 function A(app,x,y){return{id:nid(),t:'a',app,x,y,w:1,h:1}}
 function Wd(kind,x,y,sz,over,more){const[w,h]=SIZES[sz];return{id:nid(),t:'w',x,y,w,h,stack:[mkW(kind,over),...(more||[])],idx:0,auto:false}}
 const DEFS={wall:'night',dim:.12,grain:true,accent:'gold',blur:22,glow:true,iconStyle:'orig',iconBorder:'none',iconScale:1,labels:false,badge:'dot',
-    sideOn:true,sideCount:4,dockCount:6,lock:false,wBg:'glass',wDigits:'en',autoRotate:false,weatherEvery:'60',
+    sideOn:true,sideCount:4,dockCount:6,lock:false,wBg:'smoke',wDigits:'en',autoRotate:false,weatherEvery:'60',
     speed:'normal',bounce:'mid',editStyle:'shrink',haptics:true,reduce:false,saver:false,seconds:true};
 function defaults(){
   const s={...DEFS};
   const outer={cols:4,rows:6,side:['phone','whatsapp','youtube','telegram','mail'],dock:['x','tiktok','claude','notes','play','pinterest'],pages:[
-    [Wd('clock',0,0,'M',{style:'digital'}),Wd('date',0,2,'S',{style:'today'}),Wd('weather',2,2,'S',{style:'today'}),
+    [Wd('date',0,0,'M',{style:'dualc'}),Wd('date',0,2,'S',{style:'callig'}),Wd('clock',2,2,'S',{style:'dots'}),
      A('gemini',0,4),A('chatgpt',1,4),A('camera',2,4),A('gallery',3,4),A('messages',0,5),A('maps',1,5),A('calendar',2,5),A('settings',3,5)],
-    [Wd('prayer',0,0,'M',{style:'next'}),Wd('battery',0,2,'S',{style:'rings'},[mkW('controls')]),Wd('music',2,2,'S'),
+    [Wd('prayer',0,0,'M',{style:'callig'}),Wd('clock',0,2,'S',{style:'rosette'}),Wd('sports',2,2,'S'),
      A('browser',0,4),A('files',1,4),A('calc',2,4),A('music',3,4),A('clock',0,5),A('weather',1,5),A('health',2,5)],
   ]};
   const inner={cols:6,rows:5,side:['phone','whatsapp','youtube','telegram','mail'],dock:['x','tiktok','claude','notes','play','pinterest'],pages:[
-    [Wd('clock',0,0,'S',{style:'analog'}),Wd('weather',2,0,'M',{style:'today'}),Wd('prayer',0,2,'S',{style:'next'}),Wd('date',2,2,'M',{style:'today'}),
+    [Wd('clock',0,0,'S',{style:'arabesque'}),Wd('date',2,0,'M',{style:'dualc'}),Wd('date',0,2,'S',{style:'callig'}),Wd('prayer',2,2,'M',{style:'callig'}),
      A('gemini',0,4),A('chatgpt',1,4),A('camera',2,4),A('gallery',3,4),A('messages',4,4),A('maps',5,4)],
-    [Wd('date',0,0,'L',{style:'today'}),Wd('clock',4,0,'S',{style:'classic'}),Wd('battery',4,2,'S',{style:'rings'},[mkW('controls')]),
+    [Wd('date',0,0,'M',{style:'english'}),Wd('sports',0,2,'M',{style:'next'}),Wd('clock',4,0,'S',{style:'ayah'}),Wd('weather',4,2,'S',{style:'today'},[mkW('battery')]),
      A('browser',0,4),A('files',1,4),A('calc',2,4),A('settings',3,4),A('calendar',4,4),A('health',5,4)],
   ]};
-  return{v:2,cur:'outer',s,sc:{outer,inner},designs:[]};
+  return{v:3,cur:'outer',s,sc:{outer,inner},designs:[]};
 }
 let st=null;
-try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.v===2&&o.sc){st=o;st.s={...defaults().s,...o.s};}}}catch(e){}
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.v===3&&o.sc){st=o;st.s={...defaults().s,...o.s};}}}catch(e){}
 if(!st)st=defaults();
 let saveT=0;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}},250)}
 const SC=()=>st.sc[st.cur];
@@ -622,7 +627,7 @@ function updateItem(e,it){
   const cfg=it.stack[clamp(it.idx,0,it.stack.length-1)];
   const z=itemSize(it,g);
   const face=e.querySelector('.wface'),cont=e.querySelector('.wcont');
-  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
+  const bgc=cfg.bg==='smoke'?'smoke':cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
   const fc='wface '+bgc+(cfg.glow===false?' noglow':'')+(W[cfg.kind].ext&&cfg.frame==='glass'?' framed':'')+(W[cfg.kind].ext&&cfg.frame==='none'?' bgclear':'');
   if(face.className!==fc)face.className=fc;
   face.style.setProperty('--wac',ACC[cfg.accent]||'#fff');
@@ -721,7 +726,7 @@ const WX_DAYS=[['اليوم','sun',15,27],['السبت','partly',16,26],['الأ
 
 /* analog dials */
 function dialSVG(c,size,night){
-  const n=new Date(),ar=c.digits==='ar',ac=ACC[c.accent];
+  const n=new Date(),ar=c.digits==='ar',ac=secCol(c);
   const secs=n.getSeconds()+n.getMilliseconds()/1000,mins=n.getMinutes()*60+secs,hrs=(n.getHours()%12)*3600+mins;
   const Hd=(d,dl,inner,cls='')=>`<g class="hand ${cls}" style="animation-duration:${d}s;animation-delay:-${dl.toFixed(2)}s">${inner}</g>`;
   const sOn=c.seconds!=='off'&&st.s.seconds&&!st.s.saver;
@@ -764,16 +769,55 @@ function monthGrid(c,wpx,hpx,showH,b){const n=new Date(),ar=c.digits==='ar',firs
     cells+=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;border-radius:${showH?fs*.6:99}px;${on?'background:var(--wac);color:#111;font-weight:600':''}${fri&&!on?';color:var(--wac)':''}"><span class="n" style="font-size:${fs}px;letter-spacing:0">${dg(d,ar)}</span>${showH?`<span style="font-size:${fs*.58}px;opacity:${on?.75:.5}">${dg(hijri(dd).d,ar)}</span>`:''}</div>`}
   return`<div style="display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(${rows},1fr);width:${wpx}px;height:${hpx}px;direction:rtl">${cells}</div>`}
 
+
+/* tashkeel names + english names */
+const TD=['الأَحَد','الإِثْنَيْن','الثُّلَاثَاء','الأَرْبِعَاء','الخَمِيس','الجُمُعَة','السَّبْت'];
+const TGM=['يَنَايِر','فِبْرَايِر','مَارِس','أَبْرِيل','مَايُو','يُونْيُو','يُولْيُو','أُغُسْطُس','سِبْتَمْبِر','أُكْتُوبَر','نُوفَمْبِر','دِيسَمْبِر'];
+const THM=['مُحَرَّم','صَفَر','رَبِيع الأَوَّل','رَبِيع الآخِر','جُمَادَى الأُولَى','جُمَادَى الآخِرَة','رَجَب','شَعْبَان','رَمَضَان','شَوَّال','ذُو القَعْدَة','ذُو الحِجَّة'];
+const TPR=['الفَجْر','الشُّرُوق','الظُّهْر','العَصْر','المَغْرِب','العِشَاء'];
+const EN_D=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+const EN_M=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+const EN_H=['MUHARRAM','SAFAR','RABI I','RABI II','JUMADA I','JUMADA II','RAJAB','SHABAN','RAMADAN','SHAWWAL','DHUL QADAH','DHUL HIJJAH'];
+const DIALS=new Set(['dots','inner','analog','rosette','arabesque','mashriq','ayah','classic']);
+const secCol=c=>c.accent==='white'?'#ff3b30':ACC[c.accent];
+const cf=c=>(FAR[c.afont]||FAR.ruqaa)[0];
+const plen=t=>t.replace(/[\u064B-\u0652\u0670]/g,'').length;
+function starPath(n,k,R,cx=100,cy=100,rot=0){const pt=i=>{const a=(i*360/n+rot)*Math.PI/180;return[(cx+R*Math.sin(a)).toFixed(2),(cy-R*Math.cos(a)).toFixed(2)]};let d='';let i=0;
+  for(let j=0;j<=n;j++){const q=pt(i);d+=(j?'L':'M')+q[0]+' '+q[1];i=(i+k)%n}return d+'Z'}
+function islamicDial(c,size){
+  const n=new Date(),ar=c.digits==='ar',sc=secCol(c),fam=nf(c).replace(/'/g,''),sty=c.style;
+  const secs=n.getSeconds()+n.getMilliseconds()/1000,mins=n.getMinutes()*60+secs,hrs=(n.getHours()%12)*3600+mins;
+  const Hd=(d,dl,inner,cls='')=>`<g class="hand ${cls}" style="animation-duration:${d}s;animation-delay:-${dl.toFixed(2)}s">${inner}</g>`;
+  const sOn=c.seconds!=='off'&&st.s.seconds&&!st.s.saver;const L='rgba(255,255,255,.22)',F='rgba(255,255,255,.05)';
+  let bg='';
+  if(sty==='dots'||sty==='inner'){for(let i=0;i<12;i++){const a=i*30*Math.PI/180;bg+=`<circle cx="${(100+86*Math.sin(a)).toFixed(1)}" cy="${(100-86*Math.cos(a)).toFixed(1)}" r="${i%3?2.6:3.6}" fill="#fff" opacity="${i%3?.75:1}"/>`}
+    if(sty==='inner')bg=`<circle cx="100" cy="100" r="74" fill="rgba(255,255,255,.07)"/><circle cx="100" cy="100" r="34" fill="rgba(255,255,255,.08)"/>`+bg;
+    bg+=`<text x="100" y="66" text-anchor="middle" font-family="${fam}" font-size="25" font-weight="500" fill="#fff">${dg(n.getHours()%12||12,ar)}:${dg(p2(n.getMinutes()),ar)}</text>`;
+    if(c.showDate)bg+=`<text x="100" y="148" text-anchor="middle" font-family="Noto Kufi Arabic" font-size="14" font-weight="600" fill="#fff" opacity=".8">${FMT.day.format(n)}</text>`}
+  else if(sty==='rosette'){bg=`<path d="${starPath(16,7,94)}" fill="${F}" stroke="${L}" stroke-width="2.4" stroke-linejoin="round"/><path d="${starPath(16,5,62)}" fill="none" stroke="${L}" stroke-width="2.2" stroke-linejoin="round"/><path d="${starPath(8,3,30,100,100,22.5)}" fill="rgba(255,255,255,.10)" stroke="${L}" stroke-width="2"/>`}
+  else if(sty==='arabesque'){bg=`<path d="${starPath(12,5,96)}" fill="rgba(255,255,255,.09)" stroke="${L}" stroke-width="1.6" stroke-linejoin="round"/><path d="${starPath(12,5,42)}" fill="rgba(255,255,255,.12)" stroke="${L}" stroke-width="1.4"/>`;
+    for(let i=1;i<=12;i++){const a=i*30*Math.PI/180;bg+=`<text x="${(100+70*Math.sin(a)).toFixed(1)}" y="${(100-70*Math.cos(a)+5.5).toFixed(1)}" text-anchor="middle" font-family="${fam}" font-size="15" font-weight="500" fill="#fff" opacity=".9">${dg(i,ar)}</text>`}}
+  else if(sty==='mashriq'){bg=`<path d="${starPath(8,3,90)}" fill="${F}" stroke="${L}" stroke-width="2.4" stroke-linejoin="round"/><path d="${starPath(8,3,90,100,100,22.5)}" fill="none" stroke="${L}" stroke-width="2.4" stroke-linejoin="round"/><path d="${starPath(16,7,40)}" fill="rgba(255,255,255,.08)" stroke="${L}" stroke-width="1.8"/>`;
+    [[12,0],[3,90],[6,180],[9,270]].forEach(([v,dgr])=>{const a=dgr*Math.PI/180,x=100+86*Math.sin(a),y=100-86*Math.cos(a);bg+=`<rect x="${(x-9).toFixed(1)}" y="${(y-9).toFixed(1)}" width="18" height="18" transform="rotate(45 ${x.toFixed(1)} ${y.toFixed(1)})" fill="#1a1a1d" stroke="${L}" stroke-width="1.2"/><text x="${x.toFixed(1)}" y="${(y+4.5).toFixed(1)}" text-anchor="middle" font-family="${fam}" font-size="12.5" font-weight="600" fill="#fff">${dg(v,ar)}</text>`})}
+  else if(sty==='ayah'){const id=uidg();bg=`<defs><path id="${id}" d="M100 100 m0 -76 a76 76 0 1 1 -0.1 0"/></defs><circle cx="100" cy="100" r="94" fill="none" stroke="${L}" stroke-width="1"/><circle cx="100" cy="100" r="58" fill="rgba(255,255,255,.05)" stroke="${L}" stroke-width="1"/>
+      <text font-family="Aref Ruqaa" font-size="19" fill="#fff" opacity=".88"><textPath href="#${id}" startOffset="0" textLength="472" lengthAdjust="spacingAndGlyphs">سُبْحَانَ اللهِ وَبِحَمْدِهِ ۞ سُبْحَانَ اللهِ العَظِيمِ ۞ أَسْتَغْفِرُ اللهَ ۞</textPath></text>`;
+    for(let i=0;i<60;i++)bg+=`<line x1="100" y1="6" x2="100" y2="${i%5?9:12}" stroke="#fff" stroke-width="${i%5?.8:1.6}" opacity="${i%5?.35:.8}" transform="rotate(${i*6} 100 100)"/>`}
+  const hand=`<path d="M100 100V86" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`;
+  return`<svg viewBox="0 0 200 200" width="${size}" height="${size}" style="filter:drop-shadow(0 3px 8px rgba(0,0,0,.4))">${bg}
+    ${Hd(43200,hrs,`${hand}<rect x="96" y="52" width="8" height="38" rx="4" fill="#fff" stroke="rgba(0,0,0,.45)" stroke-width="1"/>`)}
+    ${Hd(3600,mins,`${hand}<rect x="96.5" y="22" width="7" height="68" rx="3.5" fill="#fff" stroke="rgba(0,0,0,.45)" stroke-width="1"/>`)}
+    ${sOn?Hd(60,secs,`<rect x="99.2" y="16" width="1.6" height="108" rx=".8" fill="${sc}"/><circle cx="100" cy="100" r="3.6" fill="${sc}"/>`,c.seconds==='tick'?'tick':''):''}<circle cx="100" cy="100" r="2" fill="#111"/></svg>`}
+function fitFont(text,wpx,hpx,k=.55){return Math.min(wpx/(Math.max(text.length,2)*k),hpx)}
 const R_={
 clock(c,w,h,sh,z,b){
   const n=new Date(),ar=c.digits==='ar',D=x=>dg(x,ar),dl=dateLine(c,n),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
   const H=c.h24?p2(n.getHours()):String(n.getHours()%12||12),M=p2(n.getMinutes()),ap=n.getHours()<12?'ص':'م';
   const wt={thin:300,regular:400,bold:600}[c.weight]||300;
-  if(c.style==='analog'||c.style==='classic'){const night=isNight();
+  if(DIALS.has(c.style)){const night=isNight();const dialSVG_=(cc,sz,nt)=>(cc.style==='analog'||cc.style==='classic')?dialSVG(cc,sz,nt):islamicDial(cc,sz);
     if(sh==='wide'||sh==='strip'){const ds=z.h-(sh==='strip'?b*.08:b*.16);
-      return`<div class="W r" style="flex-direction:row;padding:${(z.h-ds)/2}px ${p}px;gap:${b*.12}px">${dialSVG(c,ds,night)}<div class="col f1" style="gap:${b*.03}px;min-width:0">
+      return`<div class="W r" style="flex-direction:row;padding:${(z.h-ds)/2}px ${p}px;gap:${b*.12}px">${dialSVG_(c,ds,night)}<div class="col f1" style="gap:${b*.03}px;min-width:0">
         <span class="cap acc">${c.showDate?dl.day:'الساعة'}</span><span class="n" style="font-size:${Math.min(sh==='strip'?z.h*.4:b*.26,(z.w-ds-2*p-b*.12)/3.4)}px;font-weight:300">${D(H)}:${D(M)}${c.h24?'':`<span class="cap dim" style="margin-inline-start:.35em">${ap}</span>`}</span>${c.showDate&&sh!=='strip'?`<span class="lab dim ell">${dl.g} · ${dl.h}</span>`:''}</div></div>`}
-    const ds=Math.min(z.w,z.h)-b*.1;return`<div class="W" style="padding:0;align-items:center;justify-content:center">${dialSVG(c,ds,night)}</div>`}
+    const ds=Math.min(z.w,z.h)-b*.1;return`<div class="W" style="padding:0;align-items:center;justify-content:center">${dialSVG_(c,ds,night)}</div>`}
   if(c.style==='half')return`<div class="W" style="padding:0">${halfDial(c,z,b,sh)}</div>`;
   if(c.style==='flip'){const gap=b*.05,cw=Math.min((aw-gap)/2,(ah*.92)/1.15),chh=Math.min(cw*1.18,ah*.92);
     const card=v=>`<div style="position:relative;width:${cw}px;height:${chh}px;border-radius:${b*.08}px;background:linear-gradient(180deg,#2c2c31 0%,#232327 49.6%,#1a1a1d 50.4%,#141416 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 ${b*.02}px ${b*.05}px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="n" style="font-size:${chh*.66}px;font-weight:${wt};letter-spacing:-.04em">${D(v)}</span><i style="position:absolute;left:0;right:0;top:50%;height:${Math.max(1,b*.008)}px;background:#060607"></i><i style="position:absolute;left:-2px;top:calc(50% - ${b*.02}px);width:${b*.025}px;height:${b*.04}px;border-radius:2px;background:#0b0b0d"></i><i style="position:absolute;right:-2px;top:calc(50% - ${b*.02}px);width:${b*.025}px;height:${b*.04}px;border-radius:2px;background:#0b0b0d"></i></div>`;
@@ -792,6 +836,19 @@ clock(c,w,h,sh,z,b){
 },
 date(c,w,h,sh,z,b){
   const n=new Date(),ar=c.digits==='ar',D=x=>dg(x,ar),dl=dateLine(c,n),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  const hj=hijri(n),dayT=TD[n.getDay()],gmT=TGM[n.getMonth()],hmT=THM[hj.m-1]||hj.mn;
+  if(c.style==='callig'){const dline=`${D(n.getFullYear())} / ${D(n.getMonth()+1)} / ${D(n.getDate())}`;
+    if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center"><span style="font-family:${cf(c)};font-size:${z.h*.5}px;line-height:1.5">${dayT}</span><div class="col" style="align-items:flex-start"><span class="n lab" style="letter-spacing:.02em;font-weight:500">${dline}</span><span class="cap dim">${D(hj.d)} ${hmT}</span></div></div>`;
+    const fs=Math.min(aw/(plen(dayT)*.42),ah*(sh==='sq'?.34:.42));
+    return`<div class="W" style="align-items:center;justify-content:center;text-align:center;gap:${b*.02}px"><span style="font-family:${cf(c)};font-size:${fs}px;line-height:1.55">${dayT}</span><span class="n" style="font-size:${b*.115}px;font-weight:500;letter-spacing:.02em;opacity:.85">${dline}</span>${sh!=='sq'?`<span class="lab dim" style="margin-top:${b*.03}px">${D(hj.d)} ${hmT} ${D(hj.y)}</span>`:''}</div>`}
+  if(c.style==='dualc'){const blk=(num,word,numFirst,fs)=>`<span class="r" style="gap:${fs*.25}px;align-items:center">${numFirst?`<span class="n" style="font-size:${fs*.95}px;font-weight:400">${num}</span>`:''}<span style="font-family:${cf(c)};font-size:${fs}px;line-height:1.6;white-space:nowrap">${word}</span>${numFirst?'':`<span class="n" style="font-size:${fs*.95}px;font-weight:400">${num}</span>`}</span>`;
+    if(sh==='sq'||sh==='tall'){const fs=Math.min(aw/5.2,ah*.26);return`<div class="W" style="justify-content:center;gap:${b*.02}px">${blk(D(n.getDate()),gmT,true,fs)}<div class="hr" style="opacity:.6"></div>${blk(D(hj.d),hmT,true,Math.min(fs,aw/(plen(hmT)*.36+2)))}</div>`}
+    const fs=Math.min(aw/((plen(gmT)+plen(hmT))*.38+3.6),ah*(sh==='strip'?.6:.44));
+    return`<div class="W r" style="flex-direction:row;align-items:center;justify-content:space-between">${blk(D(n.getDate()),gmT,true,fs)}<i style="width:1.5px;height:${fs*.9}px;background:rgba(255,255,255,.28);border-radius:2px"></i>${blk(D(hj.d),hmT,false,fs)}</div>`}
+  if(c.style==='english'){const word=c.eng==='day'?EN_D[n.getDay()]:c.eng==='hijri'?(EN_H[hj.m-1]||''):EN_M[n.getMonth()];const num=c.eng==='hijri'?hj.d:n.getDate();
+    const fs=Math.min(aw/(word.length*1.02),ah*(sh==='strip'?.5:.24));const big=Math.min(ah*.62,fs*3.1);
+    if(c.eng==='day')return`<div class="W" style="align-items:center;justify-content:center;direction:ltr;text-align:center"><span style="font-family:'Bodoni Moda';font-weight:600;font-size:${fs*1.15}px;letter-spacing:.32em;margin-right:-.32em;background:linear-gradient(180deg,#fff 30%,rgba(255,255,255,.08) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 ${b*.02}px rgba(255,255,255,.25))">${word}</span>${sh!=='strip'?`<span class="cap dim" style="margin-top:${b*.06}px;letter-spacing:.2em">${D(n.getDate())} · ${EN_M[n.getMonth()]} · ${D(n.getFullYear())}</span>`:''}</div>`;
+    return`<div class="W" style="align-items:center;justify-content:center;direction:ltr"><span class="n" style="position:absolute;font-size:${big}px;font-weight:600;letter-spacing:-.04em;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06));-webkit-background-clip:text;background-clip:text;color:transparent">${D(num)}</span><span style="position:relative;font-family:'Bodoni Moda';font-weight:400;font-size:${fs}px;letter-spacing:.3em;margin-right:-.3em;white-space:nowrap">${word}</span></div>`}
   if(c.style==='month'&&sh==='strip')c={...c,style:'week'};
   if(c.style==='month'){
     const head=`<div class="r bt" style="margin-bottom:${b*.04}px"><span class="sub acc">${dl.gm} <span class="n" style="letter-spacing:0">${dl.gy}</span></span><span class="cap dim">${dl.hm} ${dl.hy}</span></div>`;
@@ -827,6 +884,9 @@ prayer(c,w,h,sh,z,b){
   const L=ps.left,lh=Math.floor(L/60),lm=L%60,left=lh?`${D(lh)}:${D(p2(lm))}`:`${D(lm)} د`;
   const ex=`<span class="cap" style="position:absolute;left:${p}px;top:${p}px;font-weight:500;opacity:.4">مثال</span>`;
   const list=(rows,fs)=>rows.map(i=>{const q=ps.ts[i],on=i===ps.ni;return`<div class="r bt" style="padding:${b*.018}px ${b*.04}px;border-radius:${b*.05}px;${on?'background:color-mix(in srgb,var(--wac) 22%,transparent);color:var(--wac);font-weight:600':''};font-size:${fs}px"><span class="r" style="gap:${b*.03}px">${pIcon(i,fs*1.05)}${q.nm}</span><span class="n" style="letter-spacing:0">${D(q.t)}</span></div>`}).join('');
+  if(c.style==='callig'){const i=ps.ts.indexOf(ps.next),nm=TPR[i]||ps.next.nm;
+    if(sh==='wide'||sh==='strip'){const fs=Math.min(aw*.5/(plen(nm)*.42),ah*(sh==='strip'?.6:.62));return`<div class="W r bt" style="flex-direction:row;align-items:center"><span style="font-family:${cf(c)};font-size:${fs}px;line-height:1.6">${nm}</span><div class="col" style="align-items:flex-start;gap:${b*.02}px"><span class="n" style="font-size:${b*.2}px;font-weight:500">${D(ps.next.t)}</span><span class="lab" style="opacity:.75">بعد <span class="n" style="letter-spacing:0">${left}</span></span></div>${ex}</div>`}
+    const fs=Math.min(aw/(plen(nm)*.42),ah*.36);return`<div class="W" style="align-items:center;justify-content:center;text-align:center"><span class="cap dim" style="margin-bottom:${b*.03}px">الصلاة القادمة</span><span style="font-family:${cf(c)};font-size:${fs}px;line-height:1.45">${nm}</span><span class="n" style="font-size:${b*.15}px;font-weight:500">${D(ps.next.t)}</span><span class="cap dim" style="margin-top:${b*.02}px">بعد ${left}</span>${sh==='tall'||sh==='big'?`<div class="hr" style="width:100%;margin:${b*.08}px 0"></div><div class="col" style="width:100%;gap:${b*.03}px">${list([0,1,2,3,4,5],b*.085)}</div>`:''}</div>`}
   if(c.style==='list'){const rows=sh==='sq'?[0,2,3,4,5]:[0,1,2,3,4,5];
     if(sh==='wide'){return`<div class="W" style="flex-direction:row;gap:${b*.08}px"><div class="col f1" style="justify-content:space-around">${list([0,1,2],b*.09)}</div><div class="col f1" style="justify-content:space-around">${list([3,4,5],b*.09)}</div></div>`}
     return`<div class="W" style="justify-content:space-around">${list(rows,Math.min(b*.085,ah/rows.length*.5))}</div>`}
@@ -923,6 +983,22 @@ music(c,w,h,sh,z,b){
   if(sh==='sq')return`<div class="W"><div class="r bt" style="align-items:flex-start">${art(b*.4)}${btn('play',pl?I.pause:I.play,b*.22,true)}</div><div class="f1"></div>${meta('lab','cap')}</div>`;
   if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center;gap:${b*.06}px"><div class="r" style="gap:${b*.06}px;min-width:0">${art(ah)}${meta('lab','cap')}</div><div class="r">${btn('play',pl?I.pause:I.play,ah*.8,true)}${btn('next',I.next,ah*.6)}</div></div>`;
   return`<div class="W" style="flex-direction:row;gap:${b*.1}px;align-items:center">${art(Math.min(ah,aw*.42))}<div class="col f1" style="min-width:0;align-self:stretch">${meta('sub','lab')}<div class="f1"></div>${prog}<div class="r" style="justify-content:center;gap:${b*.08}px;margin-top:${b*.02}px">${btn('prev',I.prev,b*.15)}${btn('play',pl?I.pause:I.play,b*.2,true)}${btn('next',I.next,b*.15)}</div></div></div>`;
+},
+sports(c,w,h,sh,z,b){
+  const ar=c.digits==='ar',D=x=>dg(x,ar),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  const T={hil:['الهلال','#1e56c8','#fff','هـ'],nas:['النصر','#f5c400','#111','ن'],itt:['الاتحاد','#f2d200','#111','ع'],ahl:['الأهلي','#0f8a3c','#fff','أ'],qad:['القادسية','#c8102e','#fff','ق'],ett:['الاتفاق','#1d7a3f','#fff','ف']};
+  const badge=(k,s)=>{const t=T[k];return`<span style="width:${s}px;height:${s}px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:${t[1]};color:${t[2]};font-size:${s*.46}px;font-weight:700;box-shadow:inset 0 0 0 ${Math.max(1,s*.05)}px rgba(255,255,255,.35)">${t[3]}</span>`};
+  const ex=`<span class="cap" style="position:absolute;left:${p}px;top:${p*.8}px;opacity:.4;font-weight:500">مثال</span>`;
+  if(c.style==='table'){const rows=[['hil',12,30],['ahl',12,27],['nas',12,26],['itt',12,24],['qad',12,21]].slice(0,sh==='sq'?4:5);
+    return`<div class="W" style="justify-content:space-around">${ex}<div class="r bt cap dim"><span>دوري روشن</span><span>نقاط</span></div>${rows.map(([k,pl,pt],i)=>`<div class="r bt lab"><span class="r" style="gap:${b*.04}px"><span class="n dim" style="width:1.1em;letter-spacing:0">${D(i+1)}</span>${badge(k,b*.1)}${T[k][0]}</span><span class="n" style="letter-spacing:0;font-weight:600">${D(pt)}</span></div>`).join('')}</div>`}
+  if(c.style==='scorers'){const rows=[['سالم','hil',11],['فهد','nas',9],['ماجد','itt',8],['عبدالله','ahl',7]].slice(0,sh==='sq'?3:4);
+    return`<div class="W" style="justify-content:space-around">${ex}<span class="cap dim">الهدافين</span>${rows.map(([nm,k,g],i)=>`<div class="r bt lab"><span class="r" style="gap:${b*.04}px"><span class="n dim" style="width:1.1em;letter-spacing:0">${D(i+1)}</span>${badge(k,b*.1)}<span>${nm}</span></span><span class="n" style="letter-spacing:0;font-weight:600">${D(g)}</span></div>`).join('')}</div>`}
+  const live=c.style==='live';const mid=live?`<span class="n" style="font-size:${sh==='sq'?b*.24:b*.3}px;font-weight:500">${D(2)} - ${D(1)}</span><span class="cap" style="color:#ff453a;display:flex;align-items:center;gap:.3em"><i style="width:.55em;height:.55em;border-radius:50%;background:#ff453a"></i>مباشر · <span class="n" style="letter-spacing:0">${D(67)}'</span></span>`
+    :`<span class="n" style="font-size:${sh==='sq'?b*.2:b*.26}px;font-weight:500">${D('21:00')}</span><span class="cap dim">السبت ${D(22)} نوفمبر</span>`;
+  const team=(k,s)=>`<div class="col" style="align-items:center;gap:${b*.035}px;min-width:0">${badge(k,s)}<span class="lab ell" style="font-weight:600">${T[k][0]}</span></div>`;
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center">${badge('hil',ah*.7)}<span class="lab">${T.hil[0]}</span><div class="col" style="align-items:center">${mid}</div><span class="lab">${T.nas[0]}</span>${badge('nas',ah*.7)}</div>`;
+  if(sh==='sq')return`<div class="W" style="align-items:center;justify-content:space-between;text-align:center">${ex}<span class="cap dim">دوري روشن</span><div class="r" style="justify-content:space-around;width:100%">${team('hil',b*.22)}${team('nas',b*.22)}</div><div class="col" style="align-items:center">${mid}</div></div>`;
+  return`<div class="W" style="justify-content:center">${ex}<span class="cap dim" style="position:absolute;right:${p}px;top:${p*.8}px">دوري روشن</span><div class="r" style="justify-content:space-between;width:100%">${team('hil',b*.3)}<div class="col" style="align-items:center;gap:${b*.02}px">${mid}</div>${team('nas',b*.3)}</div></div>`;
 },
 text(c,w,h,sh,z,b){
   const fam=c.afont==='playfair'?"'Playfair Display'":c.afont==='bodoni'?"'Bodoni Moda'":(FAR[c.afont]||FAR.ruqaa)[0];
@@ -1182,7 +1258,7 @@ setInterval(()=>{if(document.hidden||view.editing||st.s.saver)return;let ch=fals
 
 /* ═══════════ mini preview ═══════════ */
 function miniHTML(cfg,w,h,maxW,maxH){const g=G0;const fw=w*g.cw-2*g.pad,fh=h*g.ch-2*g.pad;const s=Math.min(maxW/fw,maxH/fh,1);
-  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
+  const bgc=cfg.bg==='smoke'?'smoke':cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
   const ext=W[cfg.kind].ext;const fc=bgc+(cfg.glow===false?' noglow':'')+(ext&&cfg.frame==='glass'?' framed':'')+(ext&&cfg.frame==='none'?' bgclear':'');
   return`<div class="mini" style="width:${fw*s}px;height:${fh*s}px"><div class="wrap" style="width:${fw}px;height:${fh}px;transform:scale(${s})"><div class="wface ${fc}" style="--wac:${ACC[cfg.accent]||'#fff'}"><div class="wcont">${renderW(cfg,w,h,{w:fw,h:fh})}</div></div></div></div>`}
 
@@ -1250,9 +1326,9 @@ const OPTS={
   style:{l:'الشكل',t:'styles'},digits:{l:'الأرقام',t:'seg',ch:[['en','123'],['ar','١٢٣']]},font:{l:'خط الأرقام',t:'font'},afontOnly:{l:'الخط',t:'afont'},
   afontText:{l:'الخط',t:'tfont'},accent:{l:'اللون',t:'swatch'},seconds:{l:'عقرب الثواني',t:'seg',ch:[['sweep','انسيابي'],['tick','نبضة'],['off','بدون']]},
   showDate:{l:'التاريخ',t:'toggle'},h24:{l:'نظام ٢٤ ساعة',t:'toggle'},dial:{l:'كتابة على المينا',t:'text',ph:'مثلاً: وليد'},
-  bg:{l:'الخلفية',t:'chips',ch:[['auto','ألوان المحتوى'],['glass','زجاج شفاف'],['tint','زجاج ملوّن'],['dark','زجاج داكن'],['clear','بدون خلفية'],['black','أسود']]},
+  bg:{l:'الخلفية',t:'chips',ch:[['smoke','زجاج مدخّن'],['auto','ألوان المحتوى'],['glass','زجاج شفاف'],['tint','زجاج ملوّن'],['dark','زجاج داكن'],['clear','بدون خلفية'],['black','أسود']]},
   glow:{l:'حافة مضيئة',t:'toggle'},weight:{l:'سماكة الأرقام',t:'seg',ch:[['thin','رفيعة'],['regular','عادية'],['bold','عريضة']]},
-  face:{l:'المينا',t:'chips',ch:[['auto','حسب الوقت'],['white','أبيض'],['black','أسود'],['glass','زجاج']]},hijriDays:{l:'الهجري تحت كل يوم',t:'toggle'},author:{l:'القائل (اختياري)',t:'text',ph:'مثلاً: أبوي'},text:{l:'جملتك',t:'area'},tsize:{l:'حجم الخط',t:'range',min:30,max:110},
+  face:{l:'المينا',t:'chips',ch:[['glass','شفافة'],['auto','حسب الوقت'],['white','أبيض'],['black','أسود']]},eng:{l:'المكتوب',t:'seg',ch:[['day','اليوم'],['month','الشهر'],['hijri','الشهر الهجري']]},hijriDays:{l:'الهجري تحت كل يوم',t:'toggle'},author:{l:'القائل (اختياري)',t:'text',ph:'مثلاً: أبوي'},text:{l:'جملتك',t:'area'},tsize:{l:'حجم الخط',t:'range',min:30,max:110},
   align:{l:'المحاذاة',t:'seg',ch:[['right','يمين'],['center','وسط'],['left','يسار']]},salary:{l:'يوم الراتب',t:'range',min:1,max:31},
   title:{l:'اسم المناسبة',t:'text',ph:'مثلاً: العيد'},date:{l:'التاريخ',t:'date'},frame:{l:'الإطار',t:'chips',ch:[['glass','زجاج حوله'],['none','بدون إطار']]},
 };
@@ -1378,7 +1454,7 @@ R.settings.addEventListener('click',e=>{const t=e.target.closest('[data-sn],[dat
   else if(a==='copyyes'){const from=st.sc[st.cur],toK=st.cur==='inner'?'outer':'inner',to=st.sc[toK];const cp=JSON.parse(JSON.stringify(from));cp.pages.forEach(ps=>ps.forEach(it=>it.id=nid()));
     cp.cols=to.cols;cp.rows=to.rows;reflowScreen(cp);st.sc[toK]=cp;save();toast('انتسخ. شوفه من فوق');t.closest('.confirm').classList.remove('on')}
   else if(a==='export'){const txt=JSON.stringify({...st,s:{...st.s,wallImg:null}});(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('انتسخت النسخة')).catch(()=>{const ta=$('#impt',R.settings);ta.value=txt;ta.select();toast('حددتها لك، انسخها')})}
-  else if(a==='import'){try{const o=JSON.parse($('#impt',R.settings).value);if(!o.sc||!o.s)throw 0;st={...o,v:2,s:{...defaults().s,...o.s}};save();syncSeg();build();toast('رجع ترتيبك')}catch(err){toast('النسخة مو صحيحة')}}
+  else if(a==='import'){try{const o=JSON.parse($('#impt',R.settings).value);if(!o.sc||!o.s)throw 0;st={...o,v:3,s:{...defaults().s,...o.s}};save();syncSeg();build();toast('رجع ترتيبك')}catch(err){toast('النسخة مو صحيحة')}}
 });
 R.settings.addEventListener('input',e=>{const t=e.target;if(t.dataset.sr){const k=t.dataset.sr;const v=+t.value;st.s[k]=v;const lab=t.parentNode.querySelector('.ol span');
     if(lab)lab.textContent=k==='dim'||k==='iconScale'?Math.round(v*100)+'٪':k==='blur'?v+'px':v;applySettings();if(['sideCount','dockCount'].includes(k)){renderSide();renderDock()}save()}
