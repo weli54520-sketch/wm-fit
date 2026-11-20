@@ -274,6 +274,29 @@ input[type=range]{width:100%;accent-color:#fff;direction:ltr}
 .disc.play{animation-play-state:running}
 .disc::after{content:"";position:absolute;inset:34%;border-radius:50%;background:var(--wac)}
 .ext{position:absolute;inset:0;border-radius:inherit;overflow:hidden}
+.W0{position:absolute;inset:0;--p:calc(var(--b)*.105);--cap:calc(var(--b)*.074);--lab:calc(var(--b)*.09);--sub:calc(var(--b)*.112);--h2:calc(var(--b)*.165);--hero:calc(var(--b)*.30);--mega:calc(var(--b)*.44);font-size:var(--lab);line-height:1.3;color:#fff}
+.tintbg{position:absolute;inset:0;opacity:.9}
+.W{position:absolute;inset:0;padding:var(--p);display:flex;flex-direction:column;direction:rtl;text-align:right;min-width:0}
+.W0 .cap{font-size:var(--cap);font-weight:600}
+.W0 .lab{font-size:var(--lab)}
+.W0 .sub{font-size:var(--sub);font-weight:600}
+.W0 .h2{font-size:var(--h2);font-weight:600;line-height:1.15}
+.W0 .n{font-family:var(--nf);font-variant-numeric:tabular-nums;line-height:.95;letter-spacing:-.035em;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+.W0 .hero{font-size:var(--hero)}
+.W0 .mega{font-size:var(--mega)}
+.W0 .dim{opacity:.62}
+.W0 .acc{color:var(--wac)}
+.W0 .r{display:flex;flex-direction:row;align-items:center;gap:calc(var(--b)*.04)}
+.W0 .bt{justify-content:space-between}
+.W0 .f1{flex:1;min-width:0;min-height:0}
+.W0 .col{display:flex;flex-direction:column;min-width:0}
+.W0 .ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.W0 .hr{height:1px;flex:none;background:rgba(255,255,255,.16);margin:calc(var(--b)*.05) 0}
+.W0 .vr{width:1px;flex:none;align-self:stretch;background:rgba(255,255,255,.16)}
+.W0 .pbar{height:calc(var(--b)*.032);border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;flex:none}
+.W0 .pbar i{display:block;height:100%;border-radius:99px;background:var(--wac)}
+.W0 svg{display:block;flex:none;direction:ltr}
+.W0 button{color:inherit}
 .framed .ext{inset:5px;border-radius:calc(var(--wr) - 5px)}
 </style>
 
@@ -431,37 +454,37 @@ function minWords(m){if(m===0)return'تماماً';if(m===15)return'والربع
 /* ═══════════ widgets registry ═══════════ */
 const COMMON=['bg','glow'];
 const W={
-  clock:{n:'الساعة',cat:'الوقت',sizes:'SMLBTX',styles:{thin:'رقمية رفيعة',bold:'رقمية عريضة',flip:'قلابة',nomos:'عقارب بسيطة',classic:'سوداء وذهب',glass:'عقارب زجاج',words:'بالكلام'},
-    def:{style:'thin',digits:'en',font:'grotesk',afont:'ruqaa',accent:'gold',seconds:'sweep',showDate:true,h24:false,dial:'وليد'},
-    opts:s=>['style',...(s==='words'?['afontOnly']:['digits','font']),...(['nomos','classic','glass'].includes(s)?['seconds','dial']:['h24']),'showDate','accent',...COMMON]},
-  date:{n:'التاريخ',cat:'التاريخ',sizes:'SMLBTX',styles:{dual:'هجري وميلادي',month:'تقويم الشهر',week:'شريط الأسبوع',big:'اليوم كبير'},
-    def:{style:'dual',digits:'en',font:'grotesk',afont:'amiri',accent:'gold'},opts:()=>['style','digits','font','accent',...COMMON]},
-  prayer:{n:'الصلاة',cat:'الصلاة',sizes:'SMLT',styles:{ring:'الصلاة القادمة',list:'كل المواقيت',countdown:'عد تنازلي'},
-    def:{style:'ring',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
-  count:{n:'عدادات',cat:'التاريخ',sizes:'SMB',styles:{ramadan:'باقي على رمضان',salary:'باقي على الراتب',custom:'مناسبتك'},
-    def:{style:'ramadan',digits:'en',font:'grotesk',afont:'kufi',accent:'gold',salary:27,title:'رحلة الصيف',date:''},
+  clock:{n:'الساعة',cat:'الوقت',sizes:'SMLBTX',styles:{digital:'رقمية',analog:'عقارب',classic:'سوداء وذهب',half:'مقصوصة',flip:'قلابة',words:'بالكلام'},
+    def:{style:'digital',digits:'en',font:'grotesk',afont:'ruqaa',weight:'thin',face:'auto',accent:'orange',seconds:'sweep',showDate:true,h24:false,dial:'وليد'},
+    opts:s=>['style',...(s==='words'?['afontOnly']:['digits','font']),...(s==='digital'||s==='flip'?['weight','h24']:[]),...(s==='analog'?['face','seconds']:[]),...(s==='classic'?['seconds','dial']:[]),...(s==='flip'||s==='half'?[]:['showDate']),'accent',...COMMON]},
+  date:{n:'التقويم',cat:'التاريخ',sizes:'SMLBTX',styles:{today:'اليوم',dual:'هجري وميلادي',month:'الشهر',week:'الأسبوع'},
+    def:{style:'today',digits:'en',font:'grotesk',afont:'amiri',accent:'red',hijriDays:true},opts:s=>['style','digits','font',...(s==='month'||s==='today'?['hijriDays']:[]),'accent',...COMMON]},
+  prayer:{n:'الصلاة',cat:'الصلاة',sizes:'SMLT',styles:{next:'القادمة',arc:'قوس الشمس',list:'المواقيت',countdown:'عد تنازلي'},
+    def:{style:'next',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
+  count:{n:'عدادات',cat:'التاريخ',sizes:'SMB',styles:{ramadan:'رمضان',salary:'الراتب',custom:'مناسبتك'},
+    def:{style:'ramadan',digits:'en',font:'grotesk',afont:'kufi',accent:'gold',salary:27,title:'رحلة الصيف',date:'2027-07-01'},
     opts:s=>['style',...(s==='salary'?['salary']:s==='custom'?['title','date']:[]),'digits','font','accent',...COMMON]},
-  weather:{n:'الطقس',cat:'الطقس',sizes:'SMLTX',styles:{big:'حرارة كبيرة',hourly:'ساعة بساعة',days:'الأيام الجاية',bars:'أعمدة ملونة'},
-    def:{style:'big',digits:'en',font:'grotesk',afont:'kufi',accent:'orange'},opts:()=>['style','digits','font','accent',...COMMON]},
-  battery:{n:'البطارية',cat:'البطارية',sizes:'SMB',styles:{ring:'حلقة',big:'رقم كبير',devices:'أجهزتك',bars:'أعمدة الاستهلاك'},
-    def:{style:'ring',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
-  controls:{n:'التحكم',cat:'التحكم',sizes:'SM',styles:{tiles:'أزرار'},def:{style:'tiles',accent:'white'},opts:()=>['accent',...COMMON]},
-  music:{n:'الموسيقى',cat:'الموسيقى',sizes:'SMB',styles:{full:'كامل',mini:'صغير',disc:'أسطوانة'},def:{style:'full',accent:'pink'},opts:()=>['style','accent',...COMMON]},
-  text:{n:'كتابتك',cat:'كتابتك',sizes:'SMBLX',styles:{quote:'جملتك'},def:{style:'quote',text:'خلك قريب من اللي يشبهك',afont:'ruqaa',tsize:60,align:'center',accent:'white'},
-    opts:()=>['text','afontText','tsize','align','accent',...COMMON]},
+  weather:{n:'الطقس',cat:'الطقس',sizes:'SMLTBX',styles:{today:'اليوم',curve:'منحنى الحرارة',minimal:'بسيط'},
+    def:{style:'today',digits:'en',font:'grotesk',afont:'kufi',accent:'orange',bg:'auto'},opts:()=>['style','digits','font','accent',...COMMON]},
+  battery:{n:'البطاريات',cat:'البطارية',sizes:'SMBT',styles:{rings:'حلقات',list:'قائمة',big:'البطارية'},
+    def:{style:'rings',digits:'en',font:'grotesk',afont:'kufi',accent:'mint'},opts:()=>['style','digits','font','accent',...COMMON]},
+  controls:{n:'التحكم',cat:'التحكم',sizes:'SM',styles:{circles:'أزرار'},def:{style:'circles',accent:'white'},opts:()=>['accent',...COMMON]},
+  music:{n:'الموسيقى',cat:'الموسيقى',sizes:'SMB',styles:{now:'يشتغل الحين',disc:'أسطوانة'},def:{style:'now',accent:'pink',bg:'auto'},opts:()=>['style','accent',...COMMON]},
+  text:{n:'كتابتك',cat:'كتابتك',sizes:'SMBLX',styles:{quote:'جملتك'},def:{style:'quote',text:'خلك قريب من اللي يشبهك',author:'',afont:'ruqaa',tsize:60,align:'right',accent:'gold'},
+    opts:()=>['text','author','afontText','tsize','align','accent',...COMMON]},
   'ext-notes':{n:'الملاحظات',cat:'تطبيقاتك',ext:true,app:'notes',sizes:'SML',styles:{v:'قائمة الملاحظات'},def:{frame:'glass'},opts:()=>['frame']},
   'ext-cal':{n:'التقويم',cat:'تطبيقاتك',ext:true,app:'calendar',sizes:'SML',styles:{v:'مواعيد اليوم'},def:{frame:'glass'},opts:()=>['frame']},
   'ext-steps':{n:'الخطوات',cat:'تطبيقاتك',ext:true,app:'health',sizes:'SM',styles:{v:'خطوات اليوم'},def:{frame:'none'},opts:()=>['frame']},
   'ext-search':{n:'البحث',cat:'تطبيقاتك',ext:true,app:'browser',sizes:'MB',styles:{v:'شريط البحث'},def:{frame:'none'},opts:()=>['frame']},
 };
 const CATS=['الكل','الوقت','التاريخ','الصلاة','الطقس','البطارية','التحكم','الموسيقى','كتابتك','تطبيقاتك'];
-function mkW(kind,over={}){const S=(st&&st.s)||DEFS;const base={kind,...W[kind].def,bg:S.wBg,glow:S.glow,...over};if(W[kind].ext)base.bg='glass';
+function mkW(kind,over={}){const S=(st&&st.s)||DEFS;const base={kind,bg:S.wBg,glow:S.glow,...W[kind].def,...over};if(W[kind].ext)base.bg='glass';
   if(!W[kind].ext&&base.digits!==undefined&&over.digits===undefined)base.digits=S.wDigits;return base}
 function allowedSizes(kind,cols,rows){return [...W[kind].sizes].map(k=>({k,w:SIZES[k][0],h:SIZES[k][1]})).filter(z=>z.w<=cols&&z.h<=rows)}
 
 /* ═══════════ state ═══════════ */
 const DEV={outer:{W:372,H:820,cols:[4,5],rows:[5,7]},inner:{W:704,H:780,cols:[5,7],rows:[4,6]}};
-const KEY='wm-onyx-proto-v1';
+const KEY='wm-onyx-proto-v2';
 function A(app,x,y){return{id:nid(),t:'a',app,x,y,w:1,h:1}}
 function Wd(kind,x,y,sz,over,more){const[w,h]=SIZES[sz];return{id:nid(),t:'w',x,y,w,h,stack:[mkW(kind,over),...(more||[])],idx:0,auto:false}}
 const DEFS={wall:'night',dim:.12,grain:true,accent:'gold',blur:22,glow:true,iconStyle:'orig',iconBorder:'none',iconScale:1,labels:false,badge:'dot',
@@ -470,21 +493,21 @@ const DEFS={wall:'night',dim:.12,grain:true,accent:'gold',blur:22,glow:true,icon
 function defaults(){
   const s={...DEFS};
   const outer={cols:4,rows:6,side:['phone','whatsapp','youtube','telegram','mail'],dock:['x','tiktok','claude','notes','play','pinterest'],pages:[
-    [Wd('clock',0,0,'M',{style:'thin'}),Wd('date',0,2,'S',{style:'dual'}),Wd('prayer',2,2,'S',{style:'ring'}),
+    [Wd('clock',0,0,'M',{style:'digital'}),Wd('date',0,2,'S',{style:'today'}),Wd('weather',2,2,'S',{style:'today'}),
      A('gemini',0,4),A('chatgpt',1,4),A('camera',2,4),A('gallery',3,4),A('messages',0,5),A('maps',1,5),A('calendar',2,5),A('settings',3,5)],
-    [Wd('weather',0,0,'M',{style:'big'}),Object.assign(Wd('battery',0,2,'S',{style:'ring'},[mkW('controls')]),{}),Wd('text',2,2,'S'),
+    [Wd('prayer',0,0,'M',{style:'next'}),Wd('battery',0,2,'S',{style:'rings'},[mkW('controls')]),Wd('music',2,2,'S'),
      A('browser',0,4),A('files',1,4),A('calc',2,4),A('music',3,4),A('clock',0,5),A('weather',1,5),A('health',2,5)],
   ]};
   const inner={cols:6,rows:5,side:['phone','whatsapp','youtube','telegram','mail'],dock:['x','tiktok','claude','notes','play','pinterest'],pages:[
-    [Wd('clock',0,0,'S',{style:'classic'}),Wd('date',2,0,'M',{style:'dual'}),Wd('prayer',0,2,'S',{style:'list'}),Wd('weather',2,2,'M',{style:'hourly'}),
+    [Wd('clock',0,0,'S',{style:'analog'}),Wd('weather',2,0,'M',{style:'today'}),Wd('prayer',0,2,'S',{style:'next'}),Wd('date',2,2,'M',{style:'today'}),
      A('gemini',0,4),A('chatgpt',1,4),A('camera',2,4),A('gallery',3,4),A('messages',4,4),A('maps',5,4)],
-    [Wd('date',0,0,'L',{style:'month'}),Wd('battery',4,0,'S',{style:'ring'},[mkW('controls')]),Wd('music',4,2,'S'),
+    [Wd('date',0,0,'L',{style:'today'}),Wd('clock',4,0,'S',{style:'classic'}),Wd('battery',4,2,'S',{style:'rings'},[mkW('controls')]),
      A('browser',0,4),A('files',1,4),A('calc',2,4),A('settings',3,4),A('calendar',4,4),A('health',5,4)],
   ]};
-  return{v:1,cur:'outer',s,sc:{outer,inner},designs:[]};
+  return{v:2,cur:'outer',s,sc:{outer,inner},designs:[]};
 }
 let st=null;
-try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.v===1&&o.sc){st=o;st.s={...defaults().s,...o.s};}}}catch(e){}
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.v===2&&o.sc){st=o;st.s={...defaults().s,...o.s};}}}catch(e){}
 if(!st)st=defaults();
 let saveT=0;function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}},250)}
 const SC=()=>st.sc[st.cur];
@@ -599,7 +622,7 @@ function updateItem(e,it){
   const cfg=it.stack[clamp(it.idx,0,it.stack.length-1)];
   const z=itemSize(it,g);
   const face=e.querySelector('.wface'),cont=e.querySelector('.wcont');
-  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':'lg bgblack';
+  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
   const fc='wface '+bgc+(cfg.glow===false?' noglow':'')+(W[cfg.kind].ext&&cfg.frame==='glass'?' framed':'')+(W[cfg.kind].ext&&cfg.frame==='none'?' bgclear':'');
   if(face.className!==fc)face.className=fc;
   face.style.setProperty('--wac',ACC[cfg.accent]||'#fff');
@@ -639,148 +662,273 @@ scheduleMinute();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){tickClock();refreshKinds([...TIMEKINDS])}});
 
 /* ═══════════ widget renderers ═══════════ */
+// one design system for every widget: base unit b = the short side of a 2×2 widget on this screen.
+// padding 0.105b (≈16pt on a 158pt iPhone small widget), type scale cap/lab/sub/h2/hero/mega, leading (right) alignment.
 function nf(c){return c.digits==='ar'?(FAR[c.afont]||FAR.kufi)[0]:(FEN[c.font]||FEN.grotesk)[0]}
-function shape(w,h){return h===1?'strip':w===h?'sq':w>h?'wide':'tall'}
-function renderW(c,w,h,z){try{return R_[c.kind](c,w,h,shape(w,h),z)}catch(e){return`<div class="c mut" style="font-size:11px">${esc(e.message)}</div>`}}
-function dateLine(c,n=new Date()){const ar=c.digits==='ar',h=hijri(n);return{day:FMT.day.format(n),g:dg(n.getDate(),ar)+' '+FMT.gmon.format(n),gy:dg(n.getFullYear(),ar),h:dg(h.d,ar)+' '+h.mn,hy:dg(h.y,ar)}}
-function analogSVG(c,size){
-  const s=c.style,ac=ACC[c.accent],n=new Date(),ar=c.digits==='ar';
-  const T={nomos:{face:'#ecebe6',ink:'#1c1c1f',hand:'#1f3a8a',ring:'none'},classic:{face:'#0c0c0e',ink:'#e3c285',hand:'url(#gd)',ring:'#3a2e18'},glass:{face:'rgba(255,255,255,.05)',ink:'#fff',hand:'#fff',ring:'none'}}[s];
-  let ticks='';
-  for(let i=0;i<60;i++){const a=i*6,maj=i%5===0;
-    if(s==='glass'&&i%15)continue;
-    if(s==='nomos')ticks+=`<line x1="100" y1="${maj?14:14}" x2="100" y2="${maj?30:19}" stroke="${T.ink}" stroke-width="${maj?2:1}" transform="rotate(${a} 100 100)"/>`;
-    else if(s==='classic')ticks+=maj?`<rect x="97.5" y="12" width="5" height="${i%15?16:22}" rx="1" fill="${T.ink}" transform="rotate(${a} 100 100)"/>`:`<circle cx="100" cy="15" r="1.1" fill="${T.ink}" opacity=".6" transform="rotate(${a} 100 100)"/>`;
-    else ticks+=`<rect x="98" y="12" width="4" height="16" rx="2" fill="${T.ink}" transform="rotate(${a} 100 100)"/>`;}
-  let nums='';
-  if(s==='nomos'){[[12,100,48],[3,152,100],[6,100,152],[9,48,100]].forEach(([v,x,y])=>{nums+=`<text x="${x}" y="${y+7}" text-anchor="middle" font-family="${nf(c).replace(/'/g,'')}" font-size="20" fill="${T.ink}">${dg(v,ar)}</text>`})}
-  const dial=(s==='classic'&&c.dial)?`<text x="100" y="72" text-anchor="middle" font-family="Aref Ruqaa" font-size="17" fill="${T.ink}">${esc(c.dial)}</text>`:'';
-  const dt=c.showDate?`<text x="100" y="${s==='nomos'?132:140}" text-anchor="middle" font-family="${s==='classic'?'Amiri':'Space Grotesk'}" font-size="12" fill="${s==='nomos'?'#555':T.ink}" opacity=".9">${s==='classic'?esc(dg(hijri(n).d,ar)+' '+hijri(n).mn):esc(WD[n.getDay()]+' '+dg(n.getDate(),ar))}</text>`:'';
+function shape(w,h){return h===1?'strip':w===h?(w>=4?'big':'sq'):w>h?'wide':'tall'}
+function bOf(){const g=G0;return Math.min(2*g.cw,2*g.ch)-2*g.pad}
+function renderW(c,w,h,z){const b=bOf();let inner;
+  try{inner=R_[c.kind](c,w,h,shape(w,h),z,b)}catch(e){inner=`<div class="W"><span class="cap">${esc(e.message)}</span></div>`}
+  const tint=(c.bg==='auto'&&TINT[c.kind])?`<div class="tintbg" style="background:${TINT[c.kind](c)}"></div>`:'';
+  return`<div class="W0" style="--b:${b.toFixed(1)}px;--nf:${nf(c)};--wac:${ACC[c.accent]||'#fff'}">${tint}${inner}</div>`}
+function dateLine(c,n=new Date()){const ar=c.digits==='ar',h=hijri(n);return{day:FMT.day.format(n),g:dg(n.getDate(),ar)+' '+FMT.gmon.format(n),gm:FMT.gmon.format(n),gy:dg(n.getFullYear(),ar),h:dg(h.d,ar)+' '+h.mn,hy:dg(h.y,ar),hd:h.d,hm:h.mn}}
+let UIDc=0;const uidg=()=>'u'+(++UIDc);
+const isNight=(hr=new Date().getHours())=>hr<6||hr>=18;
+const TINT={
+  weather:()=>{const h=new Date().getHours();if(h>=6&&h<16)return'linear-gradient(170deg,#1f5bc4 0%,#3f86dc 60%,#79aeea 100%)';if(h>=16&&h<18)return'linear-gradient(170deg,#28357e 0%,#7d5596 55%,#de8a6c 100%)';return'linear-gradient(170deg,#060b20 0%,#122049 60%,#1f3166 100%)'},
+  music:c=>`radial-gradient(120% 90% at 85% 10%,color-mix(in srgb,${ACC[c.accent]} 70%,transparent) 0%,transparent 60%),radial-gradient(100% 80% at 10% 100%,#3b2a7a 0%,transparent 65%),#141018`,
+};
+
+/* icons */
+function wxIcon(kind,s){const a=uidg(),b2=uidg();
+  const sun=(cx,cy,r,rays=true)=>`${rays?`<g stroke="#ffc83d" stroke-width="3.4" stroke-linecap="round">${[0,45,90,135,180,225,270,315].map(d=>`<line x1="${cx}" y1="${cy-r-5}" x2="${cx}" y2="${cy-r-10}" transform="rotate(${d} ${cx} ${cy})"/>`).join('')}</g>`:''}<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${a})"/>`;
+  const cloud=(dx,dy,sc,fill)=>`<path transform="translate(${dx} ${dy}) scale(${sc})" d="M18 46h30a11 11 0 0 0 1.2-21.9A15 15 0 0 0 20.6 21 12.5 12.5 0 0 0 18 46z" fill="${fill||`url(#${b2})`}"/>`;
+  const moon=(cx,cy,r)=>`<path d="M${cx+r*.35} ${cy-r} a${r} ${r} 0 1 0 ${r*.65} ${r*1.55} a${r*.82} ${r*.82} 0 0 1 -${r*.65} -${r*1.55}z" fill="url(#${a})"/>`;
+  const defsSun=`<radialGradient id="${a}" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#fff7c9"/><stop offset=".45" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9d1c"/></radialGradient>`;
+  const defsMoon=`<linearGradient id="${a}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffbe6"/><stop offset="1" stop-color="#d8c88a"/></linearGradient>`;
+  const defsCloud=`<linearGradient id="${b2}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c3cddd"/></linearGradient>`;
+  let body='',defs='';
+  if(kind==='sun'){defs=defsSun;body=sun(32,32,13)}
+  else if(kind==='partly'){defs=defsSun+defsCloud;body=sun(24,24,10)+cloud(4,8,1)}
+  else if(kind==='cloud'){defs=defsCloud;body=cloud(-2,2,1.05,'#8e9bb2')+cloud(4,8,1)}
+  else if(kind==='moon'){defs=defsMoon;body=moon(30,32,14)+`<circle cx="50" cy="16" r="1.6" fill="#fff"/><circle cx="44" cy="44" r="1.1" fill="#fff" opacity=".8"/>`}
+  else if(kind==='nightcloud'){defs=defsMoon+defsCloud;body=moon(24,22,11)+cloud(6,10,.95)}
+  else if(kind==='dust'){defs=defsSun;body=`<circle cx="32" cy="24" r="11" fill="url(#${a})" opacity=".55"/><g stroke="#e3c79a" stroke-width="3.4" stroke-linecap="round"><path d="M10 40h34M18 47h36M8 54h26"/></g>`}
+  else if(kind==='rain'){defs=defsCloud;body=cloud(4,0,1)+`<g fill="#6fb5ff">${[18,30,42].map((x,i)=>`<path d="M${x} ${50+i%2*3}q3 5 0 7.5q-3-2.5 0-7.5z"/>`).join('')}</g>`}
+  return`<svg viewBox="0 0 64 64" width="${s}" height="${s}"><defs>${defs}</defs>${body}</svg>`}
+const LOC=s=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" style="display:inline-block;vertical-align:-.1em"><path d="M20 4L4 11l7 2 2 7z" fill="currentColor"/></svg>`;
+function pIcon(i,s){const c='currentColor',sunY=[19,15,6,10,16,0][i];
+  if(i===5)return`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z" fill="${c}"/></svg>`;
+  return`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><circle cx="12" cy="${sunY}" r="${i===2?5:4}" fill="${c}" opacity="${i===0?.55:1}"/><path d="M3 19h18" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
+const DEV_G={
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  watch:'<rect x="6.5" y="6" width="11" height="12" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 6l.6-3h4.8l.6 3M9 18l.6 3h4.8l.6-3" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+  buds:'<path d="M8 4a3 3 0 0 1 3 3v8a2 2 0 0 1-4 0V9.5A3 3 0 0 1 8 4zM16 4a3 3 0 0 0-3 3v8a2 2 0 0 0 4 0V9.5A3 3 0 0 0 16 4z" fill="currentColor"/>',
+  pen:'<path d="M5 19l2.5-.5L18 8l-2-2L5.5 16.5zM15 7l2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+};
+const devG=(k,s)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}">${DEV_G[k]}</svg>`;
+function ringSVG(size,frac,stroke,color,inner=''){const r=50-stroke/2-1,C=2*Math.PI*r;
+  return`<div style="position:relative;width:${size}px;height:${size}px;flex:none"><svg viewBox="0 0 100 100" width="${size}" height="${size}" style="transform:rotate(-90deg)"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="${stroke}"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(C*clamp(frac,0,1)).toFixed(1)} ${C.toFixed(1)}"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">${inner}</div></div>`}
+function smooth(pts){let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
+  d+=`C${(p1[0]+(p2[0]-p0[0])/6).toFixed(1)},${(p1[1]+(p2[1]-p0[1])/6).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])/6).toFixed(1)},${(p2[1]-(p3[1]-p1[1])/6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`}return d}
+
+/* weather sample (Riyadh, November) */
+const tAt=hr=>Math.round(21+6*Math.sin((hr-9)*Math.PI/12));
+function wxNow(){const h=new Date().getHours();return{t:tAt(h),icon:isNight(h)?'moon':'sun',cond:'صافي',hi:27,lo:15}}
+function wxHours(n){const h0=new Date().getHours();return Array.from({length:n},(_,i)=>{const hr=(h0+i)%24;const night=isNight(hr);
+  return{lab:i===0?'الحين':(hr%12||12)+(hr<12?'ص':'م'),t:tAt(hr),icon:night?(hr===19||hr===4?'nightcloud':'moon'):(hr===16||hr===10?'partly':'sun')}})}
+const WX_DAYS=[['اليوم','sun',15,27],['السبت','partly',16,26],['الأحد','cloud',15,24],['الاثنين','dust',14,23],['الثلاثاء','sun',14,25],['الأربعاء','sun',15,26]];
+
+/* analog dials */
+function dialSVG(c,size,night){
+  const n=new Date(),ar=c.digits==='ar',ac=ACC[c.accent];
   const secs=n.getSeconds()+n.getMilliseconds()/1000,mins=n.getMinutes()*60+secs,hrs=(n.getHours()%12)*3600+mins;
-  const H=(d,dl,inner,cls='')=>`<g class="hand ${cls}" style="animation-duration:${d}s;animation-delay:-${dl.toFixed(2)}s">${inner}</g>`;
-  const hand=T.hand;
-  const hH=s==='classic'?`<path d="M100 52 L105 100 L100 108 L95 100Z" fill="${hand}"/>`:`<rect x="96.5" y="54" width="7" height="52" rx="3.5" fill="${hand}"/>`;
-  const mH=s==='classic'?`<path d="M100 26 L104 100 L100 110 L96 100Z" fill="${hand}"/>`:`<rect x="97.5" y="28" width="5" height="78" rx="2.5" fill="${hand}"/>`;
+  const Hd=(d,dl,inner,cls='')=>`<g class="hand ${cls}" style="animation-duration:${d}s;animation-delay:-${dl.toFixed(2)}s">${inner}</g>`;
   const sOn=c.seconds!=='off'&&st.s.seconds&&!st.s.saver;
-  const sH=sOn?H(60,secs,`<rect x="99.2" y="22" width="1.6" height="96" rx=".8" fill="${ac}"/><circle cx="100" cy="100" r="3.2" fill="${ac}"/>`,c.seconds==='tick'?'tick':''):'';
-  return`<svg viewBox="0 0 200 200" width="${size}" height="${size}" style="display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))">
-    <circle cx="100" cy="100" r="96" fill="${T.face}"/>${T.ring!=='none'?`<circle cx="100" cy="100" r="94" fill="none" stroke="${T.ring}" stroke-width="3"/>`:''}
-    ${s==='glass'?'<circle cx="100" cy="100" r="95.5" fill="none" stroke="rgba(255,255,255,.35)"/>':''}
-    ${ticks}${nums}${dial}${dt}
-    ${H(43200,hrs,hH)}${H(3600,mins,mH)}${sH}<circle cx="100" cy="100" r="${sOn?1.6:4}" fill="${sOn?'#111':hand}"/></svg>`;
-}
+  if(c.style==='classic'){const g1=uidg(),g2=uidg();let ix='';
+    for(let i=0;i<60;i++){const a=i*6;if(i%5===0){ix+=i===0?`<rect x="94" y="10" width="4.5" height="22" rx="1" fill="url(#${g2})"/><rect x="101.5" y="10" width="4.5" height="22" rx="1" fill="url(#${g2})"/>`:`<rect x="97.5" y="10" width="5" height="${i%15?17:22}" rx="1" fill="url(#${g2})" transform="rotate(${a} 100 100)"/>`}
+      else ix+=`<circle cx="100" cy="13" r="1.1" fill="#d9b874" opacity=".55" transform="rotate(${a} 100 100)"/>`}
+    const hj=hijri(n);
+    return`<svg viewBox="0 0 200 200" width="${size}" height="${size}" style="filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))"><defs><radialGradient id="${g1}" cx=".5" cy=".38" r=".7"><stop offset="0" stop-color="#26262b"/><stop offset="1" stop-color="#060607"/></radialGradient><linearGradient id="${g2}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8e6b4"/><stop offset=".5" stop-color="#d4ae62"/><stop offset="1" stop-color="#a07b38"/></linearGradient></defs>
+      <circle cx="100" cy="100" r="98" fill="url(#${g2})"/><circle cx="100" cy="100" r="95" fill="url(#${g1})"/>${ix}
+      ${c.dial?`<text x="100" y="72" text-anchor="middle" font-family="Aref Ruqaa" font-size="19" fill="#e3c285">${esc(c.dial)}</text>`:''}
+      ${c.showDate?`<rect x="78" y="128" width="44" height="18" rx="4" fill="#0b0b0c" stroke="#7a5f2e" stroke-width=".8"/><text x="100" y="141.5" text-anchor="middle" font-family="Amiri" font-size="11.5" fill="#e3c285">${dg(hj.d,ar)} ${esc(hj.mn.split(' ')[0])}</text>`:''}
+      ${Hd(43200,hrs,`<path d="M100 50 L106 100 L100 112 L94 100Z" fill="url(#${g2})"/><path d="M100 50 L100 112" stroke="#6b5226" stroke-width=".6"/>`)}
+      ${Hd(3600,mins,`<path d="M100 22 L104.5 100 L100 114 L95.5 100Z" fill="url(#${g2})"/><path d="M100 22 L100 114" stroke="#6b5226" stroke-width=".6"/>`)}
+      ${sOn?Hd(60,secs,`<rect x="99.3" y="18" width="1.4" height="104" rx=".7" fill="#e3c285"/><circle cx="100" cy="100" r="3" fill="#e3c285"/>`,c.seconds==='tick'?'tick':''):''}<circle cx="100" cy="100" r="2" fill="#2a2a2e"/></svg>`}
+  const face=c.face==='auto'?(night?'black':'white'):c.face;
+  const T={white:['#f7f7f5','#121214','#121214'],black:['#121214','#f4f4f4','#f4f4f4'],glass:['rgba(255,255,255,.07)','#ffffff','#ffffff']}[face]||['#f7f7f5','#121214','#121214'];
+  let tk='';for(let i=0;i<60;i++){const maj=i%5===0;tk+=`<line x1="100" y1="${maj?9:9}" x2="100" y2="${maj?17:13}" stroke="${T[1]}" stroke-width="${maj?2.2:1}" opacity="${maj?.9:.45}" transform="rotate(${i*6} 100 100)"/>`}
+  let nm='';for(let i=1;i<=12;i++){const a=i*30*Math.PI/180;nm+=`<text x="${(100+68*Math.sin(a)).toFixed(1)}" y="${(100-68*Math.cos(a)+8.5).toFixed(1)}" text-anchor="middle" font-family="${nf(c).replace(/'/g,'')}" font-size="24" font-weight="500" fill="${T[1]}">${dg(i,ar)}</text>`}
+  return`<svg viewBox="0 0 200 200" width="${size}" height="${size}" style="filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))"><circle cx="100" cy="100" r="98" fill="${T[0]}"/>${face==='glass'?'<circle cx="100" cy="100" r="97.5" fill="none" stroke="rgba(255,255,255,.4)"/>':''}${tk}${nm}
+    ${Hd(43200,hrs,`<rect x="97" y="88" width="6" height="16" rx="3" fill="${T[2]}"/><rect x="95.5" y="50" width="9" height="44" rx="4.5" fill="${T[2]}"/>`)}
+    ${Hd(3600,mins,`<rect x="97" y="88" width="6" height="16" rx="3" fill="${T[2]}"/><rect x="96" y="20" width="8" height="74" rx="4" fill="${T[2]}"/>`)}
+    <circle cx="100" cy="100" r="6" fill="${T[2]}"/>
+    ${sOn?Hd(60,secs,`<rect x="99.1" y="14" width="1.8" height="112" rx=".9" fill="${ac}"/><circle cx="100" cy="100" r="4" fill="${ac}"/><circle cx="100" cy="100" r="1.6" fill="${T[0]==='rgba(255,255,255,.07)'?'#222':T[0]}"/>`,c.seconds==='tick'?'tick':''):''}</svg>`}
+function halfDial(c,z,b,sh){
+  const n=new Date(),ar=c.digits==='ar',W_=z.w,H_=z.h;const low=sh==='sq'||sh==='wide'||sh==='strip';const R=sh==='sq'?H_*.8:low?Math.min(W_*.46,H_*.82):W_*.44,cx=W_/2,cy=sh==='sq'?H_*1.05:low?H_-b*.02:H_*.7;const topY=cy-R;const nfs=Math.min(b*.15,R*.2);
+  const secs=(n.getHours()%12)*3600+n.getMinutes()*60+n.getSeconds();let g='';
+  for(let i=0;i<120;i++){const maj=i%10===0,mid=i%5===0;g+=`<line x1="${cx}" y1="${cy-R}" x2="${cx}" y2="${cy-R+(maj?b*.09:mid?b*.055:b*.03)}" stroke="#fff" stroke-width="${maj?2:1}" opacity="${maj?.95:mid?.6:.35}" transform="rotate(${i*3} ${cx} ${cy})"/>`}
+  for(let i=1;i<=12;i++)g+=`<text x="${cx}" y="${cy-R+b*.09+nfs}" text-anchor="middle" font-family="${nf(c).replace(/'/g,'')}" font-size="${nfs}" font-weight="500" fill="#fff" transform="rotate(${i*30} ${cx} ${cy})">${dg(i,ar)}</text>`;
+  const t=`${dg(n.getHours()%12||12,ar)}:${dg(p2(n.getMinutes()),ar)}`;
+  return`<svg viewBox="0 0 ${W_} ${H_}" width="${W_}" height="${H_}" style="position:absolute;inset:0"><g class="hand" style="transform-origin:${cx}px ${cy}px;animation-duration:43200s;animation-direction:reverse;animation-delay:-${secs}s">${g}</g>
+    <path d="M${cx} ${topY-3}l-${b*.035} -${b*.05}h${b*.07}z" fill="${ACC[c.accent]}"/><line x1="${cx}" y1="${topY}" x2="${cx}" y2="${topY+b*.12}" stroke="${ACC[c.accent]}" stroke-width="2.4" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy-R*.18}" text-anchor="middle" font-family="${nf(c).replace(/'/g,'')}" font-size="${Math.min(b*.2,R*.3)}" font-weight="300" fill="#fff">${t}</text><text x="${cx}" y="${cy-R*.18+b*.12}" text-anchor="middle" font-size="${b*.075}" font-weight="600" fill="${ACC[c.accent]}">${FMT.day.format(n)}</text></svg>`}
+
+/* month grid */
+function monthGrid(c,wpx,hpx,showH,b){const n=new Date(),ar=c.digits==='ar',first=new Date(n.getFullYear(),n.getMonth(),1),days=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+  const rows=Math.ceil((first.getDay()+days)/7)+1,ch=hpx/rows,fs=Math.min(ch*(showH?.42:.5),wpx/7*.42);
+  let cells=WD1.map(x=>`<div style="font-size:${fs*.82}px;opacity:.5;font-weight:600;display:flex;align-items:center;justify-content:center">${x}</div>`).join('');
+  for(let i=0;i<first.getDay();i++)cells+='<div></div>';
+  for(let d=1;d<=days;d++){const on=d===n.getDate(),dd=new Date(n.getFullYear(),n.getMonth(),d),fri=dd.getDay()===5;
+    cells+=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;border-radius:${showH?fs*.6:99}px;${on?'background:var(--wac);color:#111;font-weight:600':''}${fri&&!on?';color:var(--wac)':''}"><span class="n" style="font-size:${fs}px;letter-spacing:0">${dg(d,ar)}</span>${showH?`<span style="font-size:${fs*.58}px;opacity:${on?.75:.5}">${dg(hijri(dd).d,ar)}</span>`:''}</div>`}
+  return`<div style="display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(${rows},1fr);width:${wpx}px;height:${hpx}px;direction:rtl">${cells}</div>`}
+
 const R_={
-clock(c,w,h,sh,z){
-  const n=new Date(),ar=c.digits==='ar',f=nf(c),ac='var(--wac)';
-  const hh=c.h24?p2(n.getHours()):String(n.getHours()%12||12),mm=p2(n.getMinutes());
-  const dl=dateLine(c,n);
-  if(['nomos','classic','glass'].includes(c.style)){
-    const sz=Math.min(z.w,z.h)*(sh==='sq'||sh==='tall'?.9:.84);
-    if(sh==='wide'||sh==='strip'){return`<div class="c row" style="justify-content:space-around">${analogSVG(c,sh==='strip'?z.h*.86:sz)}<div class="tr ar" style="display:flex;flex-direction:column;gap:2cqh"><div style="font-family:'Aref Ruqaa';font-size:${sh==='strip'?36:20}cqh" class="acc">${dl.day}</div><div style="font-size:${sh==='strip'?22:11}cqh">${dl.g}</div><div class="mut" style="font-size:${sh==='strip'?20:10}cqh">${dl.h}</div></div></div>`}
-    return`<div class="c" style="padding:0">${analogSVG(c,sz)}</div>`}
-  if(c.style==='words'){const t=HRS[n.getHours()%12],m=minWords(n.getMinutes());const fs=sh==='strip'?30:sh==='wide'?20:sh==='sq'?(w>=4?14:15):13;
-    return`<div class="c tr ar" style="font-family:${(FAR[c.afont]||FAR.ruqaa)[0]};justify-content:center;gap:1cqh;line-height:1.35"><div style="font-size:${fs}cqmin">${t}</div><div class="acc" style="font-size:${fs*.92}cqmin">${m}</div>${c.showDate&&sh!=='strip'?`<div class="mut" style="font-family:var(--ui);font-size:${fs*.42}cqmin;margin-top:2cqh">${dl.day} · ${dl.h}</div>`:''}</div>`}
-  if(c.style==='flip'){const fs=sh==='strip'?60:sh==='wide'?42:28;const tw=sh==='strip'?24:sh==='wide'?36:40,th=sh==='strip'?78:sh==='wide'?60:44;
-    return`<div class="c" style="gap:4cqh"><div class="row" style="display:flex;gap:4cqmin">${[hh,mm].map(v=>`<div class="flipt tn" style="width:${tw}cqw;height:${th}cqh;font-family:${f};font-size:${fs}cqmin;font-weight:500">${dg(p2(v),ar)}</div>`).join('')}</div>${c.showDate&&sh!=='strip'?`<div class="mut ar" style="font-size:${sh==='sq'?6.5:9}cqmin">${dl.day} ${dl.g}</div>`:''}</div>`}
-  const wt=c.style==='bold'?700:300;
-  const time=`${dg(hh,ar)}<span style="opacity:.55">:</span>${dg(mm,ar)}`;
-  if(sh==='strip')return`<div class="c row" style="justify-content:space-between;padding:0 7cqw"><div class="tn" style="font-family:${f};font-weight:${wt};font-size:62cqh">${time}</div>${c.showDate?`<div class="tr ar" style="display:flex;flex-direction:column"><b style="font-size:24cqh;font-weight:600">${dl.day}</b><span class="mut" style="font-size:20cqh">${dl.h}</span></div>`:''}</div>`;
-  const fs=sh==='wide'?(w>=6?50:54):sh==='tall'?24:(w>=4?30:30);
-  return`<div class="c" style="gap:3cqh"><div class="tn" style="font-family:${f};font-weight:${wt};font-size:${fs}cqmin">${time}${!c.h24?`<span class="mut" style="font-size:.22em;margin-inline-start:.3em;font-weight:500;letter-spacing:0">${n.getHours()<12?'ص':'م'}</span>`:''}</div>
-    ${c.showDate?`<div class="ar" style="font-size:${sh==='wide'?9:6.5}cqmin;display:flex;flex-direction:${sh==='wide'?'row':'column'};gap:${sh==='wide'?'.8em':'.25em'};align-items:center;white-space:nowrap"><span><span class="acc" style="font-weight:600">${dl.day}</span> ${dl.g}</span><span class="mut">${dl.h}</span></div>`:''}</div>`;
+clock(c,w,h,sh,z,b){
+  const n=new Date(),ar=c.digits==='ar',D=x=>dg(x,ar),dl=dateLine(c,n),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  const H=c.h24?p2(n.getHours()):String(n.getHours()%12||12),M=p2(n.getMinutes()),ap=n.getHours()<12?'ص':'م';
+  const wt={thin:300,regular:400,bold:600}[c.weight]||300;
+  if(c.style==='analog'||c.style==='classic'){const night=isNight();
+    if(sh==='wide'||sh==='strip'){const ds=z.h-(sh==='strip'?b*.08:b*.16);
+      return`<div class="W r" style="flex-direction:row;padding:${(z.h-ds)/2}px ${p}px;gap:${b*.12}px">${dialSVG(c,ds,night)}<div class="col f1" style="gap:${b*.03}px;min-width:0">
+        <span class="cap acc">${c.showDate?dl.day:'الساعة'}</span><span class="n" style="font-size:${Math.min(sh==='strip'?z.h*.4:b*.26,(z.w-ds-2*p-b*.12)/3.4)}px;font-weight:300">${D(H)}:${D(M)}${c.h24?'':`<span class="cap dim" style="margin-inline-start:.35em">${ap}</span>`}</span>${c.showDate&&sh!=='strip'?`<span class="lab dim ell">${dl.g} · ${dl.h}</span>`:''}</div></div>`}
+    const ds=Math.min(z.w,z.h)-b*.1;return`<div class="W" style="padding:0;align-items:center;justify-content:center">${dialSVG(c,ds,night)}</div>`}
+  if(c.style==='half')return`<div class="W" style="padding:0">${halfDial(c,z,b,sh)}</div>`;
+  if(c.style==='flip'){const gap=b*.05,cw=Math.min((aw-gap)/2,(ah*.92)/1.15),chh=Math.min(cw*1.18,ah*.92);
+    const card=v=>`<div style="position:relative;width:${cw}px;height:${chh}px;border-radius:${b*.08}px;background:linear-gradient(180deg,#2c2c31 0%,#232327 49.6%,#1a1a1d 50.4%,#141416 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 ${b*.02}px ${b*.05}px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;overflow:hidden"><span class="n" style="font-size:${chh*.66}px;font-weight:${wt};letter-spacing:-.04em">${D(v)}</span><i style="position:absolute;left:0;right:0;top:50%;height:${Math.max(1,b*.008)}px;background:#060607"></i><i style="position:absolute;left:-2px;top:calc(50% - ${b*.02}px);width:${b*.025}px;height:${b*.04}px;border-radius:2px;background:#0b0b0d"></i><i style="position:absolute;right:-2px;top:calc(50% - ${b*.02}px);width:${b*.025}px;height:${b*.04}px;border-radius:2px;background:#0b0b0d"></i></div>`;
+    return`<div class="W" style="flex-direction:row;align-items:center;justify-content:center;gap:${gap}px;direction:ltr">${card(H.padStart(2,'0'))}${card(M)}</div>`}
+  if(c.style==='words'){const hrs=HRS[n.getHours()%12],m=minWords(n.getMinutes());const fs=Math.min(aw/(sh==='strip'?14:7.2),ah/(sh==='strip'?1.6:3.6));
+    return`<div class="W" style="font-family:${(FAR[c.afont]||FAR.ruqaa)[0]};justify-content:${sh==='strip'?'center':'flex-end'};line-height:1.32">${sh!=='strip'&&c.showDate?`<span class="cap acc" style="font-family:var(--ui);position:absolute;top:${p}px">${dl.day}</span>`:''}<div style="font-size:${fs*1.08}px">${hrs}</div><div class="acc" style="font-size:${fs}px">${m}</div>${c.showDate&&sh!=='strip'?`<span class="cap dim" style="font-family:var(--ui);margin-top:${b*.04}px">${dl.h} ${dl.hy}</span>`:''}</div>`}
+  // digital
+  const ampm=c.h24?'':`<span style="font-size:.26em;font-weight:500;letter-spacing:0;opacity:.6;margin-inline-start:.25em">${ap}</span>`;
+  const time=fs=>`<span class="n" style="font-size:${fs}px;font-weight:${wt}">${D(H)}<span style="opacity:.45">:</span>${D(M)}${ampm}</span>`;
+  const perCh=c.h24?2.7:3.15;
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center">${time(Math.min(z.h*.62,aw*.55/perCh))}${c.showDate?`<div class="col" style="align-items:flex-start"><span class="cap acc">${dl.day}</span><span class="lab dim">${dl.h}</span></div>`:''}</div>`;
+  if(sh==='tall'){const fs=Math.min(aw/1.25,ah*.36);return`<div class="W">${c.showDate?`<span class="cap acc">${dl.day}</span>`:''}<div class="f1"></div><span class="n" style="font-size:${fs}px;font-weight:${wt};line-height:.92">${D(H.padStart(2,'0'))}</span><span class="n" style="font-size:${fs}px;font-weight:${wt};line-height:.92;color:var(--wac)">${D(M)}</span><div class="f1"></div>${c.showDate?`<span class="lab">${dl.g}</span><span class="cap dim">${dl.h}</span>`:''}</div>`}
+  if(sh==='big'){const fs=Math.min(aw/perCh,ah*.3);return`<div class="W">${c.showDate?`<span class="cap acc">${dl.day}</span>`:''}${time(fs)}${c.showDate?`<span class="lab" style="margin-top:${b*.04}px">${dl.g} ${dl.gy} · <span class="dim">${dl.h}</span></span>`:''}<div class="hr" style="margin:${b*.07}px 0"></div><div class="f1" style="position:relative">${monthGrid(c,aw,ah-fs-b*.5,false,b)}</div></div>`}
+  const fs=Math.min(aw/perCh,ah*(sh==='sq'?.42:.62));
+  return`<div class="W">${c.showDate?`<span class="cap acc">${dl.day}</span>`:''}<div class="f1"></div>${time(fs)}${c.showDate?`<span class="lab" style="margin-top:${b*.05}px">${dl.g}${sh==='sq'?'':' '+dl.gy}</span><span class="cap dim">${dl.h} ${dl.hy}</span>`:''}</div>`;
 },
-date(c,w,h,sh,z){
-  const n=new Date(),ar=c.digits==='ar',f=nf(c),dl=dateLine(c,n),hj=hijri(n);
-  if(c.style==='month'||c.style==='week'){
-    const first=new Date(n.getFullYear(),n.getMonth(),1),days=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
-    if(c.style==='week'||sh==='strip'){const s0=new Date(n);s0.setDate(n.getDate()-n.getDay());let cells='';
-      for(let i=0;i<7;i++){const d=new Date(s0);d.setDate(s0.getDate()+i);const on=d.toDateString()===n.toDateString();
-        cells+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1cqh;padding:3cqh 0;border-radius:99px;${on?'background:var(--wac);color:#111':''}"><span style="font-size:${sh==='strip'?16:9}cqh;${on?'':'opacity:.6'}">${WD1[i]}</span><b class="tn" style="font-family:${f};font-size:${sh==='strip'?30:17}cqh;font-weight:500">${dg(d.getDate(),ar)}</b>${sh!=='strip'?`<span style="font-size:8cqh;${on?'':'opacity:.55'}">${dg(hijri(d).d,ar)}</span>`:''}</div>`}
-      return`<div class="c ar" style="flex-direction:column;align-items:stretch;gap:3cqh;padding:5cqh 5cqw">${sh!=='strip'?`<div style="display:flex;justify-content:space-between;font-size:9cqh"><b>${dl.g} ${dl.gy}</b><span class="mut">${dl.h}</span></div>`:''}<div style="display:flex;gap:1cqw;direction:rtl">${cells}</div></div>`}
-    const showH=z.h>220;let cells=WD1.map(x=>`<div class="mut" style="font-size:${showH?3.4:5}cqh;text-align:center">${x}</div>`).join('');
-    for(let i=0;i<first.getDay();i++)cells+='<div></div>';
-    for(let d=1;d<=days;d++){const dd=new Date(n.getFullYear(),n.getMonth(),d),on=d===n.getDate();
-      cells+=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:${showH?'12px':'99px'};${on?'background:var(--wac);color:#111':''}"><span class="tn" style="font-family:${f};font-size:${showH?4.6:6.8}cqh">${dg(d,ar)}</span>${showH?`<span style="font-size:2.7cqh;${on?'':'opacity:.5'}">${dg(hijri(dd).d,ar)}</span>`:''}</div>`}
-    const h0=hijri(first),h1=hijri(new Date(n.getFullYear(),n.getMonth(),days));
-    return`<div class="c ar" style="align-items:stretch;justify-content:flex-start;padding:6cqh 6cqw;gap:2cqh"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:${showH?6:9}cqh">${FMT.gmon.format(n)} <span class="tn" style="font-family:${f}">${dl.gy}</span></b><span class="acc" style="font-size:${showH?3.6:6}cqh">${h0.mn}${h0.mn!==h1.mn?' – '+h1.mn:''} ${dg(h1.y,ar)}</span></div><div style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;flex:1;gap:.6cqh">${cells}</div></div>`}
-  if(c.style==='big'){return`<div class="c ar" style="gap:1cqh"><div class="acc" style="font-size:${sh==='wide'?14:11}cqmin;font-weight:600">${dl.day}</div><div class="tn" style="font-family:${f};font-size:${sh==='wide'?52:44}cqmin;font-weight:300">${dg(n.getDate(),ar)}</div><div class="mut" style="font-size:${sh==='wide'?9:8}cqmin">${FMT.gmon.format(n)} · ${dl.h}</div></div>`}
-  // dual
-  if(sh==='strip')return`<div class="c row ar" style="justify-content:space-between;padding:0 7cqw"><div style="font-family:'Aref Ruqaa';font-size:44cqh" class="acc">${dl.day}</div><div style="display:flex;flex-direction:column;align-items:flex-end"><b style="font-size:22cqh">${dl.g} ${dl.gy}</b><span class="mut" style="font-size:20cqh">${dl.h} ${dl.hy}</span></div></div>`;
-  if(sh==='wide')return`<div class="c row ar" style="justify-content:space-between;padding:0 8cqw"><div style="font-family:'Aref Ruqaa';font-size:34cqh;line-height:1.1" class="acc">${dl.day}</div><div style="display:flex;flex-direction:column;align-items:flex-start;gap:3cqh;white-space:nowrap"><div><div class="mut" style="font-size:min(7.5cqh,3.6cqw)">ميلادي</div><b style="font-size:min(12cqh,5.4cqw);font-weight:600">${dl.g} <span class="tn" style="font-family:${f}">${dl.gy}</span></b></div><div><div class="mut" style="font-size:min(7.5cqh,3.6cqw)">هجري · أم القرى</div><b style="font-size:min(12cqh,5.4cqw);font-weight:600">${dl.h} <span class="tn" style="font-family:${f}">${dl.hy}</span></b></div></div></div>`;
-  return`<div class="c ar" style="gap:1.5cqh"><div class="acc" style="font-family:'Aref Ruqaa';font-size:16cqmin;line-height:1.2">${dl.day}</div><div class="tn" style="font-family:${f};font-size:30cqmin;font-weight:300">${dg(n.getDate(),ar)}</div><div style="font-size:7.5cqmin">${FMT.gmon.format(n)} ${dl.gy}</div><div class="mut" style="font-size:7.5cqmin">${dl.h} ${dl.hy}</div></div>`;
+date(c,w,h,sh,z,b){
+  const n=new Date(),ar=c.digits==='ar',D=x=>dg(x,ar),dl=dateLine(c,n),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  if(c.style==='month'&&sh==='strip')c={...c,style:'week'};
+  if(c.style==='month'){
+    const head=`<div class="r bt" style="margin-bottom:${b*.04}px"><span class="sub acc">${dl.gm} <span class="n" style="letter-spacing:0">${dl.gy}</span></span><span class="cap dim">${dl.hm} ${dl.hy}</span></div>`;
+    const gh=ah-b*.18;return`<div class="W">${head}${monthGrid(c,aw,gh,c.hijriDays&&gh/7>b*.15,b)}</div>`}
+  if(c.style==='week'&&(sh==='sq'||sh==='tall'||sh==='big')){const s0=new Date(n);s0.setDate(n.getDate()-n.getDay());const fs=Math.min(b*(sh==='sq'?.075:.1),ah/8*.55);let rows='';
+    for(let i=0;i<7;i++){const d=new Date(s0);d.setDate(s0.getDate()+i);const on=d.toDateString()===n.toDateString();
+      rows+=`<div class="r bt" style="flex:1;padding:0 ${b*.04}px;border-radius:${b*.06}px;font-size:${fs}px;${on?'background:var(--wac);color:#111;font-weight:600':''}"><span>${WD[i]}</span><span class="r" style="gap:${b*.05}px"><span style="opacity:.6">${D(hijri(d).d)}</span><span class="n" style="letter-spacing:0;font-weight:600;min-width:1.4em;text-align:left">${D(d.getDate())}</span></span></div>`}
+    return`<div class="W" style="gap:${b*.01}px"><div class="r bt" style="margin-bottom:${b*.03}px"><span class="sub">${dl.gm}</span><span class="cap acc">${dl.hm}</span></div>${rows}</div>`}
+  if(c.style==='week'){const s0=new Date(n);s0.setDate(n.getDate()-n.getDay());let cells='';
+    for(let i=0;i<7;i++){const d=new Date(s0);d.setDate(s0.getDate()+i);const on=d.toDateString()===n.toDateString();
+      cells+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${b*.02}px;border-radius:99px;padding:${b*.035}px 0;${on?'background:var(--wac);color:#111':''}"><span class="cap" style="opacity:${on?.75:.5}">${WD1[i]}</span><span class="n ${sh==='strip'?'sub':'h2'}" style="letter-spacing:0;font-weight:${on?600:500}">${D(d.getDate())}</span>${sh!=='strip'?`<span class="cap" style="opacity:${on?.7:.45};font-weight:500">${D(hijri(d).d)}</span>`:''}</div>`}
+    return`<div class="W" style="justify-content:space-between">${sh!=='strip'?`<div class="r bt"><span class="sub">${dl.gm} <span class="n" style="letter-spacing:0">${dl.gy}</span></span><span class="cap acc">${dl.hm}</span></div>`:''}<div class="r" style="gap:${b*.015}px">${cells}</div></div>`}
+  const big=(num,line1,line2,acc)=>`<div class="col"><span class="n mega" style="font-weight:300">${num}</span><span class="lab" style="margin-top:${b*.03}px">${line1}</span><span class="cap dim">${line2}</span></div>`;
+  if(c.style==='dual'){
+    const head=`<span style="font-family:'Aref Ruqaa';font-size:${b*.2}px;line-height:1.1" class="acc">${dl.day}</span>`;
+    const G=big(D(n.getDate()),dl.gm,dl.gy+' · ميلادي'),Hh=big(D(dl.hd),dl.hm,dl.hy+' · هجري');
+    if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center"><span style="font-family:'Aref Ruqaa';font-size:${z.h*.4}px" class="acc">${dl.day}</span><span class="lab">${dl.g} ${dl.gy}</span><span class="lab dim">${dl.h}</span></div>`;
+    if(sh==='tall'){const tb=(num,l,t)=>`<div class="col"><span class="n" style="font-size:${b*.5}px;font-weight:300">${num}</span><span class="sub">${l}</span><span class="cap dim">${t}</span></div>`;return`<div class="W">${head}<div class="f1"></div>${tb(D(n.getDate()),dl.gm,dl.gy+' · ميلادي')}<div class="hr" style="margin:${b*.1}px 0"></div>${tb(D(dl.hd),dl.hm,dl.hy+' · هجري')}<div class="f1"></div></div>`}
+    if(sh==='sq'){const sm=(num,l,t)=>`<div class="r" style="gap:${b*.05}px"><span class="n h2" style="font-weight:400;min-width:${b*.2}px">${num}</span><div class="col" style="min-width:0"><span class="lab ell">${l}</span><span class="cap dim">${t}</span></div></div>`;
+      return`<div class="W">${head}<div class="f1"></div>${sm(D(n.getDate()),dl.gm,dl.gy)}<div class="hr"></div>${sm(D(dl.hd),dl.hm,dl.hy)}</div>`}
+    if(sh==='big')return`<div class="W">${head}<div class="f1"></div><div class="r" style="gap:${b*.14}px;align-items:stretch;justify-content:center;font-size:1.5em">${G.replace('n mega','n" style="font-size:'+(b*.62)+'px')}<div class="vr"></div>${Hh.replace('n mega','n" style="font-size:'+(b*.62)+'px')}</div><div class="f1"></div></div>`;
+    return`<div class="W">${head}<div class="f1"></div><div class="r" style="gap:${b*.1}px;align-items:stretch">${G}<div class="vr"></div>${Hh}</div></div>`}
+  // today
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center"><div class="r"><span class="n" style="font-size:${z.h*.5}px;font-weight:300">${D(n.getDate())}</span><div class="col"><span class="cap acc">${dl.day}</span><span class="lab">${dl.gm} ${dl.gy}</span></div></div><span class="lab dim">${dl.h} ${dl.hy}</span></div>`;
+  const todayCol=`<span class="cap acc" style="font-weight:700">${dl.day}</span><span class="n mega" style="font-weight:300;margin-top:${b*.02}px">${D(n.getDate())}</span><span class="lab">${dl.gm} ${dl.gy}</span>`;
+  if(sh==='sq')return`<div class="W">${todayCol}<div class="f1"></div><div class="hr"></div><span class="cap dim">هجري · ${dl.hy}</span><span class="lab ell">${dl.h}</span></div>`;
+  if(sh==='wide'){const gw=aw*.56;return`<div class="W" style="flex-direction:row;gap:${b*.1}px"><div class="col" style="flex:1;min-width:0">${todayCol}<div class="f1"></div><span class="cap dim ell">${dl.h} ${dl.hy}</span></div><div class="vr"></div>${monthGrid(c,gw-b*.1,ah,false,b)}</div>`}
+  if(sh==='tall'){return`<div class="W">${todayCol}<div class="hr"></div><span class="cap dim">هجري</span><span class="lab">${dl.h}</span><div class="f1"></div>${monthGrid(c,aw,ah*.42,false,b)}</div>`}
+  return`<div class="W"><div class="r bt" style="align-items:flex-end"><div class="col">${todayCol}</div><div class="col" style="align-items:flex-end"><span class="cap dim">هجري</span><span class="sub">${dl.h}</span><span class="cap dim">${dl.hy}</span></div></div><div class="hr"></div>${monthGrid(c,aw,ah-b*.62,c.hijriDays,b)}</div>`;
 },
-prayer(c,w,h,sh,z){
-  const ar=c.digits==='ar',f=nf(c),ps=prayerState(),L=ps.left,lh=Math.floor(L/60),lm=L%60;
-  const left=lh?`${dg(lh,ar)}:${dg(p2(lm),ar)}`:`${dg(lm,ar)} د`;
-  const note=`<div class="mut" style="position:absolute;bottom:3cqh;left:0;right:0;text-align:center;font-size:${sh==='sq'?4:3}cqmin">مثال: الرياض</div>`;
-  if(c.style==='list'){return`<div class="c ar" style="align-items:stretch;justify-content:center;gap:${sh==='tall'||sh==='sq'&&w>=4?3:1}cqh;padding:7cqh 9cqw">${ps.ts.map((p,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:${sh==='wide'?8:sh==='tall'?6:9}cqmin;${i===ps.ni?'color:var(--wac);font-weight:600':''}"><span>${i===ps.ni?'● ':''}${p.nm}</span><span class="tn" style="font-family:${f}">${dg(p.t,ar)}</span></div>`).join('')}</div>${note}`}
-  if(c.style==='countdown'){return`<div class="c ar" style="gap:2cqh"><div class="mut" style="font-size:${sh==='wide'?10:9}cqmin">باقي على ${ps.next.nm}</div><div class="tn acc" style="font-family:${f};font-size:${sh==='wide'?42:30}cqmin;font-weight:300">${left}</div><div style="font-size:${sh==='wide'?9:8}cqmin">${ps.next.nm} ${dg(ps.next.t,ar)}</div></div>${note}`}
-  const R0=40,C=2*Math.PI*R0,sz=Math.min(z.w,z.h)*(sh==='sq'?.8:.78);
-  const ring=`<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" style="transform:rotate(-90deg)"><circle cx="50" cy="50" r="${R0}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="7"/><circle cx="50" cy="50" r="${R0}" fill="none" stroke="var(--wac)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*ps.prog).toFixed(1)} ${C.toFixed(1)}"/></svg>`;
-  const mid=`<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><b style="font-size:${sz*.15}px">${ps.next.nm}</b><span class="tn" style="font-family:${f};font-size:${sz*.17}px;font-weight:300">${dg(ps.next.t,ar)}</span><span class="mut" style="font-size:${sz*.09}px">بعد ${left}</span></div>`;
-  if(sh==='wide')return`<div class="c row ar" style="justify-content:space-around"><div style="position:relative">${ring}${mid}</div><div style="display:flex;flex-direction:column;gap:1.6cqh;min-width:38%">${ps.ts.filter((_,i)=>i!==1).map((p)=>`<div style="display:flex;justify-content:space-between;font-size:8.5cqh;${p===ps.next?'color:var(--wac);font-weight:600':'opacity:.8'}"><span>${p.nm}</span><span class="tn" style="font-family:${f}">${dg(p.t,ar)}</span></div>`).join('')}</div></div>`;
-  return`<div class="c"><div style="position:relative">${ring}${mid}</div></div>${note}`;
+prayer(c,w,h,sh,z,b){
+  const ar=c.digits==='ar',D=x=>dg(x,ar),ps=prayerState(),p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  const L=ps.left,lh=Math.floor(L/60),lm=L%60,left=lh?`${D(lh)}:${D(p2(lm))}`:`${D(lm)} د`;
+  const ex=`<span class="cap" style="position:absolute;left:${p}px;top:${p}px;font-weight:500;opacity:.4">مثال</span>`;
+  const list=(rows,fs)=>rows.map(i=>{const q=ps.ts[i],on=i===ps.ni;return`<div class="r bt" style="padding:${b*.018}px ${b*.04}px;border-radius:${b*.05}px;${on?'background:color-mix(in srgb,var(--wac) 22%,transparent);color:var(--wac);font-weight:600':''};font-size:${fs}px"><span class="r" style="gap:${b*.03}px">${pIcon(i,fs*1.05)}${q.nm}</span><span class="n" style="letter-spacing:0">${D(q.t)}</span></div>`}).join('');
+  if(c.style==='list'){const rows=sh==='sq'?[0,2,3,4,5]:[0,1,2,3,4,5];
+    if(sh==='wide'){return`<div class="W" style="flex-direction:row;gap:${b*.08}px"><div class="col f1" style="justify-content:space-around">${list([0,1,2],b*.09)}</div><div class="col f1" style="justify-content:space-around">${list([3,4,5],b*.09)}</div></div>`}
+    return`<div class="W" style="justify-content:space-around">${list(rows,Math.min(b*.085,ah/rows.length*.5))}</div>`}
+  if(c.style==='countdown')return`<div class="W" style="${sh==='tall'||sh==='big'?'justify-content:center':''}"><span class="r cap dim" style="gap:${b*.03}px">${pIcon(ps.next===ps.ts[5]?5:ps.ts.indexOf(ps.next),b*.09)}باقي على ${ps.next.nm}</span>${sh==='tall'||sh==='big'?'':'<div class="f1"></div>'}<span class="n acc" style="font-weight:300;font-size:${Math.min(aw/2.9,b*(sh==='big'?.7:.44))}px;margin-top:${b*.04}px">${left}</span><span class="lab" style="margin-top:${b*.03}px">${ps.next.nm} · <span class="n" style="letter-spacing:0">${D(ps.next.t)}</span></span>${ex}</div>`;
+  if(c.style==='arc'){const svgW=aw,svgH=ah-b*.3,yH=svgH*.78,A=svgH*.62,x0=b*.04,x1=svgW-b*.04;
+    const m=x=>ps.ts[x].m,sr=m(1),mg=m(4),now=new Date(),tm=now.getHours()*60+now.getMinutes();
+    const pt=t=>{const u=(t-sr)/(mg-sr);return[x1-u*(x1-x0),yH-A*Math.sin(u*Math.PI)]};
+    const arc=smooth(Array.from({length:25},(_,i)=>pt(sr+(mg-sr)*i/24)));
+    const agid=uidg(),day=tm>=sr&&tm<=mg,sp=day?pt(tm):[tm<sr?x1:x0,yH+b*.04];
+    const mk=i=>{const q=pt(m(i));return`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${b*.018}" fill="#fff" opacity=".85"/>`};
+    const labs=[1,2,3,4].map(i=>{const q=pt(m(i));return`<text x="${q[0].toFixed(1)}" y="${(yH+b*.11).toFixed(1)}" text-anchor="${i===1?'end':i===4?'start':'middle'}" font-size="${b*.07}" fill="#fff" opacity="${ps.ni===i?1:.55}" font-weight="${ps.ni===i?700:500}">${ps.ts[i].nm}</text>`}).join('');
+    return`<div class="W"><div class="r bt"><div class="col"><span class="cap dim">القادمة</span><span class="sub">${ps.next.nm}</span></div><span class="n h2 acc" style="font-weight:400">${D(ps.next.t)}</span></div><div class="f1"></div>
+      <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="overflow:visible"><defs><linearGradient id="${agid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ACC[c.accent]}" stop-opacity=".32"/><stop offset="1" stop-color="${ACC[c.accent]}" stop-opacity="0"/></linearGradient></defs>
+      <path d="${arc} L${x0},${yH} L${x1},${yH}Z" fill="url(#${agid})"/><path d="${arc}" fill="none" stroke="${ACC[c.accent]}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="0" x2="${svgW}" y1="${yH}" y2="${yH}" stroke="#fff" stroke-opacity=".3"/>${mk(2)}${mk(3)}
+      <circle cx="${sp[0].toFixed(1)}" cy="${sp[1].toFixed(1)}" r="${b*.05}" fill="#ffd54a" stroke="#fff" stroke-width="1.5" opacity="${day?1:.5}"/>${sh==='sq'?'':labs}</svg>${ex}</div>`}
+  // next
+  const core=`<span class="r cap dim" style="gap:${b*.03}px">${pIcon(ps.ts.indexOf(ps.next),b*.09)}الصلاة القادمة</span><div class="f1"></div><span class="h2">${ps.next.nm}</span><span class="n hero" style="font-weight:300">${D(ps.next.t)}</span><div class="pbar" style="margin-top:${b*.07}px"><i style="width:${(ps.prog*100).toFixed(1)}%"></i></div><span class="cap dim" style="margin-top:${b*.03}px">بعد ${left}</span>`;
+  if(sh==='wide')return`<div class="W" style="flex-direction:row;gap:${b*.1}px"><div class="col" style="width:42%">${core}</div><div class="vr"></div><div class="col f1" style="justify-content:space-around">${list([0,2,3,4,5],b*.08)}</div></div>`;
+  if(sh==='tall'||sh==='big')return`<div class="W"><div class="col" style="height:${b*.78}px">${core}</div><div class="hr"></div><div class="col f1" style="justify-content:space-around">${list([0,1,2,3,4,5],b*.085)}</div></div>`;
+  return`<div class="W">${core}</div>`;
 },
-count(c,w,h,sh){
-  const ar=c.digits==='ar',f=nf(c);let title,days,sub='';
-  if(c.style==='ramadan'){const r=ramadan();title=r.inRamadan?'رمضان كريم':'باقي على رمضان';days=r.inRamadan?hijri(new Date()).d:r.days;sub=r.inRamadan?'اليوم من رمضان':(r.date?dg(r.date.getDate(),ar)+' '+FMT.gmon.format(r.date):'')}
-  else if(c.style==='salary'){const n=new Date();let t=new Date(n.getFullYear(),n.getMonth(),Math.min(c.salary,28));
-    const lastDay=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();t=new Date(n.getFullYear(),n.getMonth(),Math.min(c.salary,lastDay));
-    if(daysTo(t)<0){const ld=new Date(n.getFullYear(),n.getMonth()+2,0).getDate();t=new Date(n.getFullYear(),n.getMonth()+1,Math.min(c.salary,ld))}
-    title='باقي على الراتب';days=daysTo(t);sub='يوم '+dg(c.salary,ar)+' بالشهر'}
-  else{title=c.title||'مناسبتك';const t=c.date?new Date(c.date+'T12:00'):null;days=t?daysTo(t):null;sub=t?dg(t.getDate(),ar)+' '+FMT.gmon.format(t)+' '+dg(t.getFullYear(),ar):'اختار التاريخ من التعديل'}
-  const num=days==null?'—':dg(Math.max(days,0),ar);
-  if(sh==='strip')return`<div class="c row ar" style="justify-content:space-between;padding:0 8cqw"><div style="display:flex;flex-direction:column"><b style="font-size:24cqh">${esc(title)}</b><span class="mut" style="font-size:18cqh">${sub}</span></div><div class="tn acc" style="font-family:${f};font-size:60cqh;font-weight:300">${num}<span style="font-size:.35em;margin-inline-start:.3em">يوم</span></div></div>`;
-  return`<div class="c ar" style="gap:1cqh"><div class="mut" style="font-size:${sh==='wide'?9:8}cqmin">${esc(title)}</div><div class="tn acc" style="font-family:${f};font-size:${sh==='wide'?44:34}cqmin;font-weight:300">${num}</div><div style="font-size:${sh==='wide'?8:7.5}cqmin">يوم</div><div class="mut" style="font-size:${sh==='wide'?7:6.5}cqmin">${sub}</div></div>`;
+count(c,w,h,sh,z,b){
+  const ar=c.digits==='ar',D=x=>dg(x,ar),p=b*.105;let title,days,sub='',icon,frac=null;
+  const crescent=s=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path d="M14 3a9 9 0 1 0 7 14A7.5 7.5 0 0 1 14 3z" fill="currentColor"/><path d="M18 5l.7 1.6 1.7.2-1.3 1.1.4 1.7-1.5-.9-1.5.9.4-1.7-1.3-1.1 1.7-.2z" fill="currentColor"/></svg>`;
+  const wallet=s=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><rect x="3" y="6" width="18" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 12.5h2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M5 6l9-3 1.5 3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
+  const star=s=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" fill="currentColor"/></svg>`;
+  if(c.style==='ramadan'){const r=ramadan();title=r.inRamadan?'رمضان كريم':'رمضان';days=r.inRamadan?hijri(new Date()).d:r.days;icon=crescent;sub=r.inRamadan?'اليوم من الشهر':(r.date?`١ رمضان · ${D(r.date.getDate())} ${FMT.gmon.format(r.date)}`:'')}
+  else if(c.style==='salary'){const n=new Date();const ld=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();let t=new Date(n.getFullYear(),n.getMonth(),Math.min(c.salary,ld));
+    if(daysTo(t)<0){const l2=new Date(n.getFullYear(),n.getMonth()+2,0).getDate();t=new Date(n.getFullYear(),n.getMonth()+1,Math.min(c.salary,l2))}
+    title='الراتب';days=daysTo(t);icon=wallet;sub='يوم '+D(c.salary)+' بالشهر';frac=1-days/30}
+  else{title=c.title||'مناسبتك';const t=c.date?new Date(c.date+'T12:00'):null;days=t?daysTo(t):null;icon=star;sub=t?D(t.getDate())+' '+FMT.gmon.format(t)+' '+D(t.getFullYear()):'اختار التاريخ من التعديل'}
+  const num=days==null?'—':D(Math.max(days,0)),unit=days===1?'يوم':days===2?'يومين':days>2&&days<11?'أيام':'يوم';
+  const head=`<span class="r sub acc" style="gap:${b*.04}px">${icon(b*.13)}<span class="ell">${esc(title)}</span></span>`;
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center">${head}<span class="r" style="align-items:baseline;gap:${b*.03}px"><span class="n" style="font-size:${z.h*.55}px;font-weight:300">${num}</span><span class="lab dim">${unit}</span></span></div>`;
+  const body=`<span class="cap dim">${title==='رمضان'||c.style!=='ramadan'?'باقي':''}</span><span class="r" style="align-items:baseline;gap:${b*.035}px"><span class="n mega" style="font-weight:300">${num}</span><span class="sub dim">${unit}</span></span>${frac!=null?`<div class="pbar" style="margin:${b*.04}px 0"><i style="width:${clamp(frac,0,1)*100}%"></i></div>`:''}<span class="cap dim ell">${sub}</span>`;
+  if(sh==='wide'){const r=ramadan();return`<div class="W" style="flex-direction:row;gap:${b*.12}px"><div class="col f1">${head}<div class="f1"></div>${body}</div>${c.style==='ramadan'&&!r.inRamadan&&r.date?`<div class="vr"></div><div class="col" style="justify-content:center;width:40%;gap:${b*.02}px"><span class="cap dim">يبدأ</span><span class="sub">${D(1)} رمضان ${D(hijri(r.date).y)}</span><span class="lab dim">${FMT.day.format(r.date)} ${D(r.date.getDate())} ${FMT.gmon.format(r.date)}</span></div>`:''}</div>`}
+  return`<div class="W">${head}<div class="f1"></div>${body}</div>`;
 },
-weather(c,w,h,sh,z){
-  const ar=c.digits==='ar',f=nf(c),D=x=>dg(x,ar);
-  const hours=[['الحين','sun',24],['3م','sun',25],['4م','cloud',23],['5م','cloud',21],['6م','moon',19],['7م','moon',18],['8م','wind',17]];
-  const days=[['اليوم','sun',14,25],['السبت','sun',15,26],['الأحد','cloud',13,23],['الاثنين','wind',12,21],['الثلاثاء','sun',13,24]];
-  const note=`<span class="mut" style="font-size:${sh==='sq'?4:3.2}cqmin">مثال</span>`;
-  if(c.style==='hourly'){const hs=hours.slice(0,sh==='sq'&&w<4?4:sh==='wide'&&w>=6?7:6);
-    return`<div class="c ar" style="align-items:stretch;justify-content:space-between;padding:7cqh 7cqw"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:${sh==='wide'?11:9}cqh">الرياض ${note}</b><span class="tn" style="font-family:${f};font-size:${sh==='wide'?20:13}cqh;font-weight:300">${D(24)}°</span></div><div style="display:flex;justify-content:space-between">${hs.map(([t,ic,tp])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:2cqh"><span class="mut" style="font-size:${sh==='wide'?8:7}cqh">${dg(t,ar)}</span><span style="width:${sh==='wide'?16:12}cqh;height:${sh==='wide'?16:12}cqh">${WX[ic]()}</span><b class="tn" style="font-family:${f};font-size:${sh==='wide'?10:8}cqh;font-weight:500">${D(tp)}°</b></div>`).join('')}</div></div>`}
-  if(c.style==='days'){const ds=days.slice(0,sh==='tall'||sh==='sq'&&w>=4?5:sh==='wide'?3:4);
-    return`<div class="c ar" style="align-items:stretch;justify-content:center;gap:${sh==='tall'?3:2}cqh;padding:6cqh 8cqw">${ds.map(([d,ic,lo,hi])=>`<div style="display:flex;align-items:center;gap:3cqw;font-size:${sh==='wide'?9:7}cqmin"><span style="width:26%">${d}</span><span style="width:${sh==='wide'?7:9}cqmin;height:${sh==='wide'?7:9}cqmin">${WX[ic]()}</span><span class="tn mut" style="font-family:${f}">${D(lo)}°</span><div class="bar" style="flex:1"><i style="margin-inline-start:${(lo-10)*4}%;width:${(hi-lo)*5}%;background:linear-gradient(90deg,#9db0ff,#f7a867)"></i></div><span class="tn" style="font-family:${f}">${D(hi)}°</span></div>`).join('')}</div>`}
-  if(c.style==='bars'){const hs=hours.slice(0,sh==='sq'&&w<4?5:7);const mx=26,mn=15;
-    return`<div class="c ar" style="align-items:stretch;padding:7cqh 7cqw;gap:3cqh"><div style="display:flex;justify-content:space-between"><b style="font-size:9cqh">اليوم ${note}</b><span class="tn" style="font-family:${f};font-size:9cqh">${D(17)}° – ${D(25)}°</span></div><div style="display:flex;align-items:flex-end;justify-content:space-between;flex:1;gap:2cqw">${hs.map(([t,,tp])=>{const r=(tp-mn)/(mx-mn);return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1.5cqh;height:100%;justify-content:flex-end"><span class="tn" style="font-family:${f};font-size:7cqh">${D(tp)}°</span><div style="width:100%;max-width:22px;height:${20+r*55}%;border-radius:99px;background:linear-gradient(0deg,#6e8bff,hsl(${40-r*40} 90% 65%))"></div><span class="mut" style="font-size:6.5cqh">${dg(t,ar)}</span></div>`}).join('')}</div></div>`}
-  if(sh==='strip')return`<div class="c row ar" style="justify-content:space-between;padding:0 7cqw"><div style="display:flex;align-items:center;gap:3cqw"><span style="width:50cqh;height:50cqh">${WX.sun()}</span><b style="font-size:24cqh">الرياض · صافي</b></div><span class="tn" style="font-family:${f};font-size:56cqh;font-weight:300">${D(24)}°</span></div>`;
-  const big=sh==='wide'?48:34;
-  return`<div class="c ar" style="align-items:stretch;justify-content:space-between;padding:7cqh 8cqw"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><b style="font-size:${sh==='wide'?11:8}cqmin">الرياض</b><div>${note}</div></div><span style="width:${sh==='wide'?22:20}cqmin;height:${sh==='wide'?22:20}cqmin">${WX.sun()}</span></div><div class="tn" style="font-family:${f};font-size:${big}cqmin;font-weight:300;text-align:right">${D(24)}°</div><div style="display:flex;justify-content:space-between;font-size:${sh==='wide'?9:7}cqmin"><span>صافي</span><span class="mut tn" style="font-family:${f}">↑${D(25)}° ↓${D(14)}°</span></div></div>`;
+weather(c,w,h,sh,z,b){
+  const ar=c.digits==='ar',D=x=>dg(x,ar),p=b*.105,aw=z.w-2*p,ah=z.h-2*p,now=wxNow();
+  const city=`<span class="sub r" style="gap:${b*.025}px">الرياض${LOC(b*.075)}</span>`,ex=`<span class="cap" style="opacity:.5;font-weight:500">مثال</span>`;
+  const hl=`<span class="cap n" style="letter-spacing:0;font-family:var(--nf)">↑${D(now.hi)}° ↓${D(now.lo)}°</span>`;
+  const hours=(k,fs)=>`<div class="r bt" style="gap:0">${wxHours(k).map(x=>`<div class="col" style="align-items:center;gap:${b*.03}px;flex:1"><span class="cap" style="opacity:.75;font-weight:500">${dg(x.lab,ar)}</span>${wxIcon(x.icon,fs*1.6)}<span class="n lab" style="letter-spacing:0;font-weight:500">${D(x.t)}°</span></div>`).join('')}</div>`;
+  const allLo=Math.min(...WX_DAYS.map(d=>d[2])),allHi=Math.max(...WX_DAYS.map(d=>d[3]));
+  const daysRows=(k,fs)=>WX_DAYS.slice(0,k).map(([d,ic,lo,hi])=>`<div class="r" style="gap:${b*.04}px;font-size:${fs}px"><span style="width:24%">${d}</span>${wxIcon(ic,fs*1.5)}<span class="n dim" style="letter-spacing:0;width:12%;text-align:center">${D(lo)}°</span><div class="pbar" style="direction:ltr;flex:1"><i style="margin-left:${((lo-allLo)/(allHi-allLo)*100).toFixed(1)}%;width:${((hi-lo)/(allHi-allLo)*100).toFixed(1)}%;background:linear-gradient(90deg,#8fd3ff,#ffd36b,#ff9a4a)"></i></div><span class="n" style="letter-spacing:0;width:12%;text-align:center">${D(hi)}°</span></div>`).join('');
+  if(c.style==='minimal')return`<div class="W" style="align-items:center;justify-content:center;gap:${b*.02}px;text-align:center">${wxIcon(now.icon,Math.min(aw,ah)*.42)}<span class="n" style="font-size:${Math.min(ah*.36,aw*.3)}px;font-weight:300">${D(now.t)}°</span><span class="cap" style="opacity:.75">الرياض · ${now.cond}</span></div>`;
+  if(c.style==='curve'){const hs=wxHours(sh==='sq'||sh==='tall'?5:sh==='strip'?6:8),svgW=aw,svgH=sh==='strip'?ah:ah-b*.34,top=b*.12,bot=svgH-b*.13;
+    const mn=Math.min(...hs.map(x=>x.t)),mx=Math.max(...hs.map(x=>x.t));const pts=hs.map((x,i)=>[svgW-(i/(hs.length-1))*svgW*.9-svgW*.05,bot-(x.t-mn)/Math.max(1,mx-mn)*(bot-top)]);
+    const d=smooth(pts),gid=uidg();
+    const svg=`<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="overflow:visible"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${ACC[c.accent]}" stop-opacity=".4"/><stop offset="1" stop-color="${ACC[c.accent]}" stop-opacity="0"/></linearGradient></defs><path d="${d} L${pts.at(-1)[0]},${svgH} L${pts[0][0]},${svgH}Z" fill="url(#${gid})"/><path d="${d}" fill="none" stroke="${ACC[c.accent]}" stroke-width="2.2" stroke-linecap="round"/>${pts.map((q,i)=>`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${i?2.2:3.6}" fill="#fff"/><text x="${q[0].toFixed(1)}" y="${(q[1]-b*.045).toFixed(1)}" text-anchor="middle" font-size="${b*.068}" fill="#fff" font-family="${nf(c).replace(/'/g,'')}">${D(hs[i].t)}°</text><text x="${q[0].toFixed(1)}" y="${svgH}" text-anchor="middle" font-size="${b*.062}" fill="#fff" opacity=".6">${dg(hs[i].lab,ar)}</text>`).join('')}</svg>`;
+    if(sh==='strip')return`<div class="W" style="padding:${b*.04}px ${p}px">${svg}</div>`;
+    return`<div class="W"><div class="r bt">${city}<span class="n h2" style="font-weight:300">${D(now.t)}°</span></div><div class="f1"></div>${svg}</div>`}
+  // today
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center"><div class="r" style="gap:${b*.05}px">${wxIcon(now.icon,z.h*.6)}<div class="col">${city}<span class="cap" style="opacity:.8">${now.cond} · ${hl}</span></div></div><span class="n" style="font-size:${z.h*.55}px;font-weight:300">${D(now.t)}°</span></div>`;
+  const top=`<div class="col">${city}<span class="n hero" style="font-weight:300;font-size:calc(var(--hero)*1.12)">${D(now.t)}°</span></div>`;
+  const cond=`<div class="col" style="gap:${b*.015}px">${wxIcon(now.icon,b*.15)}<span class="lab" style="font-weight:600">${now.cond}</span>${hl}</div>`;
+  if(sh==='sq')return`<div class="W">${top}<div class="f1"></div>${cond}<span style="position:absolute;left:${p}px;top:${p}px">${ex}</span></div>`;
+  const header=`<div class="r bt" style="align-items:flex-start">${top}<div class="col" style="align-items:flex-start;gap:${b*.015}px">${wxIcon(now.icon,b*.15)}<span class="lab" style="font-weight:600">${now.cond}</span>${hl}</div></div>`;
+  if(sh==='wide')return`<div class="W">${header}<div class="f1"></div>${hours(w>=6?8:6,b*.09)}</div>`;
+  if(sh==='tall')return`<div class="W">${top}<div class="r" style="gap:${b*.04}px;margin-top:${b*.02}px">${wxIcon(now.icon,b*.12)}<span class="lab">${now.cond}</span></div>${hl}<div class="hr"></div><div class="col f1" style="justify-content:space-around">${WX_DAYS.slice(0,5).map(([d,ic,lo,hi])=>`<div class="r bt lab"><span style="width:38%">${d}</span>${wxIcon(ic,b*.11)}<span class="n" style="letter-spacing:0">${D(hi)}° <span class="dim">${D(lo)}°</span></span></div>`).join('')}</div></div>`;
+  return`<div class="W">${header}<div style="margin-top:${b*.08}px">${hours(6,b*.09)}</div><div class="hr" style="margin:${b*.07}px 0"></div><div class="col f1" style="justify-content:space-around">${daysRows(5,b*.085)}</div></div>`;
 },
-battery(c,w,h,sh,z){
-  const ar=c.digits==='ar',f=nf(c),pc=Math.round(rt.batt.level*100),ch=rt.batt.charging;
-  if(c.style==='devices'){const ds=[['الجوال',pc,true],['الساعة',64,false],['السماعات',41,false]];
-    return`<div class="c ar" style="align-items:stretch;justify-content:center;gap:${sh==='wide'?5:4}cqh;padding:6cqh 9cqw">${ds.map(([n,v,real])=>`<div style="display:flex;flex-direction:column;gap:1.4cqh"><div style="display:flex;justify-content:space-between;font-size:${sh==='wide'?9:7.5}cqmin"><span>${n}${real?'':' <span class="mut" style="font-size:.7em">مثال</span>'}</span><span class="tn" style="font-family:${f}">${dg(v,ar)}%</span></div><div class="bar"><i style="width:${v}%"></i></div></div>`).join('')}</div>`}
-  if(c.style==='bars'){const us=[['يوتيوب',38],['واتساب',22],['X',14],['Claude',11],['الكاميرا',6]].slice(0,sh==='sq'&&w<4?3:5);
-    return`<div class="c ar" style="align-items:stretch;justify-content:center;gap:2.5cqh;padding:6cqh 9cqw"><div style="display:flex;justify-content:space-between;font-size:${sh==='wide'?9:8}cqmin"><b>الاستهلاك</b><span class="mut">مثال</span></div>${us.map(([n,v],i)=>`<div style="display:flex;align-items:center;gap:3cqw;font-size:${sh==='wide'?8:7}cqmin"><span style="width:30%">${n}</span><div class="bar" style="flex:1;height:7px"><i style="width:${v*2.4}%;background:linear-gradient(90deg,hsl(${150-i*28} 70% 62%),hsl(${130-i*28} 70% 52%))"></i></div><span class="tn" style="font-family:${f};width:14%;text-align:left">${dg(v,ar)}%</span></div>`).join('')}</div>`}
-  if(c.style==='big'||sh==='strip'){const fs=sh==='strip'?58:sh==='wide'?46:34;
-    return`<div class="c ${sh==='strip'?'row':''} ar" style="gap:2cqh;${sh==='strip'?'justify-content:space-between;padding:0 8cqw':''}"><div class="tn" style="font-family:${f};font-size:${sh==='strip'?fs+'cqh':fs+'cqmin'};font-weight:300">${dg(pc,ar)}<span style="font-size:.4em">%</span></div><div style="display:flex;flex-direction:column;gap:1.5cqh;align-items:center;${sh==='strip'?'width:45%':'width:70%'}"><div class="bar" style="height:8px"><i style="width:${pc}%"></i></div><span class="mut" style="font-size:${sh==='strip'?16:sh==='wide'?7.5:6.5}${sh==='strip'?'cqh':'cqmin'}">${ch?'يشحن ⚡':'غير موصل'}</span></div></div>`}
-  const R0=40,C=2*Math.PI*R0,sz=Math.min(z.w,z.h)*.78;
-  const ring=`<div style="position:relative;width:${sz}px;height:${sz}px"><svg viewBox="0 0 100 100" width="${sz}" height="${sz}" style="transform:rotate(-90deg)"><circle cx="50" cy="50" r="${R0}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="8"/><circle cx="50" cy="50" r="${R0}" fill="none" stroke="var(--wac)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(C*pc/100).toFixed(1)} ${C.toFixed(1)}"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="tn" style="font-family:${f};font-size:${sz*.26}px;font-weight:300">${dg(pc,ar)}%</span><span class="mut" style="font-size:${sz*.1}px">${ch?'يشحن':'الجوال'}</span></div></div>`;
-  if(sh==='wide')return`<div class="c row ar" style="justify-content:space-around">${ring}<div style="display:flex;flex-direction:column;gap:4cqh;width:40%">${[['الساعة',64],['السماعات',41]].map(([n,v])=>`<div style="display:flex;flex-direction:column;gap:1.4cqh"><div style="display:flex;justify-content:space-between;font-size:8.5cqh"><span>${n}</span><span class="tn" style="font-family:${f}">${dg(v,ar)}%</span></div><div class="bar"><i style="width:${v}%"></i></div></div>`).join('')}<span class="mut" style="font-size:6.5cqh">الساعة والسماعات: مثال</span></div></div>`;
-  return`<div class="c">${ring}</div>`;
+battery(c,w,h,sh,z,b){
+  const ar=c.digits==='ar',D=x=>dg(x,ar),p=b*.105,aw=z.w-2*p,ah=z.h-2*p,pc=Math.round(rt.batt.level*100),chg=rt.batt.charging;
+  const devs=[['phone','الجوال',pc,true],['watch','الساعة',64],['buds','السماعات',41],['pen','القلم',88]];
+  const col=v=>v<=20?'#ff6b6b':ACC[c.accent];
+  if(c.style==='big'||sh==='strip'&&c.style==='big'){const bw=Math.min(aw*.9,b*1.1),bh=bw*.46;
+    return`<div class="W" style="justify-content:center;align-items:center;gap:${b*.06}px"><div style="position:relative;width:${bw}px;height:${bh}px;border-radius:${bh*.26}px;border:${b*.018}px solid rgba(255,255,255,.75);padding:${b*.022}px"><div style="height:100%;width:${pc}%;border-radius:${bh*.16}px;background:linear-gradient(180deg,color-mix(in srgb,${col(pc)} 70%,#fff),${col(pc)})"></div><i style="position:absolute;right:-${b*.05}px;top:30%;width:${b*.03}px;height:40%;border-radius:0 4px 4px 0;background:rgba(255,255,255,.75)"></i><span class="n" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:${bh*.42}px;font-weight:600;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.5)">${D(pc)}%</span></div><span class="lab dim">${chg?'يشحن ⚡':'الجوال · غير موصل'}</span></div>`}
+  if(c.style==='list'||sh==='tall'){const k=sh==='strip'?2:4;
+    return`<div class="W" style="justify-content:space-around"><span class="cap" style="position:absolute;left:${p}px;bottom:${p*.5}px;opacity:.4;font-weight:500">غير الجوال: مثال</span>${devs.slice(0,k).map(([g,nm,v,real])=>`<div class="col" style="gap:${b*.025}px"><div class="r bt lab"><span class="r" style="gap:${b*.035}px">${devG(g,b*.1)}${nm}</span><span class="n" style="letter-spacing:0;font-weight:600">${D(v)}%</span></div><div class="pbar"><i style="width:${v}%;background:${col(v)}"></i></div></div>`).join('')}</div>`}
+  // rings
+  if(sh==='sq'){const rs=(Math.min(aw,ah)-b*.06)/2;return`<div class="W" style="display:grid;grid-template-columns:1fr 1fr;place-items:center;gap:${b*.06}px">${devs.map(([g,,v])=>ringSVG(rs,v/100,9,col(v),`<span style="color:#fff;opacity:.9">${devG(g,rs*.38)}</span>`)).join('')}</div>`}
+  const k=sh==='strip'?4:w>=6?4:4,rs=sh==='strip'?z.h*.7:Math.min(aw/4.6,ah*.62);
+  return`<div class="W" style="flex-direction:row;justify-content:space-around;align-items:center">${devs.slice(0,k).map(([g,,v])=>`<div class="col" style="align-items:center;gap:${b*.04}px">${ringSVG(rs,v/100,9,col(v),`<span style="color:#fff;opacity:.9">${devG(g,rs*.38)}</span>`)}${sh==='strip'?'':`<span class="n lab" style="letter-spacing:0;font-weight:600">${D(v)}%</span>`}</div>`).join('')}</div>`;
 },
-controls(c,w,h,sh,z){
-  const T=[['flash','فلاش',I.flash],['mute','صامت',I.mute],['wifi','واي فاي',I.wifi],['bt','بلوتوث',I.bt],['dnd','لا تزعج',I.moon],['saver','توفير',I.leaf]];
-  const cols=sh==='wide'?(w>=6?6:3):2,list=sh==='wide'?T.slice(0,cols*2>6?6:cols*2):T.slice(0,4);
-  return`<div class="c" style="padding:7cqmin"><div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:5cqmin;width:100%;height:100%">${list.map(([k,n,ic])=>`<button class="tile ${rt.ctl[k]?'on':''}" data-act="ctl:${k}" aria-label="${n}" style="${rt.ctl[k]&&c.accent!=='white'?'background:var(--wac);color:#111':''}">${ic}</button>`).join('')}</div></div>`;
+controls(c,w,h,sh,z,b){
+  const T=[['wifi','واي فاي',I.wifi],['bt','بلوتوث',I.bt],['flash','الفلاش',I.flash],['dnd','لا تزعج',I.moon],['mute','صامت',I.mute],['saver','توفير',I.leaf]];
+  const p=b*.105,aw=z.w-2*p,ah=z.h-2*p;const onBg=c.accent==='white'?'#fff':ACC[c.accent];
+  if(sh==='sq'){const cs=(Math.min(aw,ah)-b*.08)/2;return`<div class="W" style="display:grid;grid-template-columns:1fr 1fr;place-items:center;gap:${b*.08}px">${T.slice(0,4).map(([k,n,ic])=>`<button data-act="ctl:${k}" aria-label="${n}" style="width:${cs}px;height:${cs}px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${rt.ctl[k]?onBg:'rgba(255,255,255,.14)'};color:${rt.ctl[k]?'#111':'#fff'};transition:background .3s"><span style="width:${cs*.42}px;height:${cs*.42}px;display:block">${ic}</span></button>`).join('')}</div>`}
+  const cols=w>=6?3:2,rows=Math.ceil(T.length/cols),ph=(ah-b*.06*(rows-1))/rows;
+  return`<div class="W" style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:${b*.06}px">${T.map(([k,n,ic])=>`<button data-act="ctl:${k}" style="height:${ph}px;border-radius:${ph/2}px;display:flex;align-items:center;gap:${b*.04}px;padding:0 ${ph*.14}px;background:${rt.ctl[k]?onBg:'rgba(255,255,255,.12)'};color:${rt.ctl[k]?'#111':'#fff'};direction:rtl;transition:background .3s"><span style="width:${ph*.72}px;height:${ph*.72}px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:${rt.ctl[k]?'rgba(0,0,0,.08)':'rgba(255,255,255,.12)'}"><span style="width:55%;height:55%;display:block">${ic}</span></span><span class="col" style="align-items:flex-start;min-width:0"><span style="font-size:${b*.075}px;font-weight:600;white-space:nowrap">${n}</span><span style="font-size:${b*.06}px;opacity:.6">${rt.ctl[k]?'شغال':'طافي'}</span></span></button>`).join('')}</div>`;
 },
-music(c,w,h,sh,z){
-  const pl=rt.play;const btn=(a,ic,s)=>`<button data-act="${a}" style="width:${s};height:${s};display:flex;align-items:center;justify-content:center"><span style="width:70%;height:70%;display:block">${ic}</span></button>`;
-  if(c.style==='disc'){const sz=Math.min(z.w,z.h)*(sh==='sq'?.62:.8);
-    return`<div class="c ${sh!=='sq'?'row':''} ar" style="gap:5cqh;${sh!=='sq'?'justify-content:space-around':''}"><div class="disc ${pl?'play':''}" style="width:${sz}px;height:${sz}px"></div><div style="display:flex;flex-direction:column;align-items:center;gap:2cqh"><b style="font-size:${sh==='sq'?7:sh==='strip'?20:10}${sh==='sq'?'cqmin':'cqh'}">اسم المقطع</b>${btn('play',pl?I.pause:I.play,sh==='sq'?'14cqmin':'22cqh')}</div></div>`}
-  const art=`<div style="aspect-ratio:1;border-radius:18%;background:linear-gradient(135deg,var(--wac),#3b2a7a);box-shadow:0 6px 16px rgba(0,0,0,.35);flex:none;${sh==='sq'?'width:38cqmin':sh==='strip'?'height:70cqh':'height:62cqh'}"></div>`;
-  const meta=`<div style="display:flex;flex-direction:column;min-width:0"><b style="font-size:${sh==='sq'?7.5:sh==='strip'?22:11}${sh==='sq'?'cqmin':'cqh'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">اسم المقطع</b><span class="mut" style="font-size:${sh==='sq'?6.5:sh==='strip'?18:9}${sh==='sq'?'cqmin':'cqh'}">اسم الفنان · مثال</span></div>`;
-  const ctr=`<div style="display:flex;align-items:center;gap:3cqw">${btn('prev',I.prev,sh==='sq'?'11cqmin':'18cqh')}${btn('play',pl?I.pause:I.play,sh==='sq'?'15cqmin':'24cqh')}${btn('next',I.next,sh==='sq'?'11cqmin':'18cqh')}</div>`;
-  if(sh==='sq'||c.style==='mini'&&sh!=='strip')return`<div class="c ar" style="align-items:stretch;justify-content:space-between;padding:8cqmin"><div style="display:flex;gap:4cqmin;align-items:center">${art}${sh==='sq'?'':meta}</div>${sh==='sq'?meta:''}${ctr}</div>`;
-  return`<div class="c row ar" style="justify-content:space-between;padding:0 6cqw;gap:4cqw"><div style="display:flex;gap:4cqw;align-items:center;min-width:0">${art}${meta}</div>${ctr}</div>`;
+music(c,w,h,sh,z,b){
+  const pl=rt.play,p=b*.105,aw=z.w-2*p,ah=z.h-2*p;
+  const art=s=>`<div style="width:${s}px;height:${s}px;border-radius:${s*.16}px;flex:none;background:radial-gradient(80% 80% at 30% 25%,color-mix(in srgb,var(--wac) 85%,#fff) 0%,var(--wac) 35%,#3b2a7a 100%);box-shadow:0 ${b*.03}px ${b*.07}px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="${s*.36}" height="${s*.36}" fill="rgba(255,255,255,.85)"><path d="M9 17.5A2.5 2.5 0 1 1 7 15V5l11-2v11.5A2.5 2.5 0 1 1 16 12V6.3L9 7.6z"/></svg></div>`;
+  const btn=(a,ic,s,bg)=>`<button data-act="${a}" aria-label="${a}" style="width:${s}px;height:${s}px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;${bg?'background:rgba(255,255,255,.18)':''}"><span style="width:${s*(bg?.44:.62)}px;height:${s*(bg?.44:.62)}px;display:block">${ic}</span></button>`;
+  const meta=(t,a)=>`<div class="col" style="min-width:0"><span class="${t} ell" style="font-weight:600">اسم المقطع</span><span class="${a} dim ell">اسم الفنان · مثال</span></div>`;
+  const prog=`<div class="col" style="gap:${b*.02}px"><div class="pbar" style="background:rgba(255,255,255,.22)"><i style="width:38%;background:#fff"></i></div><div class="r bt cap dim n" style="letter-spacing:0;font-family:var(--nf)"><span>-2:14</span><span>1:22</span></div></div>`;
+  if(c.style==='disc'){const ds=Math.min(sh==='sq'?Math.min(aw,ah)*.7:ah*.98,aw*.5);
+    const disc=`<div class="disc ${pl?'play':''}" style="width:${ds}px;height:${ds}px"></div>`;
+    if(sh==='sq')return`<div class="W" style="align-items:center;justify-content:space-between">${disc}<div class="r bt" style="width:100%">${meta('lab','cap')}${btn('play',pl?I.pause:I.play,b*.2,true)}</div></div>`;
+    return`<div class="W" style="flex-direction:row;align-items:center;gap:${b*.1}px">${disc}<div class="col f1" style="gap:${b*.05}px">${meta('sub','lab')}<div class="r" style="gap:${b*.06}px">${btn('prev',I.prev,b*.16)}${btn('play',pl?I.pause:I.play,b*.22,true)}${btn('next',I.next,b*.16)}</div></div></div>`}
+  if(sh==='sq')return`<div class="W"><div class="r bt" style="align-items:flex-start">${art(b*.4)}${btn('play',pl?I.pause:I.play,b*.22,true)}</div><div class="f1"></div>${meta('lab','cap')}</div>`;
+  if(sh==='strip')return`<div class="W r bt" style="flex-direction:row;align-items:center;gap:${b*.06}px"><div class="r" style="gap:${b*.06}px;min-width:0">${art(ah)}${meta('lab','cap')}</div><div class="r">${btn('play',pl?I.pause:I.play,ah*.8,true)}${btn('next',I.next,ah*.6)}</div></div>`;
+  return`<div class="W" style="flex-direction:row;gap:${b*.1}px;align-items:center">${art(Math.min(ah,aw*.42))}<div class="col f1" style="min-width:0;align-self:stretch">${meta('sub','lab')}<div class="f1"></div>${prog}<div class="r" style="justify-content:center;gap:${b*.08}px;margin-top:${b*.02}px">${btn('prev',I.prev,b*.15)}${btn('play',pl?I.pause:I.play,b*.2,true)}${btn('next',I.next,b*.15)}</div></div></div>`;
 },
-text(c,w,h,sh){
+text(c,w,h,sh,z,b){
   const fam=c.afont==='playfair'?"'Playfair Display'":c.afont==='bodoni'?"'Bodoni Moda'":(FAR[c.afont]||FAR.ruqaa)[0];
-  const al=c.align==='right'?'flex-end':c.align==='left'?'flex-start':'center';
-  const base=sh==='strip'?c.tsize*.5:sh==='wide'?c.tsize*.28:c.tsize*.2;
-  return`<div class="c ar" style="align-items:${al};text-align:${c.align};padding:9cqmin"><div class="acc" style="font-family:${fam};font-size:${base}cqmin;line-height:1.45;${c.accent==='white'?'color:#fff':''};overflow-wrap:anywhere">${esc(c.text||'')}</div></div>`;
+  const al=c.align==='right'?'flex-start':c.align==='left'?'flex-end':'center';
+  const fs=b*(c.tsize/100)*(sh==='strip'?.24:sh==='sq'?.2:sh==='big'?.32:.24);
+  return`<div class="W" style="justify-content:center;align-items:${al};text-align:${c.align}"><span style="font-family:'Amiri';font-size:${b*.32}px;line-height:.6;color:var(--wac);opacity:.55;height:${b*.14}px;${sh==='strip'?'display:none':''}">”</span><div style="font-family:${fam};font-size:${fs}px;line-height:1.5;overflow-wrap:anywhere;${c.accent==='white'?'':'color:#fff'}">${esc(c.text||'')}</div>${c.author&&sh!=='strip'?`<span class="cap acc" style="margin-top:${b*.05}px">— ${esc(c.author)}</span>`:''}</div>`;
 },
 'ext-notes'(c,w,h,sh){const ls=['قائمة المقاضي','أفكار اللانشر','مواعيد الأسبوع','كتب أبي أقراها'];
   return`<div class="ext ar" style="background:#fffaf0;color:#2b2416;padding:7cqmin;display:flex;flex-direction:column;gap:3cqmin"><b style="font-size:${sh==='sq'?8:sh==='wide'?10:6}cqmin;color:#e07b14">الملاحظات</b>${ls.slice(0,sh==='wide'?2:4).map(x=>`<div style="font-size:${sh==='sq'?7:sh==='wide'?8:5}cqmin;border-bottom:1px solid #eadfc8;padding-bottom:1.5cqmin">${x}</div>`).join('')}</div>`},
@@ -789,8 +937,8 @@ text(c,w,h,sh){
 'ext-steps'(c,w,h,sh,z){const sz=Math.min(z.w,z.h)*.7,C=2*Math.PI*40;
   return`<div class="ext ar" style="background:linear-gradient(160deg,#103a26,#07150e);display:flex;align-items:center;justify-content:${sh==='wide'?'space-around':'center'};flex-direction:${sh==='wide'?'row':'column'}"><div style="position:relative;width:${sz}px;height:${sz}px"><svg viewBox="0 0 100 100" width="${sz}" height="${sz}" style="transform:rotate(-90deg)"><circle cx="50" cy="50" r="40" fill="none" stroke="#1f4a33" stroke-width="10"/><circle cx="50" cy="50" r="40" fill="none" stroke="#5be08f" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(C*.62).toFixed(1)} ${C.toFixed(1)}"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#d8ffe6"><b style="font-family:'Space Grotesk';font-size:${sz*.2}px">6,240</b><span style="font-size:${sz*.1}px">خطوة</span></div></div>${sh==='wide'?'<div style="color:#bfe9cf;font-size:9cqh">هدفك 10,000</div>':''}</div>`},
 'ext-search'(c,w,h,sh){return`<div class="ext ar" style="display:flex;align-items:center;padding:0 5cqw"><div style="flex:1;height:${sh==='strip'?70:42}cqh;border-radius:99px;background:#fff;color:#555;display:flex;align-items:center;gap:3cqw;padding:0 5cqw;font-size:${sh==='strip'?24:13}cqh"><span style="width:1.2em;height:1.2em;display:block">${I.search}</span>ابحث</div></div>`},
-};
 
+};
 /* ═══════════ grid engine ═══════════ */
 function overlaps(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function solve(others,d,cols,rows){
@@ -1034,7 +1182,7 @@ setInterval(()=>{if(document.hidden||view.editing||st.s.saver)return;let ch=fals
 
 /* ═══════════ mini preview ═══════════ */
 function miniHTML(cfg,w,h,maxW,maxH){const g=G0;const fw=w*g.cw-2*g.pad,fh=h*g.ch-2*g.pad;const s=Math.min(maxW/fw,maxH/fh,1);
-  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':'lg bgblack';
+  const bgc=cfg.bg==='glass'?'lg':cfg.bg==='tint'?'lg tint':cfg.bg==='dark'?'lg dark':cfg.bg==='clear'?'bgclear':cfg.bg==='black'?'lg bgblack':'lg';
   const ext=W[cfg.kind].ext;const fc=bgc+(cfg.glow===false?' noglow':'')+(ext&&cfg.frame==='glass'?' framed':'')+(ext&&cfg.frame==='none'?' bgclear':'');
   return`<div class="mini" style="width:${fw*s}px;height:${fh*s}px"><div class="wrap" style="width:${fw}px;height:${fh}px;transform:scale(${s})"><div class="wface ${fc}" style="--wac:${ACC[cfg.accent]||'#fff'}"><div class="wcont">${renderW(cfg,w,h,{w:fw,h:fh})}</div></div></div></div>`}
 
@@ -1102,8 +1250,9 @@ const OPTS={
   style:{l:'الشكل',t:'styles'},digits:{l:'الأرقام',t:'seg',ch:[['en','123'],['ar','١٢٣']]},font:{l:'خط الأرقام',t:'font'},afontOnly:{l:'الخط',t:'afont'},
   afontText:{l:'الخط',t:'tfont'},accent:{l:'اللون',t:'swatch'},seconds:{l:'عقرب الثواني',t:'seg',ch:[['sweep','انسيابي'],['tick','نبضة'],['off','بدون']]},
   showDate:{l:'التاريخ',t:'toggle'},h24:{l:'نظام ٢٤ ساعة',t:'toggle'},dial:{l:'كتابة على المينا',t:'text',ph:'مثلاً: وليد'},
-  bg:{l:'الخلفية',t:'chips',ch:[['glass','زجاج شفاف'],['tint','زجاج ملوّن'],['dark','زجاج داكن'],['clear','بدون خلفية'],['black','أسود']]},
-  glow:{l:'حافة مضيئة',t:'toggle'},text:{l:'جملتك',t:'area'},tsize:{l:'حجم الخط',t:'range',min:30,max:110},
+  bg:{l:'الخلفية',t:'chips',ch:[['auto','ألوان المحتوى'],['glass','زجاج شفاف'],['tint','زجاج ملوّن'],['dark','زجاج داكن'],['clear','بدون خلفية'],['black','أسود']]},
+  glow:{l:'حافة مضيئة',t:'toggle'},weight:{l:'سماكة الأرقام',t:'seg',ch:[['thin','رفيعة'],['regular','عادية'],['bold','عريضة']]},
+  face:{l:'المينا',t:'chips',ch:[['auto','حسب الوقت'],['white','أبيض'],['black','أسود'],['glass','زجاج']]},hijriDays:{l:'الهجري تحت كل يوم',t:'toggle'},author:{l:'القائل (اختياري)',t:'text',ph:'مثلاً: أبوي'},text:{l:'جملتك',t:'area'},tsize:{l:'حجم الخط',t:'range',min:30,max:110},
   align:{l:'المحاذاة',t:'seg',ch:[['right','يمين'],['center','وسط'],['left','يسار']]},salary:{l:'يوم الراتب',t:'range',min:1,max:31},
   title:{l:'اسم المناسبة',t:'text',ph:'مثلاً: العيد'},date:{l:'التاريخ',t:'date'},frame:{l:'الإطار',t:'chips',ch:[['glass','زجاج حوله'],['none','بدون إطار']]},
 };
@@ -1229,7 +1378,7 @@ R.settings.addEventListener('click',e=>{const t=e.target.closest('[data-sn],[dat
   else if(a==='copyyes'){const from=st.sc[st.cur],toK=st.cur==='inner'?'outer':'inner',to=st.sc[toK];const cp=JSON.parse(JSON.stringify(from));cp.pages.forEach(ps=>ps.forEach(it=>it.id=nid()));
     cp.cols=to.cols;cp.rows=to.rows;reflowScreen(cp);st.sc[toK]=cp;save();toast('انتسخ. شوفه من فوق');t.closest('.confirm').classList.remove('on')}
   else if(a==='export'){const txt=JSON.stringify({...st,s:{...st.s,wallImg:null}});(navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('انتسخت النسخة')).catch(()=>{const ta=$('#impt',R.settings);ta.value=txt;ta.select();toast('حددتها لك، انسخها')})}
-  else if(a==='import'){try{const o=JSON.parse($('#impt',R.settings).value);if(!o.sc||!o.s)throw 0;st={...o,v:1,s:{...defaults().s,...o.s}};save();syncSeg();build();toast('رجع ترتيبك')}catch(err){toast('النسخة مو صحيحة')}}
+  else if(a==='import'){try{const o=JSON.parse($('#impt',R.settings).value);if(!o.sc||!o.s)throw 0;st={...o,v:2,s:{...defaults().s,...o.s}};save();syncSeg();build();toast('رجع ترتيبك')}catch(err){toast('النسخة مو صحيحة')}}
 });
 R.settings.addEventListener('input',e=>{const t=e.target;if(t.dataset.sr){const k=t.dataset.sr;const v=+t.value;st.s[k]=v;const lab=t.parentNode.querySelector('.ol span');
     if(lab)lab.textContent=k==='dim'||k==='iconScale'?Math.round(v*100)+'٪':k==='blur'?v+'px':v;applySettings();if(['sideCount','dockCount'].includes(k)){renderSide();renderDock()}save()}
