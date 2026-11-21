@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         i?.getStringExtra("onyx_test_lock")?.let { v ->
             if (v.startsWith("wm-emu-2026:")) {
                 (application as OnyxApp).settings.lock = v.endsWith(":on")
-                i.removeExtra("onyx_test_lock")
+                i?.removeExtra("onyx_test_lock")
             }
         }
         if (i?.getStringExtra("onyx_test_fill") != "wm-emu-2026") return
