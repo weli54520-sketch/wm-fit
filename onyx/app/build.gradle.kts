@@ -14,8 +14,8 @@ android {
         minSdk = 31
         targetSdk = 35
         // كل تحديث: نزيد versionCode واحد ونغير versionName
-        versionCode = 5
-        versionName = "0.2.1"
+        versionCode = 6
+        versionName = "0.3"
     }
 
     // توقيع ثابت عشان كل تحديث ينزل فوق القديم بدون ما يضيع ترتيبك
