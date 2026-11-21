@@ -158,7 +158,11 @@ def home():
     time.sleep(1.5)
 
 
+CURRENT = []
+
+
 def set_screen(name):
+    CURRENT[:] = [name]
     size, dpi = SCREENS[name]
     adb(f"wm size {size}")
     adb(f"wm density {dpi}")
@@ -199,6 +203,16 @@ def scenario(title, fn):
     lines = [l.split(": ", 1)[-1] for l in drag_log.splitlines() if "OnyxDrag" in l]
     for l in lines[-12:]:
         log(f"    · {l}")
+    # الحارس: الأيقونة المسحوبة لازم تبقى تحت الإصبع (السيناريوهات تمسك الأيقونة من نصها)
+    worst = 0.0
+    dens = SCREENS[CURRENT[0]][1] / 160 if CURRENT else 2.625
+    for l in lines:
+        m = re.search(r"pointer=(\d+),(\d+)px center=(\d+),(\d+)dp", l)
+        if m:
+            px_, py_, cx_, cy_ = map(int, m.groups())
+            worst = max(worst, abs(px_ / dens - cx_), abs(py_ / dens - cy_))
+    if any("pointer=" in l and "center=" in l for l in lines):
+        log(f"  {'✅' if worst <= 12 else '❌'} الأيقونة تحت الإصبع: أبعد فرق {worst:.0f}dp")
     check_aligned(title)
 
 

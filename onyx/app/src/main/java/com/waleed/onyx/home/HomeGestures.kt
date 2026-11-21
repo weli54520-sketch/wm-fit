@@ -77,7 +77,9 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                 when {
                     // بوضع الترتيب: لمس أيقونة وتحريك = سحب على طول
                     editing && onItem != null -> {
-                        state.startDrag(onItem.item, onItem.slot, last)
+                        // نمسكه من مكان اللمسة الأولى بالضبط، وبعدين يلحق الإصبع (بدون ما يتأخر عنه)
+                        state.startDrag(onItem.item, onItem.slot, down.position)
+                        state.dragMove(last)
                         dragLoop(state, down.id)
                     }
                     abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, down.position)
@@ -91,7 +93,8 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                 // ضغطة طويلة
                 if (editing) {
                     if (onItem != null) {
-                        state.startDrag(onItem.item, onItem.slot, last)
+                        state.startDrag(onItem.item, onItem.slot, down.position)
+                        state.dragMove(last)
                         dragLoop(state, down.id)
                     }
                 } else when (hit) {
@@ -116,8 +119,12 @@ private suspend fun AwaitPointerEventScope.afterLongPress(state: HomeState, id: 
         c.consume()
         if (!c.pressed) return
         if ((c.position - at).getDistance() > dragStart) {
-            state.startDrag(hit.item, hit.slot, c.position)
-            if (state.drag != null) dragLoop(state, id)
+            // نمسكه من مكان الضغطة الطويلة، وبعدين ينتقل لمكان الإصبع
+            state.startDrag(hit.item, hit.slot, at)
+            if (state.drag != null) {
+                state.dragMove(c.position)
+                dragLoop(state, id)
+            }
             return
         }
     }
