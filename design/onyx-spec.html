@@ -1,0 +1,328 @@
+<title>كتاب مواصفات Onyx</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* التخطيط: كتاب بعمود قراءة واحد، فصول مرقمة لأنها ترتيب البناء الحقيقي، وكل بند عليه حالته */
+:root {
+  --bg: #0b0b0d; --surface: rgba(255,255,255,0.055); --line: rgba(255,255,255,0.13);
+  --fg: #f2f2f5; --muted: #a3a3ad; --gold: #e3c285; --bad: #ff8a80; --good: #9fe3cb; --ask: #9db0ff;
+  --ar: "Noto Kufi Arabic", system-ui, sans-serif; --num: "Space Grotesk", "Noto Kufi Arabic", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f4f4f6; --surface: rgba(0,0,0,0.04); --line: rgba(0,0,0,0.12);
+  --fg: #141418; --muted: #5d5d68; --gold: #8a6a2a; --bad: #b3261e; --good: #1f7a5c; --ask: #3949ab; color-scheme: light } }
+:root[data-theme="light"] { --bg: #f4f4f6; --surface: rgba(0,0,0,0.04); --line: rgba(0,0,0,0.12);
+  --fg: #141418; --muted: #5d5d68; --gold: #8a6a2a; --bad: #b3261e; --good: #1f7a5c; --ask: #3949ab; color-scheme: light }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--ar); font-size: 15.5px; line-height: 1.9; }
+.wrap { max-width: 740px; margin: 0 auto; padding-block: 28px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 40px; }
+h1 { font-size: 1.8rem; line-height: 1.5; margin: 0; font-weight: 700; text-wrap: balance; }
+h2 { font-size: 1.25rem; margin: 0; font-weight: 700; display: flex; gap: 10px; align-items: baseline; text-wrap: balance; }
+h2 .n { font-family: var(--num); color: var(--gold); font-size: 1rem; }
+h3 { font-size: 1.02rem; margin: 6px 0 0; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { color: var(--gold); font-size: .82rem; font-weight: 600; }
+.lead { color: var(--muted); margin-top: 8px; }
+.en { font-family: var(--num); direction: ltr; unicode-bidi: isolate; }
+.num { font-family: var(--num); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+section { display: flex; flex-direction: column; gap: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.st { font-size: .76rem; font-weight: 600; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; display: inline-block; line-height: 1.9; }
+.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.mine { color: var(--ask); border-color: color-mix(in srgb, var(--ask) 50%, transparent); }
+.no { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.box { border: 1px solid var(--line); border-radius: 20px; padding: 16px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.spec { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.spec > div { display: grid; grid-template-columns: minmax(7.5em, 34%) 1fr; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); align-items: start; }
+.spec > div:last-child { border-bottom: 0; }
+.spec .k { color: var(--muted); font-size: .9rem; }
+.spec .v { min-width: 0; }
+.spec .v .st { margin-inline-start: 6px; }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .9rem; }
+th, td { padding: 9px 12px; text-align: start; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: .8rem; }
+tr:last-child td { border-bottom: 0; }
+ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.ban li::marker { color: var(--bad); }
+.note { color: var(--muted); font-size: .88rem; }
+.diagram { border: 1px solid var(--line); border-radius: 18px; padding: 12px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; }
+.q { border: 1px dashed color-mix(in srgb, var(--ask) 55%, transparent); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.q h3 { margin: 0; }
+.src { color: var(--muted); font-size: .8rem; }
+.src a { color: var(--muted); }
+</style>
+
+<div class="wrap" dir="rtl" lang="ar">
+
+<header>
+  <div class="eyebrow">WM Onyx · كتاب المواصفات · الإصدار ١ · 21 نوفمبر</div>
+  <h1>كتاب مواصفات Onyx</h1>
+  <p class="lead">كل تفصيلة بالشاشة الرئيسية بالرقم: المقاسات، الحركة، اللمس، السحب، الويدجت، والإشعارات. ما ينكتب سطر كود إلا من هنا. وكل قاعدة هنا تتحول لفحص تلقائي يمنع أي تعديل يخربها.</p>
+  <div class="legend" style="margin-top:12px">
+    <span class="st ok">معتمد</span><span class="note">وافقت عليه قبل (بالتجربة أو بملف المشروع)</span>
+  </div>
+  <div class="legend">
+    <span class="st mine">اقتراحي</span><span class="note">قرار مني، يحتاج موافقتك (الأسئلة بآخر الكتاب)</span>
+  </div>
+  <div class="legend">
+    <span class="st no">ممنوع</span><span class="note">قاعدة لها حارس تلقائي، والبناء يفشل لو انكسرت</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">1</span>المبادئ</h2>
+  <ol>
+    <li><b>الشي اللي يصير صح يبقى صح.</b> كل قاعدة لها فحص تلقائي.</li>
+    <li><b>رايق مثل سامسونج.</b> الأماكن والصفحات تتحرك بنعومة بدون ارتداد. الارتداد للضغطة بس.</li>
+    <li><b>ما يتحرك شي إلا لما تقصد.</b> الشبكة ما تتحرك وأنت تمر، تتحرك لما توقف.</li>
+    <li><b>لمسة وحدة، مدير واحد.</b> أول ما يبدأ السحب، ما فيه شي ثاني ياخذ اللمسة.</li>
+    <li><b>كل مكان من معادلة وحدة.</b> ما نقرا مكان العناصر من الشاشة.</li>
+    <li><b>خفيف على البطارية.</b> لا حركة دايمة، والويدجت تتحدث والشاشة ظاهرة بس.</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="n">2</span>المقاسات</h2>
+  <p>كل المقاسات بوحدة <span class="en">dp</span> (وحدة ثابتة على كل الشاشات). <span class="en">W</span> = عرض الشاشة.</p>
+
+  <div class="diagram" aria-label="رسم الشاشة الخارجية">
+    <svg viewBox="0 0 300 560" role="img">
+      <rect x="1" y="1" width="298" height="558" rx="34" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+      <rect x="10" y="40" width="226" height="380" rx="10" fill="currentColor" fill-opacity=".06" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="4 4"/>
+      <text x="123" y="34" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity=".7">منطقة الصفحات (تنقص قبل العمود)</text>
+      <g fill="currentColor" fill-opacity=".22">
+        <rect x="20" y="52" width="40" height="40" rx="12"/><rect x="74" y="52" width="40" height="40" rx="12"/><rect x="128" y="52" width="40" height="40" rx="12"/><rect x="182" y="52" width="40" height="40" rx="12"/>
+        <rect x="20" y="106" width="40" height="40" rx="12"/><rect x="74" y="106" width="40" height="40" rx="12"/><rect x="128" y="106" width="40" height="40" rx="12"/><rect x="182" y="106" width="40" height="40" rx="12"/>
+        <rect x="20" y="160" width="40" height="40" rx="12"/><rect x="74" y="160" width="40" height="40" rx="12"/><rect x="128" y="160" width="40" height="40" rx="12"/><rect x="182" y="160" width="40" height="40" rx="12"/>
+      </g>
+      <rect x="244" y="150" width="50" height="196" rx="25" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-opacity=".5"/>
+      <g fill="currentColor" fill-opacity=".35">
+        <rect x="249" y="160" width="40" height="40" rx="12"/><rect x="249" y="210" width="40" height="40" rx="12"/><rect x="249" y="260" width="40" height="40" rx="12"/><rect x="249" y="306" width="40" height="34" rx="12"/>
+      </g>
+      <text x="269" y="140" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity=".7">العمود</text>
+      <rect x="16" y="470" width="268" height="62" rx="26" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-opacity=".5"/>
+      <text x="150" y="460" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity=".7">الشريط السفلي</text>
+      <line x1="236" y1="430" x2="244" y2="430" stroke="currentColor" stroke-opacity=".6"/>
+      <text x="240" y="446" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity=".7">فاصل</text>
+    </svg>
+  </div>
+
+  <h3>الشبكة</h3>
+  <div class="spec">
+    <div><span class="k">الأعمدة</span><span class="v">الخارجية <span class="num">4</span>، الداخلية <span class="num">6</span> (+ خانة محجوزة للعمود)<span class="st ok">معتمد</span></span></div>
+    <div><span class="k">الهامش اليسار</span><span class="v">الخارجية <span class="num">16</span>، الداخلية <span class="num">5%</span> من <span class="en">W</span><span class="st ok">معتمد · التجربة</span></span></div>
+    <div><span class="k">عرض الخانة</span><span class="v"><span class="num">(W − الهامش − 6) ÷ (الأعمدة + 1)</span><span class="st ok">معتمد · التجربة</span></span></div>
+    <div><span class="k">طول الخانة</span><span class="v">نفس العرض (خانة مربعة). عدد الصفوف = اللي يركب بالطول (بين <span class="num">4</span> و <span class="num">9</span>)، والفراغ الزايد ينقسم بالتساوي فوق وتحت<span class="st mine">اقتراحي · مثل التجربة</span></span></div>
+    <div><span class="k">الأيقونة</span><span class="v"><span class="num">78%</span> من الخانة، وأقصى شي <span class="num">84</span>. كل الأيقونات مقاس واحد<span class="st ok">معتمد</span></span></div>
+    <div><span class="k">منطقة الصفحات</span><span class="v">تبدأ من حافة الشاشة اليسار وتنتهي عند <span class="num">الهامش + الخانة × الأعمدة</span>. اللي يطلع عنها ينقص (ما يمر تحت العمود)<span class="st ok">معتمد · التجربة</span></span></div>
+  </div>
+
+  <h3>العمود الجانبي</h3>
+  <div class="spec">
+    <div><span class="k">مكانه</span><span class="v">منفصل عن الشبكة. لاصق يمين الشاشة (هامش <span class="num">6</span>)، وبنص منطقة الصفحات بالطول<span class="st ok">معتمد · التجربة 0.4</span></span></div>
+    <div><span class="k">الأيقونة</span><span class="v">الخارجية = نفس أيقونة الشبكة بالضبط. الداخلية = <span class="num">86%</span> منها<span class="st ok">معتمد</span></span></div>
+    <div><span class="k">عرض الزجاج</span><span class="v">الأيقونة + <span class="num">14</span> (يعني <span class="num">7</span> من كل جهة)<span class="st mine">اقتراحي · مثل التجربة</span></span></div>
+    <div><span class="k">المسافة بين أيقوناته</span><span class="v"><span class="num">24%</span> من الأيقونة. ثابتة، ما تتأثر بالصفوف<span class="st ok">معتمد · التجربة</span></span></div>
+    <div><span class="k">العدد</span><span class="v"><span class="num">4</span> (تقدر تخليه <span class="num">3</span> أو <span class="num">5</span>)<span class="st ok">معتمد</span></span></div>
+    <div><span class="k">الزوايا</span><span class="v">دائرية كاملة (كبسولة)<span class="st ok">معتمد</span></span></div>
+  </div>
+
+  <h3>الشريط السفلي</h3>
+  <div class="spec">
+    <div><span class="k">الأيقونة</span><span class="v"><span class="num">86%</span> من أيقونة الشبكة<span class="st ok">معتمد · التجربة</span></span></div>
+    <div><span class="k">الطول</span><span class="v">الأيقونة + <span class="num">20</span></span></div>
+    <div><span class="k">العرض</span><span class="v">الخارجية <span class="en">W − 32</span>. الداخلية <span class="num">66%</span> من <span class="en">W</span> وأقصى شي <span class="num">640</span></span></div>
+    <div><span class="k">العدد والزوايا</span><span class="v"><span class="num">6</span> أيقونات، زاوية <span class="num">43%</span> من الطول<span class="st ok">معتمد</span></span></div>
+  </div>
+
+  <h3>الزجاج المدخّن</h3>
+  <div class="spec">
+    <div><span class="k">الشكل</span><span class="v">داكن شفاف، بدون لون، بدون تضبيب، وحافة رفيعة فاتحة <span class="num">1</span><span class="st ok">معتمد</span></span></div>
+    <div><span class="k">وين</span><span class="v">العمود، الشريط، القوائم، اللوحات، وإطار الويدجت (اختياري)</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>الحركة</h2>
+  <p>أربع حركات بس، وكل شي بالواجهة يستخدم وحدة منها. هذا اللي يخلي الإحساس واحد ورايق.</p>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>الحركة</th><th>وين</th><th>المواصفات</th><th>الحالة</th></tr></thead>
+      <tbody>
+        <tr><td><b>ضغطة</b></td><td>الأيقونة تحت إصبعك</td><td>تصغر لـ <span class="num">0.88</span> خلال <span class="num">120ms</span>، وترجع نابضة بارتداد خفيف</td><td><span class="st ok">معتمد</span></td></tr>
+        <tr><td><b>أماكن</b></td><td>الزحف، النزول، الظل، تغيير مقاس الويدجت</td><td>ناعمة بدون ارتداد، حوالي <span class="num">320ms</span></td><td><span class="st mine">اقتراحي</span></td></tr>
+        <tr><td><b>صفحات</b></td><td>تقليب الصفحات، الرجوع للصفحة الأولى</td><td>تبطّئ بالنهاية، حوالي <span class="num">650ms</span> (الأصلي <span class="num">750</span>)، بدون ارتداد. فيه خيار بالإعدادات: هادية / عادية</td><td><span class="st mine">اقتراحي</span></td></tr>
+        <tr><td><b>ظهور</b></td><td>القوائم، اللوحات، وضع الترتيب</td><td>شفافية + تكبير خفيف، <span class="num">250ms</span>، ارتداد خفيف جداً للقوائم بس</td><td><span class="st mine">اقتراحي</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">ملف المشروع يقول "كل الحركات نابضة". بالتجربة طلع الارتداد مزعج بالأماكن والصفحات، فاقتراحي نخليه للضغطة والقوائم بس.</p>
+  <h3>تقليب الصفحات بإصبعك</h3>
+  <div class="spec">
+    <div><span class="k">متى تتقلب</span><span class="v">لو سحبت أكثر من <span class="num">40%</span> من الصفحة، أو سحبة سريعة فوق <span class="num">500dp/s</span><span class="st ok">أرقام الأصلي</span></span></div>
+    <div><span class="k">متى ترجع</span><span class="v">غير كذا ترجع لنفس الصفحة بنعومة</span></div>
+    <div><span class="k">تعليق بالنص</span><span class="v">مستحيل. الصفحات نكتبها بنفسنا، ودايماً تنتهي على صفحة كاملة<span class="st no">ممنوع</span></span></div>
+  </div>
+  <h3>الاهتزاز</h3>
+  <p>عند: الضغطة الطويلة، بداية السحب، النزول، تقليب الصفحة وأنت تسحب. <b>بس</b>. ما يهتز مع كل خانة.</p>
+</section>
+
+<section>
+  <h2><span class="n">4</span>خريطة اللمس</h2>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>وين</th><th>الحركة</th><th>الوضع العادي</th><th>وضع الترتيب</th></tr></thead>
+      <tbody>
+        <tr><td>أيقونة</td><td>ضغطة</td><td>تفتح التطبيق</td><td>ولا شي</td></tr>
+        <tr><td>أيقونة</td><td>ضغطة طويلة <span class="num">450ms</span></td><td>القائمة + الأيقونة ترتفع</td><td>يبدأ السحب</td></tr>
+        <tr><td>أيقونة</td><td>ضغطة طويلة ثم تحريك <span class="num">20dp</span></td><td>القائمة تختفي ويبدأ السحب</td><td>نفسه</td></tr>
+        <tr><td>أيقونة</td><td>ضغطة طويلة ثم رفع</td><td>القائمة تبقى</td><td>تنزل مكانها</td></tr>
+        <tr><td>أيقونة بوضع الترتيب</td><td>لمس وتحريك</td><td>-</td><td>سحب فوراً (بدون ضغطة طويلة)</td></tr>
+        <tr><td>مكان فاضي</td><td>ضغطة طويلة</td><td>يدخل وضع الترتيب</td><td>ولا شي</td></tr>
+        <tr><td>مكان فاضي</td><td>ضغطة</td><td>ولا شي</td><td><b>ولا شي</b> (ما يطلعك)</td></tr>
+        <tr><td>أي مكان بالصفحات</td><td>سحب يمين/يسار</td><td>تقليب الصفحات</td><td>تقليب الصفحات</td></tr>
+        <tr><td>أي مكان بالصفحات</td><td>سحب لفوق</td><td>كل التطبيقات</td><td>ولا شي</td></tr>
+        <tr><td>أي مكان بالصفحات</td><td>سحب لتحت</td><td>الإشعارات أو اللوحة السريعة (الفصل 7)</td><td>ولا شي</td></tr>
+        <tr><td>العمود أو الشريط</td><td>ضغطة / ضغطة طويلة</td><td>تفتح / قائمة (بدّل، شيل)</td><td>سحب منه أو إليه</td></tr>
+        <tr><td>داخل الويدجت</td><td>ضغطة</td><td>للويدجت نفسه (مثل زر التقويم)</td><td>ولا شي</td></tr>
+        <tr><td>الويدجت</td><td>ضغطة طويلة</td><td>قائمة الويدجت</td><td>يبدأ السحب</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>الخروج من وضع الترتيب: زر "تم"، أو زر الرجوع، أو زر الهوم. <b>بس</b>.</p>
+</section>
+
+<section>
+  <h2><span class="n">5</span>السحب والترتيب</h2>
+  <h3>وضع الترتيب</h3>
+  <div class="spec">
+    <div><span class="k">الصفحة</span><span class="v">تصغر لـ <span class="num">0.88</span> حول نص منطقة الصفحات، وأطراف الصفحة اللي قبلها واللي بعدها تبان بالجنب<span class="st mine">اقتراحي · طريقة الأصلي</span></span></div>
+    <div><span class="k">العمود والشريط</span><span class="v">ما يصغرون ولا يتحركون. والصفحة تصغر داخل منطقتها، فما تقرب منهم أبد<span class="st no">ممنوع التداخل</span></span></div>
+    <div><span class="k">الصفحة الفاضية</span><span class="v">وحدة بآخر الصفحات طول ما أنت بوضع الترتيب، تنحذف لو طلعت وهي فاضية</span></div>
+  </div>
+  <h3>وأنت تسحب</h3>
+  <div class="spec">
+    <div><span class="k">الأيقونة</span><span class="v">تلحق إصبعك بالضبط، مرفوعة <span class="num">1.06</span> مع ظل</span></div>
+    <div><span class="k">الظل</span><span class="v">مربع منقط يتحرك بنعومة للخانة اللي تحت نص الأيقونة</span></div>
+    <div><span class="k">الزحف</span><span class="v">الأيقونات الثانية ما تتحرك إلا لما يوقف إصبعك <span class="num">350ms</span> فوق خانة (الأصلي <span class="num">650</span>). وبعدها تزحف بالترتيب مرة وحدة<span class="st mine">اقتراحي · نضبطه بالتجربة</span></span></div>
+    <div><span class="k">الصفحة المليانة</span><span class="v">آخر أيقونة فيها تروح لأول مكان فاضي بالصفحات اللي بعدها</span></div>
+    <div><span class="k">الويدجت بالصفحة</span><span class="v">ثابتة. الأيقونات تزحف وتتخطاها</span></div>
+  </div>
+  <h3>النقل لصفحة ثانية</h3>
+  <div class="spec">
+    <div><span class="k">الهدف</span><span class="v">طرف الصفحة اللي يبان بالجنب، أو آخر <span class="num">28</span> من منطقة الصفحات (يسار الشاشة، أو قبل العمود)</span></div>
+    <div><span class="k">التوقيت</span><span class="v">تنتظر <span class="num">500ms</span> وبعدين تتقلب. والتقليب اللي بعده ما يصير قبل <span class="num">900ms</span><span class="st ok">أرقام الأصلي</span></span></div>
+    <div><span class="k">الإشارة</span><span class="v">طرف الصفحة الجاية يضوي شوي وأنت فوقه</span></div>
+    <div><span class="k">مقبض سامسونج</span><span class="v">منطقة التقليب اليمين قبل العمود، يعني بعيدة عن حافة الشاشة ومقبض لوحة الحافة</span></div>
+  </div>
+  <h3>العمود والشريط</h3>
+  <div class="spec">
+    <div><span class="k">النزول عليهم</span><span class="v">توقف فوق أيقونة فيهم <span class="num">200ms</span>، تكبر شوي، وتفلت: يتبادلون</span></div>
+    <div><span class="k">السحب منهم</span><span class="v">بوضع الترتيب تقدر تسحب أي أيقونة من العمود أو الشريط للشبكة</span></div>
+    <div><span class="k">الويدجت</span><span class="v">ما ينحط بالعمود أو الشريط</span></div>
+  </div>
+  <h3>الإفلات</h3>
+  <p>الأيقونة تنزل بنعومة بمكان الظل بالضبط. لو ما فيه مكان صح، ترجع مكانها الأصلي بنعومة. وما فيه أي قفزة بعد النزول.</p>
+</section>
+
+<section>
+  <h2><span class="n">6</span>الويدجت</h2>
+  <h3>تغيير المقاس (الحل لـ"المجنون")</h3>
+  <div class="spec">
+    <div><span class="k">الطريقة الأساسية</span><span class="v">من القائمة: صف مقاسات بشكل صغير (مثل <span class="num">2×2</span>، <span class="num">4×2</span>، <span class="num">4×4</span>)، بس اللي يسمح فيها التطبيق. تضغط وينتقل بحركة "أماكن"<span class="st mine">اقتراحي · مثل النموذج والآيفون</span></span></div>
+    <div><span class="k">بالزاوية (وضع الترتيب)</span><span class="v">وأنت تسحب الزاوية يطلع <b>إطار منقط</b> بالمقاس الجديد بس. الويدجت نفسه ما يتغير إلا لما تفلت</span></div>
+    <div><span class="k">ما يتذبذب</span><span class="v">المقاس ما يزيد خانة إلا لما تدخل الزاوية <span class="num">60%</span> بالخانة الجديدة، وما ينقص إلا لما ترجع <span class="num">60%</span>. فإصبعك ما يرقّصه</span></div>
+    <div><span class="k">المقبض</span><span class="v">دائرة <span class="num">22</span>، ومنطقة اللمس حولها <span class="num">48</span></span></div>
+  </div>
+  <h3>نقل الويدجت</h3>
+  <div class="spec">
+    <div><span class="k">وأنت تسحبه</span><span class="v">صورته بنفس مقاسه بالصفحة المصغرة، والنقطة اللي ضغطت عليها تبقى تحت إصبعك<span class="st no">ممنوع يكبر أو يطلع برا الشاشة</span></span></div>
+    <div><span class="k">الويدجت الكبير</span><span class="v">لو أعرض من نص الشاشة، يتصغر وهو يتسحب لـ <span class="num">60%</span> عشان تشوف تحته</span></div>
+    <div><span class="k">الضغطة الطويلة</span><span class="v">ما يتغير أي مقاس وإصبعك ماسك. وضع الترتيب يبدأ بعد ما يبدأ السحب، والحساب ما يتأثر</span></div>
+  </div>
+  <h3>الشكل</h3>
+  <p>الإطار الزجاجي اختياري لكل ويدجت <span class="st ok">معتمد</span>. والمسافة بين الويدجت واللي جنبه <span class="num">5</span> من كل جهة.</p>
+</section>
+
+<section>
+  <h2><span class="n">7</span>سحب الإشعارات (مثل سامسونج)</h2>
+  <p>بحثت عنها. بـ <span class="en">One UI 7</span> سامسونج فصلت اللوحتين. السحب من أعلى اليمين يفتح <b>اللوحة السريعة</b> (الواي فاي، البلوتوث…)، والسحب من أي مكان ثاني يفتح <b>الإشعارات</b>. والتقسيم تقريباً <span class="num">7:3</span>، وتقدر تخلي اللوحة السريعة من اليسار بدل اليمين.</p>
+  <div class="spec">
+    <div><span class="k">سحب لتحت من يسار ونص الشاشة</span><span class="v">الإشعارات (<span class="num">70%</span> من العرض)</span></div>
+    <div><span class="k">سحب لتحت من يمين الشاشة</span><span class="v">اللوحة السريعة (آخر <span class="num">30%</span>)</span></div>
+    <div><span class="k">خيار بالإعدادات</span><span class="v">اللوحة السريعة: يمين / يسار / مطفي (كله إشعارات)</span></div>
+    <div><span class="k">متى يعتبر سحب</span><span class="v">حركة لتحت <span class="num">48</span> وأكثر من الحركة الجانبية، عشان ما يتلخبط مع تقليب الصفحات</span></div>
+    <div><span class="k">الشاشتين</span><span class="v">يشتغل بالخارجية والداخلية</span></div>
+  </div>
+  <p class="note">بصراحة: فتح اللوحة يعتمد على ميزة مخفية بأندرويد (سامسونج ما تعطيها رسمياً). أنت جربتها وتشتغل، فاللوحة السريعة غالباً تشتغل بنفس الطريقة. وين تطلع اللوحة (يمين أو يسار الشاشة) سامسونج هي اللي تقرره، مو إحنا.</p>
+  <p class="src">المصادر: <a href="https://www.androidauthority.com/one-ui-7-separated-notification-quick-settings-panel-tip-3549944">Android Authority</a> · <a href="https://ushl.samsung.com/hk_en/support/mobile-devices/how-to-open-notifications-or-quick-settings-panel-on-galaxy-s25">Samsung Support</a> · <a href="https://9to5google.com/2025/02/11/combine-quick-settings-notifications-one-ui-7/">9to5Google</a> · <a href="https://codeberg.org/tkuenneth/NotificationShadeSummoner">NotificationShadeSummoner</a></p>
+</section>
+
+<section>
+  <h2><span class="n">8</span>قائمة الممنوع (الحراس)</h2>
+  <p>كل بند هنا فحص تلقائي يشتغل مع كل بناء. لو انكسر، البناء يفشل والنسخة ما توصلك.</p>
+  <ul class="ban">
+    <li>ممنوع أي أيقونة أو ويدجت يمر تحت العمود الجانبي، بالوضع العادي ووضع الترتيب.</li>
+    <li>ممنوع عرض زجاج العمود يزيد عن الأيقونة + <span class="num">14</span>.</li>
+    <li>ممنوع المسافة بين أيقونات العمود تتغير مع عدد الصفوف.</li>
+    <li>ممنوع أيقونة العمود بالخارجية تختلف عن أيقونة الشبكة.</li>
+    <li>ممنوع أي شي بالشبكة يتداخل مع الشريط السفلي أو النقاط.</li>
+    <li>ممنوع الشبكة أو العمود أو الشريط يطلعون برا الشاشة، بالشاشتين.</li>
+    <li>ممنوع الصفحات توقف بالنص.</li>
+    <li>ممنوع الزحف قبل ما يوقف الإصبع.</li>
+    <li>ممنوع أيقونتين بنفس الخانة بعد أي سحب.</li>
+    <li>ممنوع أي أيقونة تختفي بعد أي سحب (العدد يبقى نفسه).</li>
+    <li>ممنوع الويدجت يتغير مقاسه وإصبعك ماسكه.</li>
+    <li>ممنوع صورة الويدجت المسحوب تكون أكبر من مقاسه.</li>
+    <li>ممنوع ضغطة على مكان فاضي تطلعك من وضع الترتيب.</li>
+    <li>ممنوع الارتداد بحركة الأماكن والصفحات.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">9</span>كيف نتأكد قبل ما توصلك</h2>
+  <div class="box">
+    <h3>١) الحراس (مع كل بناء)</h3>
+    <p>المقاسات والزحف والسحب تنحسب بكود صافي، وكل بند بقائمة الممنوع له فحص بمقاسات الشاشة الخارجية والداخلية.</p>
+  </div>
+  <div class="box">
+    <h3>٢) الجوال الوهمي (مع كل نسخة)</h3>
+    <p>يشتغل على GitHub بمقاس شاشتينك. يسوي سيناريوهات ثابتة ويصوّرها: يقلب الصفحات، يسحب أيقونة ويوقف، ينقلها صفحة، يبدّل مع العمود، يسحب ويدجت ويكبره. أشوف الصور، وأقارنها بالكتاب.</p>
+    <p class="note">ما جربته على GitHub بعد. أول خطوة بالبناء تثبت إنه يشتغل، ولو ما اشتغل أقولك على طول.</p>
+  </div>
+  <div class="box">
+    <h3>٣) أنت (آخر خطوة بس)</h3>
+    <p>توصلك النسخة مع قائمة قصيرة تجربها. هدفنا تجرب نسختين بس للأساس: <span class="num">0.3</span> (الصفحات والسحب والعمود) و <span class="num">0.3.1</span> (الويدجت والإشعارات).</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">10</span>ترتيب البناء</h2>
+  <ol>
+    <li><b>الحراس والجوال الوهمي:</b> قبل أي تغيير بالشكل. أصوّر النسخة الحالية وأتأكد إني شايف نفس المشاكل اللي تشوفها.</li>
+    <li><b>المقاسات:</b> معادلة وحدة للشاشتين، ومعها حراسها.</li>
+    <li><b>الصفحات:</b> نكتبها بنفسنا بحركة "صفحات".</li>
+    <li><b>مدير السحب:</b> اللمس كله، والزحف بعد الوقفة، والنقل بين الصفحات، والعمود والشريط. ← نسخة <span class="num">0.3</span> لك.</li>
+    <li><b>الويدجت والإشعارات</b> على الأساس الجديد. ← نسخة <span class="num">0.3.1</span> لك.</li>
+  </ol>
+  <p>ما نضيف أي ميزة جديدة لين تقول إن الأساس مريح.</p>
+</section>
+
+<section>
+  <h2><span class="n">11</span>قرارات تحتاج موافقتك</h2>
+  <p>كل بند "اقتراحي" بالكتاب. جاوب بالأرقام، مثال: <span class="num">1-1-1-1-1-2</span>.</p>
+  <div class="q"><h3>١) العمود الجانبي</h3><p>1. مثل التجربة: زجاج = الأيقونة + <span class="num">14</span> (أنصح فيه)<br>2. أنحف: الأيقونة + <span class="num">8</span></p></div>
+  <div class="q"><h3>٢) الخانات</h3><p>1. مربعة مثل التجربة، والفراغ فوق وتحت (أنصح فيه)<br>2. تتمدد وتعبي الطول</p></div>
+  <div class="q"><h3>٣) تغيير مقاس الويدجت</h3><p>1. من القائمة + الزاوية بالإطار المنقط (أنصح فيه)<br>2. من القائمة بس<br>3. الزاوية بس</p></div>
+  <div class="q"><h3>٤) الحركة</h3><p>1. ارتداد للضغطة والقوائم بس، والباقي ناعم (أنصح فيه)<br>2. ارتداد بكل شي مثل ملف المشروع</p></div>
+  <div class="q"><h3>٥) وقت الزحف</h3><p>1. نبدأ بـ <span class="num">350ms</span> ونضبطه من الجوال الوهمي (أنصح فيه)<br>2. مثل الأصلي <span class="num">650ms</span></p></div>
+  <div class="q"><h3>٦) سحب الإشعارات</h3><p>1. نفس سامسونج: اللوحة السريعة من اليمين <span class="num">30%</span> (أنصح فيه)<br>2. اللوحة السريعة من اليسار<br>3. كله إشعارات بس</p></div>
+  <div class="q"><h3>٧) مقاس شاشاتك</h3><p>الإعدادات ← حول الهاتف. أو اكتب "ما أعرف" وأستخدم أقرب مقاس معروف للفولد.</p></div>
+</section>
+
+</div>
