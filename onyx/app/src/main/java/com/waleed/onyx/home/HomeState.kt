@@ -366,11 +366,13 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             Offset(g.cell / 2 + (f.x - b.cx), g.rowH / 2 + (f.y - b.cy))
         }
         val snap = if (item.kind == Kind.WIDGET) snapshot(item.id) else null
+        // قبل enterEdit (هو بعد يسكر القائمة): الأيقونة المرفوعة تختفي فوراً، ما تبقى نسخة باهتة
+        if (menu != null) menuCut = true
         if (!editing) enterEdit()
         if (!editing) return
         pages.settle(calm())
         val d = Drag(item, slot, grab, pages.current, snap).also { it.pointer = pointer }
-        if (menu != null) menuCut = true
+        android.util.Log.d("OnyxDrag", "start fromSlot=${slot?.container} menuCut=$menuCut")
         drag = d
         menu = null
         buzz()

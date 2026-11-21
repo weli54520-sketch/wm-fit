@@ -562,6 +562,9 @@ def run_screen(tag):
         log(f"  الشريط بعد: {names}")
         for l in dock_log()[-3:]:
             log(f"    · {l}")
+        lg = sh("adb logcat -d -s OnyxDrag:D -v brief")
+        cut = re.search(r"start fromSlot=2 menuCut=(\w+)", lg)
+        log(f"  {'✅' if cut and cut.group(1) == 'true' else '❌'} بداية السحب من القائمة: الأيقونة المرفوعة تختفي فوراً (ما فيه نسخة باهتة)")
         ok = len(dk2) == len(dk) and a["desc"] in names and names.index(a["desc"]) == 2
         log(f"  {'✅' if ok else '❌'} ترتيب داخل الشريط: {a['desc']} صار ثالث")
         shot(f"{tag}_13_dock_reorder_end")
