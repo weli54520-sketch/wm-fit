@@ -112,6 +112,35 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
     }
 
     /**
+     * وضع اختبار للجوال الوهمي بس: ينسخ أيقونات الشبكة كذا مرة عشان تصير صفحات كثيرة ومليانة.
+     * ينطلب بأمر adb مع كلمة سر، وما يوصل له وليد من الواجهة.
+     */
+    suspend fun testFill(copies: Int) = lock.withLock {
+        for (screen in listOf(Screen.OUTER, Screen.INNER)) {
+            val existing = dao.all(screen)
+            val apps = existing.filter { it.kind == Kind.APP && it.container == Container.GRID }
+            if (apps.isEmpty()) continue
+            val cols = settings.cols(screen)
+            val rows = settings.rows(screen)
+            val byPage = existing.filter { it.container == Container.GRID }.groupBy { it.page }
+                .mapValues { e -> e.value.map { Span(it.id, it.x, it.y, it.w, it.h) }.toMutableList() }.toMutableMap()
+            val add = ArrayList<Item>()
+            var page = 0
+            repeat(copies) {
+                for (a in apps) {
+                    while (true) {
+                        val list = byPage.getOrPut(page) { mutableListOf() }
+                        val spot = GridEngine.freeSpot(list, 1, 1, cols, rows)
+                        if (spot != null) { list += Span(-1, spot.x, spot.y); add += a.copy(id = 0, page = page, x = spot.x, y = spot.y); break }
+                        page++
+                    }
+                }
+            }
+            dao.apply(insert = add, update = emptyList(), delete = emptyList())
+        }
+    }
+
+    /**
      * ينسخ ترتيب التطبيقات لشاشة الثانية. الويدجت ما تنتسخ (كل ويدجت له رقم واحد عند النظام)،
      * وويدجت الشاشة الثانية تبقى، واللي يتصادم معها ينتقل لأقرب فاضي.
      */

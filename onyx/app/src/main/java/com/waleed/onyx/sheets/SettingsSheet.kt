@@ -113,20 +113,20 @@ fun SettingsSheet(state: HomeState) {
                         }
                         val scr = state.screen
                         val cr = Settings.COLS_RANGE.getValue(scr)
-                        val rr = Settings.ROWS_RANGE.getValue(scr)
                         Section(if (scr == Screen.INNER) "الشبكة · الشاشة الداخلية" else "الشبكة · الشاشة الخارجية") {
                             Stepper("الأعمدة", "${s.cols(scr)}", s.cols(scr) > cr.first, s.cols(scr) < cr.last,
                                 onMinus = { s.setCols(scr, s.cols(scr) - 1) }, onPlus = { s.setCols(scr, s.cols(scr) + 1) })
-                            Stepper("الصفوف", "${s.rows(scr)}", s.rows(scr) > rr.first, s.rows(scr) < rr.last,
-                                onMinus = { s.setRows(scr, s.rows(scr) - 1) }, onPlus = { s.setRows(scr, s.rows(scr) + 1) })
-                            BasicText("كل شاشة لها ترتيب مستقل. لو صغرت الشبكة، اللي ما يركب ينتقل للصفحة اللي بعدها.", style = Note, modifier = Modifier.padding(top = 6.dp))
+                            BasicText("الصفوف: ${s.rows(scr)} (حسب طول الشاشة، الخانات مربعة). كل شاشة لها ترتيب مستقل، ولو صغرت الشبكة اللي ما يركب ينتقل للصفحة اللي بعدها.", style = Note, modifier = Modifier.padding(top = 6.dp))
                         }
                         Section("العمود والشريط") {
                             Toggle("العمود الجانبي", s.sideOn) { s.sideOn = it }
                             if (s.sideOn) Stepper("أيقونات العمود", "${s.sideCount}", s.sideCount > 3, s.sideCount < 5,
                                 onMinus = { s.sideCount-- }, onPlus = { s.sideCount++ })
-                            Stepper("أيقونات الشريط", "${s.dockCount}", s.dockCount > 4, s.dockCount < 6,
-                                onMinus = { s.dockCount-- }, onPlus = { s.dockCount++ })
+                            Toggle("الشريط السفلي", s.dockOn) { s.dockOn = it }
+                            val dockMax = state.layout?.dockMax ?: 6
+                            val dockNow = s.dockCount.coerceIn(3, dockMax)
+                            if (s.dockOn) Stepper("أيقونات الشريط", "$dockNow", dockNow > 3, dockNow < dockMax,
+                                onMinus = { s.dockCount = dockNow - 1 }, onPlus = { s.dockCount = dockNow + 1 })
                         }
                         Section("الحركة") {
                             Label("السرعة")
@@ -170,6 +170,10 @@ fun SettingsSheet(state: HomeState) {
                         Section("عن اللانشر") {
                             BasicText("WM Onyx · الإصدار ${state.app.packageManager.getPackageInfo(state.app.packageName, 0).versionName}", style = Title)
                             BasicText("الشبكة الموحدة، السحب، الشاشتين، وويدجت التطبيقات الثانية.", style = Note, modifier = Modifier.padding(top = 4.dp))
+                            // مقاس الشاشة الحقيقي: وليد يرسله مرة وحدة عشان نضبط الجوال الوهمي عليه
+                            state.layout?.let { L ->
+                                BasicText("الشاشة: ${L.width.roundToInt()} × ${L.height.roundToInt()} dp · ${L.cols}×${L.rows} · خانة ${L.cell.roundToInt()} · أيقونة ${L.icon.roundToInt()}", style = Note, modifier = Modifier.padding(top = 4.dp))
+                            }
                         }
                     }
                 }

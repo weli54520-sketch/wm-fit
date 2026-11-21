@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.waleed.onyx.home.HomeScreen
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -23,12 +24,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val app = application as OnyxApp
         app.widgets.activity = this
+        maybeTestFill(intent)
         setContent { HomeScreen(app, homePresses) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         homePresses.value = homePresses.value + 1
+        maybeTestFill(intent)
+    }
+
+    /** للجوال الوهمي بس: adb يطلب صفحات مليانة عشان نختبر التقليب والنقل */
+    private fun maybeTestFill(i: Intent?) {
+        if (i?.getStringExtra("onyx_test_fill") != "wm-emu-2026") return
+        i.removeExtra("onyx_test_fill")
+        val app = application as OnyxApp
+        kotlinx.coroutines.MainScope().launch { app.repo.testFill(3) }
     }
 
     // الويدجت تتحدث بس والشاشة ظاهرة (توفير بطارية)

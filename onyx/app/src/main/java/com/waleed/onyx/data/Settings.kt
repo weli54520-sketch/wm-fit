@@ -41,6 +41,12 @@ class Settings(context: Context) {
         get() = _sideCount.intValue
         set(v) { _sideCount.intValue = v; p.edit().putInt("sideCount", v).apply() }
 
+    // الشريط السفلي اختياري (العمود الجانبي هو الأساسي)
+    private val _dockOn = bool("dockOn", true)
+    var dockOn: Boolean
+        get() = _dockOn.value
+        set(v) { _dockOn.value = v; p.edit().putBoolean("dockOn", v).apply() }
+
     private val _dockCount = int("dockCount", 6)
     var dockCount: Int
         get() = _dockCount.intValue

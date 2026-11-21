@@ -34,7 +34,13 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** مقاسات الشبكة بالبكسل للشاشة الحالية */
-data class Geo(val cols: Int, val rows: Int, val cellW: Float, val cellH: Float, val screenW: Float, val edgePx: Float)
+data class Geo(
+    val cols: Int, val rows: Int, val cellW: Float, val cellH: Float, val screenW: Float, val edgePx: Float,
+    /** آخر منطقة الصفحات (قبل العمود) */
+    val pagesRight: Float = screenW,
+    /** بداية زجاج العمود */
+    val sideLeft: Float = screenW,
+)
 
 /** خانة بالعمود الجانبي أو الشريط */
 data class Slot(val container: Int, val index: Int)
@@ -94,6 +100,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     /** الأيقونة المضغوطة الحين (عشان تصغر تحت الإصبع) */
     var pressedKey by mutableStateOf<Any?>(null)
     var geo by mutableStateOf(Geo(4, 6, 1f, 1f, 1f, 1f))
+    /** المقاسات كاملة بوحدة dp (من HomeGeometry) */
+    var layout: com.waleed.onyx.grid.HomeGeometry? = null
     lateinit var pager: PagerState
 
     val pageBounds = HashMap<Int, Rect>()
@@ -229,7 +237,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         val np0 = d.page
         val dir = when {
             d.pointer.x < geo.edgePx && np0 > 0 -> -1
-            d.pointer.x > geo.screenW - geo.edgePx && np0 + 1 < pager.pageCount -> 1
+            // اليمين: آخر جزء من منطقة الصفحات قبل العمود (مو حافة الشاشة، عشان مقبض سامسونج والعمود)
+            d.pointer.x > geo.pagesRight - geo.edgePx && d.pointer.x < geo.sideLeft && np0 + 1 < pager.pageCount -> 1
             else -> 0
         }
         if (dir == 0) { edgeJob?.cancel(); edgeJob = null; d.edge = 0; return false }

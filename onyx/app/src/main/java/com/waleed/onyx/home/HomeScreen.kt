@@ -68,6 +68,9 @@ import com.waleed.onyx.data.Container
 import com.waleed.onyx.data.Item
 import com.waleed.onyx.data.Kind
 import com.waleed.onyx.data.Screen
+import com.waleed.onyx.grid.GeoInput
+import com.waleed.onyx.grid.HomeGeometry
+import androidx.compose.ui.draw.clipToBounds
 import com.waleed.onyx.sheets.AppDrawer
 import com.waleed.onyx.sheets.SettingsSheet
 import com.waleed.onyx.sheets.WidgetGallery
@@ -96,34 +99,47 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             val screen = if (inner) Screen.INNER else Screen.OUTER
             state.screen = screen
             val cols = settings.cols(screen)
-            val rows = settings.rows(screen)
 
             // ترتيب هالشاشة من قاعدة البيانات
             LaunchedEffect(screen) {
                 app.repo.observe(screen).collect { if (state.drag == null) state.items = it }
             }
+            val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+            // كل الأماكن من معادلة وحدة (كتاب المواصفات، الفصل ٢). الحراس يختبرونها مع كل بناء
+            val g = HomeGeometry.compute(
+                GeoInput(
+                    width = maxWidth.value, height = maxHeight.value,
+                    topInset = top.value, bottomInset = bottom.value,
+                    cols = cols, sideOn = settings.sideOn, sideCount = settings.sideCount,
+                    dockOn = settings.dockOn, dockCount = settings.dockCount, iconScale = settings.iconScale,
+                ),
+            )
+            state.layout = g
+            val rows = g.rows
+            // عدد الصفوف يجي من طول الشاشة (خانات مربعة)، وينحفظ عشان الترتيب يمشي عليه
+            LaunchedEffect(screen, rows) { if (settings.rows(screen) != rows) settings.setRows(screen, rows) }
             LaunchedEffect(screen, apps) { app.repo.sync(screen, apps) }
             LaunchedEffect(screen, cols, rows) { app.repo.reflow(screen) }
 
-            val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-            val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val padStart = if (inner) 28.dp else 12.dp
-            val edge = if (inner) 14.dp else 6.dp
-            val sideOn = settings.sideOn
-            val cellW = (maxWidth - padStart - edge - (if (inner) 10.dp else 0.dp)) / (cols + if (sideOn) 1 else 0)
-            val icon = min(cellW * 0.76f, if (inner) 86.dp else 74.dp) * settings.iconScale
-            val sideIcon = if (inner) icon * 0.86f else icon
-            val dockIcon = icon * 0.88f
-            val dockH = dockIcon + 22.dp
-            val dockW = if (inner) min(maxWidth * 0.62f, 520.dp) else maxWidth - 24.dp
-            val gridTop = top + 14.dp
-            val dotsH = 22.dp
-            val gridH = maxHeight - gridTop - dotsH - dockH - bottom - 26.dp
-            val cellH = gridH / rows
-            val gridW = cellW * cols
+            val cellW = g.cell.dp
+            val cellH = g.rowH.dp
+            val icon = g.icon.dp
+            val sideIcon = g.sideIcon.dp
+            val dockIcon = g.dockIcon.dp
+            val padStart = g.padStart.dp
+            val gridTop = g.grid.t.dp
+            val gridH = g.grid.h.dp
+            val gridW = g.grid.w.dp
+            val pagesW = g.pages.r.dp
+            val sideOn = g.sideOn
 
             with(density) {
-                state.geo = Geo(cols, rows, cellW.toPx(), cellH.toPx(), maxWidth.toPx(), 34.dp.toPx())
+                state.geo = Geo(
+                    cols, rows, cellW.toPx(), cellH.toPx(), maxWidth.toPx(), 28.dp.toPx(),
+                    pagesRight = pagesW.toPx(), sideLeft = if (sideOn) g.side.l.dp.toPx() else maxWidth.toPx(),
+                )
             }
 
             val gridItems = state.items.filter { it.container == Container.GRID }
@@ -157,15 +173,17 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { state.closeAll() }
 
             val shrink = state.editing && settings.editStyle == 0
-            val pageScale by animateFloatAsState(if (shrink) 0.9f else 1f, Motion.bouncy(settings), label = "pageScale")
+            // الصفحة تصغر حول نص منطقتها بس، فما تقرب من العمود (بدون ارتداد)
+            val pageScale by animateFloatAsState(if (shrink) HomeGeometry.EDIT_SCALE else 1f, Motion.smooth(settings), label = "pageScale")
             val outline by animateFloatAsState(if (shrink) 1f else 0f, Motion.smooth(settings), label = "outline")
 
-            // الصفحات
+            // الصفحات: من حافة الشاشة لين قبل العمود. اللي يطلع عنها ينقص (ما يمر تحت العمود)
             Box(
                 Modifier
                     .offset(y = gridTop)
-                    .fillMaxWidth()
+                    .width(pagesW)
                     .height(gridH)
+                    .clipToBounds()
                     .pointerInput(state.editing) {
                         if (!state.editing) {
                             var dy = 0f
@@ -195,7 +213,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                         if (outline > 0.01f) {
                             Box(
                                 Modifier
-                                    .padding(start = padStart - 8.dp, end = edge)
+                                    .padding(start = padStart - 8.dp, end = 2.dp)
                                     .fillMaxSize()
                                     .drawBehind {
                                         drawRoundRect(
@@ -229,58 +247,47 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             PageDots(
                 count = pageCount,
                 current = pager.currentPage,
-                modifier = Modifier.offset(y = gridTop + gridH + 4.dp).fillMaxWidth().height(dotsH),
+                modifier = Modifier.offset(y = g.dots.t.dp).fillMaxWidth().height(g.dots.h.dp),
             )
 
-            // العمود الجانبي: لاصق يمين، بالنص
+            // العمود الجانبي (الشريط الأساسي): منفصل، لاصق يمين، بنص منطقة الصفحات، ومسافته ثابتة
             if (sideOn) {
-                // العمود يمشي على صفوف الشبكة بالضبط، وبنص العمود الخامس المحجوز له
-                val n = settings.sideCount
-                // الزجاج لاصق على الأيقونات: هامش 5 بس
-                val sidePad = 5.dp
-                val sideW = sideIcon + sidePad * 2
-                val sideH = cellH * (n - 1) + sideIcon + sidePad * 2
-                val startRow = (rows - n).coerceAtLeast(0) / 2f
-                val sideTop = gridTop + cellH * startRow + (cellH - sideIcon) / 2 - sidePad
-                val sideLeft = min(padStart + gridW + cellW / 2 - sideW / 2, maxWidth - sideW - 2.dp)
                 Box(
                     Modifier
-                        .offset(x = sideLeft, y = sideTop)
-                        .size(sideW, sideH)
+                        .offset(x = g.side.l.dp, y = g.side.t.dp)
+                        .size(g.side.w.dp, g.side.h.dp)
                         .smokeGlass(RoundedCornerShape(50), elevation = 0.dp),
                 ) {
-                    for (i in 0 until n) {
-                        val slot = Slot(Container.SIDE, i)
-                        Box(Modifier.offset(x = sidePad, y = sidePad + cellH * i)) {
-                            SlotTile(state, slot, sideIcon)
+                    for (i in 0 until g.sideCount) {
+                        val b = g.sideSlots[i]
+                        Box(Modifier.offset(x = (b.l - g.side.l).dp, y = (b.t - g.side.t).dp)) {
+                            SlotTile(state, Slot(Container.SIDE, i), sideIcon)
                         }
                     }
                 }
-            } else {
-                state.slotBounds.keys.removeAll { it.container == Container.SIDE }
             }
+            state.slotBounds.keys.removeAll { it.container == Container.SIDE && (!sideOn || it.index >= g.sideCount) }
 
-            // الشريط السفلي
-            val dn = settings.dockCount
-            Box(
-                Modifier
-                    .offset(x = (maxWidth - dockW) / 2, y = maxHeight - bottom - 14.dp - dockH)
-                    .size(dockW, dockH)
-                    .smokeGlass(RoundedCornerShape(dockH * 0.42f)),
-            ) {
-                Row(
-                    Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
+            // الشريط السفلي (اختياري)
+            val dock = g.dock
+            if (dock != null) {
+                Box(
+                    Modifier
+                        .offset(x = dock.l.dp, y = dock.t.dp)
+                        .size(dock.w.dp, dock.h.dp)
+                        .smokeGlass(RoundedCornerShape((dock.h * 0.43f).dp)),
                 ) {
-                    for (i in 0 until dn) SlotTile(state, Slot(Container.DOCK, i), dockIcon)
+                    g.dockSlots.forEachIndexed { i, b ->
+                        Box(Modifier.offset(x = (b.l - dock.l).dp, y = (b.t - dock.t).dp)) {
+                            SlotTile(state, Slot(Container.DOCK, i), dockIcon)
+                        }
+                    }
                 }
             }
-            state.slotBounds.keys.removeAll { it.container == Container.DOCK && it.index >= dn }
-            state.slotBounds.keys.removeAll { it.container == Container.SIDE && it.index >= settings.sideCount }
+            state.slotBounds.keys.removeAll { it.container == Container.DOCK && it.index >= g.dockSlots.size }
 
             // لمعة الحافة: الصفحة بتتقلب
-            EdgeGlow(state, gridTop, gridH)
+            EdgeGlow(state, gridTop, gridH, pagesW)
             // اللي يتسحب يطلع فوق كل شي
             DragOverlay(state, cellW, cellH, icon)
 
@@ -289,7 +296,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             AppDrawer(state, inner, icon)
             WidgetGallery(state, inner)
             SettingsSheet(state)
-            ToastPill(state, bottom + dockH + 30.dp)
+            ToastPill(state, (maxHeight.value - g.dots.t + 12f).dp)
         }
     }
 }
@@ -479,7 +486,7 @@ fun WidgetLifted(snap: androidx.compose.ui.graphics.ImageBitmap?, frame: Boolean
 
 /** لمعة ناعمة بحافة الشاشة لما الإصبع هناك وأنت تسحب: يعني الصفحة بتتقلب */
 @Composable
-private fun EdgeGlow(state: HomeState, top: Dp, height: Dp) {
+private fun EdgeGlow(state: HomeState, top: Dp, height: Dp, rightEdge: Dp) {
     val d = state.drag
     val dir = d?.edge ?: 0
     val a by animateFloatAsState(if (dir != 0) 1f else 0f, Motion.smooth(state.settings), label = "edge")
@@ -491,7 +498,7 @@ private fun EdgeGlow(state: HomeState, top: Dp, height: Dp) {
         val left = last[0] < 0
         Box(
             Modifier
-                .offset(x = if (left) 0.dp else maxWidth - w)
+                .offset(x = if (left) 0.dp else rightEdge - w)
                 .width(w)
                 .fillMaxSize()
                 .graphicsLayer { alpha = a }

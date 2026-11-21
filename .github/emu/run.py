@@ -199,6 +199,16 @@ def run_screen(tag):
     def s_home():
         shot(f"{tag}_01_home")
         layout_report(tag)
+        # فحص على الجوال نفسه: أيقونات الشبكة ما توصل للعمود
+        ic = icons()
+        side = [n for n in ic if n["x"] > W * 0.82]
+        grid = [n for n in ic if n["x"] <= W * 0.82]
+        if side and grid:
+            gap = min(n["box"][0] for n in side) - max(n["box"][2] for n in grid)
+            log(f"  المسافة بين آخر أيقونة بالشبكة وأيقونات العمود: {gap}px " + ("✅" if gap > 0 else "❌ تداخل"))
+        sides = sorted(n["box"][1] for n in side)
+        if len(sides) > 1:
+            log(f"  المسافة بين أيقونات العمود (px): {[sides[k+1]-sides[k] for k in range(len(sides)-1)]}")
     scenario("الشاشة الرئيسية", s_home)
 
     def s_pages():
@@ -256,8 +266,14 @@ def run_screen(tag):
     scenario("نقل أيقونة لحافة الشاشة (صفحة ثانية)", s_edge)
 
     def s_edit():
-        # مكان فاضي: تحت آخر أيقونة بالشبكة أو بين الصفوف
-        down(W * 0.4, H * 0.62); time.sleep(1.0); up(W * 0.4, H * 0.62)
+        # الصفحات مليانة: ندخل وضع الترتيب من قائمة الأيقونة
+        ic = [n for n in icons() if n["x"] < W * 0.75]
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
+        if not row:
+            raise RuntimeError("ما لقيت زر ترتيب الشاشة")
+        tap(row[0]["x"], row[0]["y"])
         time.sleep(1.0)
         shot(f"{tag}_06_edit")
         tap(W * 0.4, H * 0.3)  # ضغطة على فاضي بوضع الترتيب (المفروض ما تطلعه)
@@ -285,6 +301,12 @@ def main():
     adb("settings put global animator_duration_scale 1")
     home()
     time.sleep(4)  # أول تشغيل: يرتب التطبيقات
+    # نزور الشاشتين عشان كل وحدة تحفظ عدد صفوفها، وبعدين نعبي صفحات للاختبار
+    set_screen("inner")
+    set_screen("outer")
+    adb(f"am start -n {PKG}/.MainActivity --es onyx_test_fill wm-emu-2026")
+    time.sleep(3)
+    home()
     for tag in SCREENS:
         set_screen(tag)
         run_screen(tag)
