@@ -150,6 +150,27 @@ def icons():
     return [n for n in nodes() if n["desc"] and n["w"] > 40 and abs(n["w"] - n["h"]) < 12]
 
 
+def dock_row(ic, H):
+    """الشريط السفلي = آخر صف أيقونات تحت (تحت ثلاثة أرباع الشاشة)"""
+    low = [n for n in ic if n["y"] > H * 0.75]
+    if not low:
+        return []
+    y = max(n["y"] for n in low)
+    return [n for n in low if abs(n["y"] - y) <= 12]
+
+
+def grid_icons(W, H):
+    """أيقونات الشبكة بس (مو العمود ولا الشريط)"""
+    ic = icons()
+    dock = {id(n) for n in dock_row(ic, H)}
+    # الشريط يتعرف لو تحت النقاط (بعيد عن آخر صف بالشبكة)؛ لو ما فيه شريط، آخر صف = الشبكة
+    grid = [n for n in ic if n["x"] < W * 0.75]
+    rest = [n for n in grid if id(n) not in dock]
+    if rest and dock and min(n["y"] for n in dock_row(ic, H)) - max(n["y"] for n in rest) > H * 0.08:
+        return rest
+    return grid
+
+
 def screen_wh():
     m = re.search(r"(\d+)x(\d+)", adb("wm size").splitlines()[-1])
     return int(m.group(1)), int(m.group(2))
@@ -178,7 +199,7 @@ BASE = {}
 
 def grid_left():
     W, H = screen_wh()
-    ic = [n for n in icons() if n["x"] < W * 0.8]
+    ic = grid_icons(W, H)
     return min((n["box"][0] for n in ic), default=None)
 
 
@@ -293,12 +314,12 @@ def run_screen(tag):
 
     def s_edit_swipe():
         # بوضع الترتيب: سحبة سريعة فوق الأيقونات لازم تقلب الصفحة (مو تنقل أيقونة)
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[0]
         down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
         row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
         tap(row[0]["x"], row[0]["y"]); time.sleep(1.0)
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         b = ic[len(ic) // 2]
         sh("adb logcat -c")
         swipe(b["x"] + W * 0.25, b["y"], b["x"] - W * 0.35, b["y"], 90)
@@ -312,7 +333,7 @@ def run_screen(tag):
     scenario("بوضع الترتيب: سحبة سريعة فوق الأيقونات", s_edit_swipe)
 
     def s_menu():
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         if not ic:
             raise RuntimeError("ما لقيت أيقونات")
         a = ic[0]
@@ -323,7 +344,7 @@ def run_screen(tag):
     scenario("ضغطة طويلة على أيقونة ورفع", s_menu)
 
     def s_drag():
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[0]
         cell = ic[1]["x"] - ic[0]["x"] if len(ic) > 1 else 200
         path = [(a["x"] + cell, a["y"]), (a["x"] + cell * 2, a["y"]), (a["x"] + cell * 2, a["y"] + cell), (a["x"] + cell, a["y"] + cell)]
@@ -337,7 +358,7 @@ def run_screen(tag):
     scenario("سحب أيقونة (يمر بسرعة، وبعدين يوقف)", s_drag)
 
     def s_edge():
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[-1]
         with Record(f"{tag}_05_edge"):
             long_press_drag(a["x"], a["y"], [(W * 0.80, a["y"]), (W * 0.97, a["y"])], hold=0.8, dwell=0.2)
@@ -345,7 +366,7 @@ def run_screen(tag):
         shot(f"{tag}_05_edge_dropped")
         # نسخة ثانية: من الصفحة الأولى، يوقف عند الحافة لين تتقلب، يرجع للنص ويفلت
         home(); time.sleep(1.5)
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[-1]
         with Record(f"{tag}_05b_edge_hold"):
             down(a["x"], a["y"]); time.sleep(0.8)
@@ -365,7 +386,7 @@ def run_screen(tag):
 
     def s_edit():
         # الصفحات مليانة: ندخل وضع الترتيب من قائمة الأيقونة
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[0]
         down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
         row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
@@ -401,7 +422,7 @@ def run_screen(tag):
 
     def s_widget():
         # نضيف ويدجت حقيقي من المعرض، ونجرب قائمته ونسحبه
-        ic = [n for n in icons() if n["x"] < W * 0.75]
+        ic = grid_icons(W, H)
         a = ic[0]
         down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
         row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
@@ -497,7 +518,7 @@ def run_screen(tag):
     # ───────── 0.3.2: الشريط مثل الآيفون، النقاط، القائمة، الصفحة الأخيرة ─────────
 
     def dock_icons():
-        return sorted([n for n in icons() if n["y"] > H * 0.86 and n["x"] < W * 0.97], key=lambda n: n["x"])
+        return sorted(dock_row(icons(), H), key=lambda n: n["x"])
 
     def dock_log():
         lg = sh("adb logcat -d -s OnyxDock:D -v brief")
@@ -566,7 +587,7 @@ def run_screen(tag):
             log(f"  {'✅' if max(gaps) - min(gaps) <= 6 else '❌'} المسافات بينهم متساوية {gaps}")
         shot(f"{tag}_14_dock_out_end")
         # ترجع للشريط: يفسحون لها بين الأولى والثانية
-        g = [n for n in icons() if n["desc"] == a["desc"] and n["y"] < H * 0.86]
+        g = [n for n in grid_icons(W, H) if n["desc"] == a["desc"]]
         if not g:
             raise RuntimeError("ما لقيت الأيقونة بالشبكة")
         b = g[0]
@@ -622,7 +643,7 @@ def run_screen(tag):
 
     def s_menu_settings():
         home()
-        ic = [n for n in icons() if n["x"] < W * 0.75 and n["y"] < H * 0.8]
+        ic = grid_icons(W, H)
         a = ic[0]
         down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
         row = [n for n in nodes() if n["text"] == "الإعدادات"]
@@ -638,7 +659,7 @@ def run_screen(tag):
 
     def s_last_page():
         home()
-        ic = [n for n in icons() if n["x"] < W * 0.75 and n["y"] < H * 0.8]
+        ic = grid_icons(W, H)
         a = ic[0]
         down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
         row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
