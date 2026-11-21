@@ -125,6 +125,9 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
             val byPage = existing.filter { it.container == Container.GRID }.groupBy { it.page }
                 .mapValues { e -> e.value.map { Span(it.id, it.x, it.y, it.w, it.h) }.toMutableList() }.toMutableMap()
             val add = ArrayList<Item>()
+            // الشريط فاضي بالجوال الوهمي (تطبيقات وليد مو موجودة): نحط فيه ٤ عشان نختبره
+            val dockUpd = if (existing.none { it.container == Container.DOCK })
+                apps.takeLast(4).mapIndexed { i, a -> a.copy(container = Container.DOCK, page = i, x = 0, y = 0) } else emptyList()
             var page = 0
             repeat(copies) {
                 for (a in apps) {
@@ -136,7 +139,7 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
                     }
                 }
             }
-            dao.apply(insert = add, update = emptyList(), delete = emptyList())
+            dao.apply(insert = add, update = dockUpd, delete = emptyList())
         }
     }
 

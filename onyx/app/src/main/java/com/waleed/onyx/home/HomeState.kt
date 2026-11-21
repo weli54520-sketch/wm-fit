@@ -698,7 +698,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         android.util.Log.d("OnyxResize", "live=${s.wDp.roundToInt()}x${s.hDp.roundToInt()}")
         if (s.w == r.w && s.h == r.h) return
         val others = gridItems(r.item.page).filter { it.id != r.item.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }
-        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, s.w, s.h), g.cols, g.rows) ?: return
+        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, s.w, s.h), g.cols, g.rows)
+        if (sol == null) { android.util.Log.d("OnyxResize", "noroom cells=${s.w}x${s.h}"); return }
         r.w = s.w; r.h = s.h; r.solution = sol
         android.util.Log.d("OnyxResize", "cells=${s.w}x${s.h}")
     }

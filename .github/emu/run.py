@@ -270,13 +270,15 @@ def run_screen(tag):
         with Record(f"{tag}_02_pages"):
             swipe(W * 0.75, H * 0.45, W * 0.15, H * 0.45, 140)   # سحبة سريعة
             time.sleep(1.5)
-            swipe(W * 0.2, H * 0.45, W * 0.55, H * 0.45, 600)    # سحبة بطيئة قصيرة (لازم ترجع)
+            swipe(W * 0.2, H * 0.45, W * 0.42, H * 0.45, 600)    # سحبة بطيئة قصيرة (ربع صفحة، لازم ترجع)
             time.sleep(1.5)
             swipe(W * 0.15, H * 0.45, W * 0.85, H * 0.45, 140)   # رجوع
             time.sleep(1.5)
         shot(f"{tag}_02_pages_end")
         lg = sh("adb logcat -d -s OnyxPages:D -v brief")
         targets = re.findall(r"target=(\d+)", lg)
+        for l in [l.split(": ", 1)[-1] for l in lg.splitlines() if "release" in l][-3:]:
+            log(f"    · {l}")
         log(f"  الصفحات بعد كل سحبة: {targets}")
         # المفروض: سريعة يسار = الصفحة 1، بطيئة قصيرة يمين = ترجع 1، سريعة يمين = 0
         ok = targets[-3:] == ["1", "1", "0"] if len(targets) >= 3 else False
@@ -471,12 +473,15 @@ def run_screen(tag):
             with Record(f"{tag}_12_widget_resize"):
                 down(hx, hy); time.sleep(0.3)
                 step = w0 / max(1, round(w0 / (dens * 80)))
+                # بالعرض بس (عمود زيادة): الصفحة مليانة، فالقطري ما يلقى مكان
                 for i in range(1, 9):
-                    move(hx + i * 0.2 * step, hy + i * 0.2 * step)
+                    move(hx + i * 0.2 * step, hy)
                 time.sleep(0.6)
-                up(hx + 1.6 * step, hy + 1.6 * step)
+                up(hx + 1.6 * step, hy)
                 time.sleep(1.2)
             lg = sh("adb logcat -d -s OnyxResize:D -v brief")
+            for l in [l.split(": ", 1)[-1] for l in lg.splitlines() if "cells=" in l][-4:]:
+                log(f"    · {l}")
             lives = [int(v) for v in re.findall(r"live=(\d+)x\d+", lg)]
             end = re.search(r"end cells=(\d+)x(\d+) from=(\d+)x(\d+)", lg)
             follows = len(lives) >= 4 and all(b >= a for a, b in zip(lives, lives[1:])) and len(set(lives)) >= 4
