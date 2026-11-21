@@ -320,9 +320,11 @@ def run_screen(tag):
         row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
         tap(row[0]["x"], row[0]["y"]); time.sleep(1.0)
         ic = grid_icons(W, H)
-        b = ic[len(ic) // 2]
+        # أيقونة قريبة من نص الشاشة، والسحبة تبدأ عليها بالضبط (مو على العمود)
+        b = min(ic, key=lambda n: abs(n["x"] - W * 0.5) + abs(n["y"] - H * 0.45))
+        log(f"  السحبة من فوق {b['desc']} ({b['x']:.0f},{b['y']:.0f})")
         sh("adb logcat -c")
-        swipe(b["x"] + W * 0.25, b["y"], b["x"] - W * 0.35, b["y"], 90)
+        swipe(b["x"], b["y"], b["x"] - W * 0.4, b["y"], 90)
         time.sleep(1.5)
         lg = sh("adb logcat -d -s OnyxPages:D OnyxDrag:D -v brief")
         flipped = re.search(r"OnyxPages.*target=1", lg) is not None
