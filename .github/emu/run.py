@@ -203,16 +203,25 @@ def scenario(title, fn):
     lines = [l.split(": ", 1)[-1] for l in drag_log.splitlines() if "OnyxDrag" in l]
     for l in lines[-12:]:
         log(f"    · {l}")
-    # الحارس: الأيقونة المسحوبة لازم تبقى تحت الإصبع (السيناريوهات تمسك الأيقونة من نصها)
-    worst = 0.0
+    # الحارس: الأيقونة تبقى ماسكة من نفس النقطة طول السحب (الفرق بين الإصبع ونصها ثابت)
     dens = SCREENS[CURRENT[0]][1] / 160 if CURRENT else 2.625
+    worst = 0.0
+    seen = False
+    deltas = []
     for l in lines:
+        if l.startswith("drop"):
+            if deltas:
+                xs = [d[0] for d in deltas]; ys = [d[1] for d in deltas]
+                worst = max(worst, max(xs) - min(xs), max(ys) - min(ys))
+            deltas = []
+            continue
         m = re.search(r"pointer=(\d+),(\d+)px center=(\d+),(\d+)dp", l)
         if m:
+            seen = True
             px_, py_, cx_, cy_ = map(int, m.groups())
-            worst = max(worst, abs(px_ / dens - cx_), abs(py_ / dens - cy_))
-    if any("pointer=" in l and "center=" in l for l in lines):
-        log(f"  {'✅' if worst <= 12 else '❌'} الأيقونة تحت الإصبع: أبعد فرق {worst:.0f}dp")
+            deltas.append((px_ / dens - cx_, py_ / dens - cy_))
+    if seen:
+        log(f"  {'✅' if worst <= 8 else '❌'} الأيقونة ماسكة نفس النقطة تحت الإصبع: أكبر تغير {worst:.0f}dp")
     check_aligned(title)
 
 
@@ -300,9 +309,14 @@ def run_screen(tag):
             down(a["x"], a["y"]); time.sleep(0.8)
             for f in (0.6, 0.8, 0.9, 0.97):
                 move(W * f, a["y"])
-            time.sleep(2.5)
-            up(W * 0.97, a["y"])
+            time.sleep(1.2)  # تتقلب صفحة وحدة
+            move(W * 0.45, a["y"]); time.sleep(0.6)
+            up(W * 0.45, a["y"])
             time.sleep(1.2)
+        lg = sh("adb logcat -d -s OnyxDrag:D -v brief")
+        drops = re.findall(r"drop pointer=\S+ target=CellAt\(page=(\d+)", lg)
+        moved = bool(drops) and int(drops[-1]) >= 1
+        log(f"  {'✅' if moved else '❌'} نقل أيقونة لصفحة ثانية (نزلت بالصفحة {drops[-1] if drops else '-'})")
         shot(f"{tag}_05_edge_end")
         home()
     scenario("نقل أيقونة لحافة الشاشة (صفحة ثانية)", s_edge)

@@ -152,15 +152,22 @@ class MotionTest {
     }
 
     @Test
-    fun pageFlipZonesAndSideSlotsDoNotOverlap() {
+    fun noDeadZoneRightOfThePages() {
+        // يمين منطقة الصفحات: يا أيقونة بالعمود، يا تقليب صفحة. ما فيه مكان ما يسوي شي
         for (g in listOf(outer, inner)) {
-            for (s in g.sideSlots) {
-                assertEquals(0, g.edgeAt(s.cx, s.cy))
-                assertTrue("العمود يدخل بمنطقة التقليب", s.l > g.pages.r + 1f)
+            var x = g.pages.r - 27f
+            while (x < g.width) {
+                var y = g.pages.t
+                while (y <= g.pages.b) {
+                    val slot = g.sideSlotAt(x, y)
+                    assertTrue("مكان ميت عند $x,$y", slot != null || g.edgeAt(x, y) == 1)
+                    y += 7f
+                }
+                x += 3f
             }
-            assertEquals(1, g.edgeAt(g.pages.r - 5f, g.pages.cy))
+            for (s in g.sideSlots) assertTrue("العمود يدخل بالشبكة", s.l > g.pages.r + 1f)
             assertEquals(-1, g.edgeAt(5f, g.pages.cy))
-            assertEquals(0, g.sideSlotAt(g.pages.r - 5f, g.pages.cy) ?: 0)
+            assertEquals(-1, g.edgeAt(-20f, g.pages.cy))
         }
     }
 

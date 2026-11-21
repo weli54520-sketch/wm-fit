@@ -96,12 +96,16 @@ data class HomeGeometry(
         return x to y
     }
 
-    /** الإصبع بمنطقة تقليب الصفحة؟ -1 يسار، 1 يمين (آخر منطقة الصفحات قبل العمود)، 0 لا */
+    /**
+     * الإصبع بمنطقة تقليب الصفحة؟ -1 يسار، 1 يمين، 0 لا.
+     * اليمين: من آخر 28 بمنطقة الصفحات لين حافة الشاشة (أيقونات العمود لها الأولوية، تنفحص قبل).
+     * كذا ما فيه مكان ميت: لو دفعت الأيقونة لطرف الشاشة تتقلب الصفحة.
+     */
     fun edgeAt(x: Float, y: Float): Int {
         if (y < pages.t || y > pages.b) return 0
         return when {
-            x >= pages.l && x < pages.l + EDGE_ZONE -> -1
-            x > pages.r - EDGE_ZONE && x <= pages.r + 1f -> 1
+            x < pages.l + EDGE_ZONE -> -1
+            x > pages.r - EDGE_ZONE -> 1
             else -> 0
         }
     }
