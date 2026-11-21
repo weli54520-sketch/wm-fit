@@ -21,6 +21,8 @@ data class GeoInput(
     val topInset: Float,
     val bottomInset: Float,
     val cols: Int,
+    /** عدد الصفوف اللي يبيه وليد (ينقص لو ما يركب) */
+    val rows: Int = 6,
     val sideOn: Boolean = true,
     val sideCount: Int = 4,
     val dockOn: Boolean = true,
@@ -128,9 +130,10 @@ data class HomeGeometry(
             val areaBottom = dotsTop
             val areaH = (areaBottom - areaTop).coerceAtLeast(1f)
 
-            // خانات مربعة: كم صف يركب. لو ما يركب ٤ صفوف مربعة، نقصّر الصف شوي بس
+            // خانات مربعة بعدد الصفوف اللي يبيه وليد، والفراغ الزايد ينقسم فوق وتحت.
+            // لو ما يركب، ينقص العدد. ولو ما يركب حتى ٤ صفوف مربعة، نقصّر الصف شوي بس
             val fit = floor(areaH / cell).toInt()
-            val rows = fit.coerceIn(MIN_ROWS, MAX_ROWS)
+            val rows = minOf(i.rows.coerceIn(MIN_ROWS, MAX_ROWS), maxOf(fit, MIN_ROWS))
             val rowH = if (fit >= MIN_ROWS) cell else areaH / MIN_ROWS
             val gridH = rowH * rows
             val gridTop = areaTop + (areaH - gridH) / 2

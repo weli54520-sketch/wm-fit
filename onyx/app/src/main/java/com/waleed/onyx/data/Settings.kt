@@ -111,6 +111,6 @@ class Settings(context: Context) {
 
     companion object {
         val COLS_RANGE = mapOf(Screen.OUTER to 4..5, Screen.INNER to 5..7)
-        val ROWS_RANGE = mapOf(Screen.OUTER to 5..7, Screen.INNER to 4..6)
+        val ROWS_RANGE = mapOf(Screen.OUTER to 5..8, Screen.INNER to 4..6)
     }
 }

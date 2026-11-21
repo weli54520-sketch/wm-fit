@@ -112,14 +112,12 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                 GeoInput(
                     width = maxWidth.value, height = maxHeight.value,
                     topInset = top.value, bottomInset = bottom.value,
-                    cols = cols, sideOn = settings.sideOn, sideCount = settings.sideCount,
+                    cols = cols, rows = settings.rows(screen), sideOn = settings.sideOn, sideCount = settings.sideCount,
                     dockOn = settings.dockOn, dockCount = settings.dockCount, iconScale = settings.iconScale,
                 ),
             )
             state.layout = g
             val rows = g.rows
-            // عدد الصفوف يجي من طول الشاشة (خانات مربعة)، وينحفظ عشان الترتيب يمشي عليه
-            LaunchedEffect(screen, rows) { if (settings.rows(screen) != rows) settings.setRows(screen, rows) }
             LaunchedEffect(screen, apps) { app.repo.sync(screen, apps) }
             LaunchedEffect(screen, cols, rows) { app.repo.reflow(screen) }
 

@@ -116,7 +116,10 @@ fun SettingsSheet(state: HomeState) {
                         Section(if (scr == Screen.INNER) "الشبكة · الشاشة الداخلية" else "الشبكة · الشاشة الخارجية") {
                             Stepper("الأعمدة", "${s.cols(scr)}", s.cols(scr) > cr.first, s.cols(scr) < cr.last,
                                 onMinus = { s.setCols(scr, s.cols(scr) - 1) }, onPlus = { s.setCols(scr, s.cols(scr) + 1) })
-                            BasicText("الصفوف: ${s.rows(scr)} (حسب طول الشاشة، الخانات مربعة). كل شاشة لها ترتيب مستقل، ولو صغرت الشبكة اللي ما يركب ينتقل للصفحة اللي بعدها.", style = Note, modifier = Modifier.padding(top = 6.dp))
+                            val rr = Settings.ROWS_RANGE.getValue(scr)
+                            Stepper("الصفوف", "${s.rows(scr)}", s.rows(scr) > rr.first, s.rows(scr) < rr.last,
+                                onMinus = { s.setRows(scr, s.rows(scr) - 1) }, onPlus = { s.setRows(scr, s.rows(scr) + 1) })
+                            BasicText("الخانات مربعة، والفراغ الزايد فوق وتحت. لو العدد ما يركب بالشاشة ينقص لحاله. كل شاشة لها ترتيب مستقل، واللي ما يركب ينتقل للصفحة اللي بعدها.", style = Note, modifier = Modifier.padding(top = 6.dp))
                         }
                         Section("العمود والشريط") {
                             Toggle("العمود الجانبي", s.sideOn) { s.sideOn = it }

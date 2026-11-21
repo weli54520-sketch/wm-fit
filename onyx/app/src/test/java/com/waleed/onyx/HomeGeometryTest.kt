@@ -30,7 +30,8 @@ class HomeGeometryTest {
             val colRange = if (inner) 5..7 else 4..5
             for (cols in colRange) for (scale in listOf(0.8f, 0.9f, 1f, 1.1f, 1.15f))
                 for (side in listOf(true, false)) for (sideCount in 3..5) for (dock in listOf(true, false))
-                    out += HomeGeometry.compute(GeoInput(s[0], s[1], s[2], s[3], cols, side, sideCount, dock, 8, scale))
+                    for (rows in listOf(4, 6, 9))
+                        out += HomeGeometry.compute(GeoInput(s[0], s[1], s[2], s[3], cols, rows, side, sideCount, dock, 8, scale))
         }
         return out
     }
@@ -63,8 +64,8 @@ class HomeGeometryTest {
     @Test
     fun sideGapDoesNotDependOnRows() {
         // نفس الشاشة بطولين مختلفين (صفوف مختلفة): المسافة والزجاج ما يتغيرون
-        val a = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4))
-        val b = HomeGeometry.compute(GeoInput(411f, 760f, 32f, 24f, 4))
+        val a = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4, rows = 8))
+        val b = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4, rows = 5))
         assertTrue(a.rows != b.rows)
         assertEquals(a.sideGap, b.sideGap, 0.01f)
         assertEquals(a.side.h, b.side.h, 0.01f)
@@ -120,11 +121,25 @@ class HomeGeometryTest {
     }
 
     @Test
+    fun rowsFollowTheChoiceAndShrinkOnlyIfTheyDontFit() {
+        val six = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4, rows = 6))
+        assertEquals(6, six.rows)
+        assertEquals(six.cell, six.rowH, 0.01f)
+        // الفراغ الزايد ينقسم فوق وتحت بالتساوي
+        val area = six.dots.t - (32f + 8f)
+        assertEquals((area - six.grid.h) / 2, six.grid.t - (32f + 8f), 0.01f)
+        // شاشة قصيرة: ٨ ما تركب، ينقص
+        val short = HomeGeometry.compute(GeoInput(411f, 700f, 32f, 24f, 4, rows = 8))
+        assertTrue(short.rows < 8 && short.rows >= 4)
+    }
+
+    @Test
     fun dockIsOptionalAndGridGrowsWithoutIt() {
         val on = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4, dockOn = true))
         val off = HomeGeometry.compute(GeoInput(411f, 960f, 32f, 24f, 4, dockOn = false))
         assertTrue(off.dock == null && off.dockSlots.isEmpty())
         assertTrue(off.rows >= on.rows)
+        assertTrue(off.grid.h >= on.grid.h - 0.01f)
     }
 
     @Test
