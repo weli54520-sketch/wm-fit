@@ -129,6 +129,45 @@ object GridEngine {
     }
 
     /** أول مكان فاضي يكفي عنصر بهالمقاس (ترتيب القراءة) */
+    /**
+     * مثل [solve] بس ما يرفض أبد: الويدجت ينزل بالمكان اللي اخترته حتى لو الصفحة مليانة،
+     * واللي ما لقى مكان فاضي بالصفحة يطلع بـ overflow (ينتقل للصفحة اللي بعدها).
+     * يرجع null بس لو العنصر نفسه أكبر من الشبكة.
+     */
+    fun solveOverflow(others: List<Span>, moving: Span, cols: Int, rows: Int): Reorder? {
+        if (!fits(moving.x, moving.y, moving.w, moving.h, cols, rows)) return null
+        val taken = Array(rows) { BooleanArray(cols) }
+        fun free(x: Int, y: Int, w: Int, h: Int): Boolean {
+            if (!fits(x, y, w, h, cols, rows)) return false
+            for (yy in y until y + h) for (xx in x until x + w) if (taken[yy][xx]) return false
+            return true
+        }
+        fun mark(x: Int, y: Int, w: Int, h: Int) {
+            for (yy in y until y + h) for (xx in x until x + w) taken[yy][xx] = true
+        }
+        mark(moving.x, moving.y, moving.w, moving.h)
+        val cells = HashMap<Long, Cell>()
+        val pushed = ArrayList<Span>()
+        for (o in others) {
+            if (o.overlaps(moving) || !free(o.x, o.y, o.w, o.h)) pushed += o
+            else { mark(o.x, o.y, o.w, o.h); cells[o.id] = Cell(o.x, o.y) }
+        }
+        pushed.sortWith(compareByDescending<Span> { it.w * it.h }.thenBy { it.y }.thenBy { it.x })
+        val overflow = ArrayList<Long>()
+        for (o in pushed) {
+            var best: Cell? = null
+            var bestScore = Double.MAX_VALUE
+            for (y in 0..rows - o.h) for (x in 0..cols - o.w) {
+                if (!free(x, y, o.w, o.h)) continue
+                val score = abs(x - o.x) + abs(y - o.y) * 1.15 + (y * cols + x) * 0.001
+                if (score < bestScore) { bestScore = score; best = Cell(x, y) }
+            }
+            if (best == null) overflow += o.id
+            else { mark(best.x, best.y, o.w, o.h); cells[o.id] = best }
+        }
+        return Reorder(cells, overflow)
+    }
+
     fun freeSpot(items: List<Span>, w: Int, h: Int, cols: Int, rows: Int): Cell? {
         for (y in 0..rows - h) for (x in 0..cols - w) {
             val t = Span(-1, x, y, w, h)

@@ -68,6 +68,35 @@ fun SettingsSheet(state: HomeState) {
     val s = state.settings
     val scope = rememberCoroutineScope()
     var confirmCopy by remember { mutableStateOf(false) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // النسخة الاحتياطية: ملف تحفظه بأي مكان (الجوال، درايف…) وترجعه
+    val saveBackup = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            val ok = try {
+                val text = state.exportJson()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
+                }
+                true
+            } catch (e: Exception) { false }
+            state.say(if (ok) "انحفظت النسخة الاحتياطية" else "ما قدرت أحفظها")
+        }
+    }
+    val loadBackup = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            val text = try {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                }
+            } catch (e: Exception) { null }
+            val ok = text != null && state.importJson(text)
+            state.say(if (ok) "رجع ترتيبك" else "الملف مو نسخة Onyx")
+        }
+    }
     if (state.settingsOpen) {
         Box(
             Modifier
@@ -145,6 +174,53 @@ fun SettingsSheet(state: HomeState) {
                             Toggle("إطار زجاج مدخّن للويدجت الجديدة", s.widgetFrame) { s.widgetFrame = it }
                             BasicText("كل ويدجت تقدر تشيل إطاره أو تحطه من قائمته (ضغطة طويلة عليه).", style = Note)
                         }
+                        Section("الخلفية") {
+                            WideButton("اختار صورة للخلفية") { state.settingsOpen = false; state.pickWallpaper() }
+                            BasicText("تختار من الاستوديو أو خلفيات الجوال. الأسود أوفر للبطارية.", style = Note)
+                        }
+                        Section("الدرج والبحث") {
+                            Label("ترتيب كل التطبيقات")
+                            Segmented(listOf("بالفئات", "أبجدي"), s.drawerSort) { s.drawerSort = it }
+                            val hiddenApps = s.hidden.mapNotNull { k -> state.catalog.byKey(k)?.let { k to it.label } }
+                            if (hiddenApps.isEmpty()) BasicText("ما فيه تطبيقات مخفية. تخفي أي تطبيق من ضغطة طويلة عليه.", style = Note)
+                            else {
+                                Label("التطبيقات المخفية")
+                                for ((k, label) in hiddenApps) Stepper(label, "", false, true, onMinus = {}, onPlus = { state.unhideApp(k) })
+                                BasicText("+ يرجّع التطبيق للدرج والشاشة.", style = Note)
+                            }
+                        }
+                        Section("المجلدات") {
+                            Label("خلفية المجلد المفتوح")
+                            Segmented(listOf("تضبيب", "تغميق"), s.folderBg) { s.folderBg = it }
+                            BasicText("تسوي مجلد لما تسحب أيقونة وتوقف فوق نص أيقونة ثانية. والسحب لفوق على المجلد يفتح أول تطبيق فيه.", style = Note)
+                        }
+                        Section("الإشعارات") {
+                            Toggle("نقطة الإشعارات على الأيقونات", s.dots) { s.dots = it }
+                            if (s.dots && !com.waleed.onyx.system.Notifs.granted(ctx)) {
+                                WideButton("اسمح لـ Onyx يشوف الإشعارات", filled = true) {
+                                    state.openSystem(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                }
+                                BasicText("مرة وحدة بس. بعدها تطلع نقطة على الأيقونة، ونص الإشعار بالضغطة الطويلة.", style = Note)
+                            }
+                        }
+                        Section("الإيماءات") {
+                            GestureRow("ضغطتين على مكان فاضي", s.gesture("double")) { s.setGesture("double", it) }
+                            GestureRow("قرصة بإصبعين (تضم)", s.gesture("pinchIn")) { s.setGesture("pinchIn", it) }
+                            GestureRow("قرصة بإصبعين (تفتح)", s.gesture("pinchOut")) { s.setGesture("pinchOut", it) }
+                            GestureRow("سحب بإصبعين لفوق", s.gesture("twoUp")) { s.setGesture("twoUp", it) }
+                            GestureRow("سحب بإصبعين لتحت", s.gesture("twoDown")) { s.setGesture("twoDown", it) }
+                            BasicText("اضغط على أي سطر عشان تغير الحركة. السحب على أيقونة لفوق = الويدجت المنبثق حقها.", style = Note)
+                            if (com.waleed.onyx.system.LockService.instance == null) {
+                                WideButton("فعّل قفل الشاشة (إمكانية الوصول)") {
+                                    state.openSystem(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                }
+                            }
+                        }
+                        Section("النسخة الاحتياطية") {
+                            WideButton("احفظ ترتيبي بملف") { saveBackup.launch("WM-Onyx-backup.json") }
+                            WideButton("رجّع ترتيبي من ملف") { loadBackup.launch(arrayOf("application/json", "text/plain", "*/*")) }
+                            BasicText("تحفظ الشاشتين والمجلدات والإعدادات. الويدجت ما تنحفظ (ترجع تضيفها).", style = Note)
+                        }
                         Section("الترتيب") {
                             Toggle("قفل الترتيب", s.lock) { s.lock = it }
                             Spacer(Modifier.height(8.dp))
@@ -182,6 +258,25 @@ fun SettingsSheet(state: HomeState) {
                 }
             }
         }
+    }
+}
+
+/** سطر إيماءة: ضغطة تبدل الحركة للي بعدها */
+@Composable
+private fun GestureRow(text: String, value: Int, onChange: (Int) -> Unit) {
+    val labels = com.waleed.onyx.data.GestureAction.labels
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onChange((value + 1) % labels.size) }
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(text, style = Title)
+        Spacer(Modifier.weight(1f))
+        BasicText(labels.getOrElse(value) { labels[0] } + "  ›", style = Note)
     }
 }
 

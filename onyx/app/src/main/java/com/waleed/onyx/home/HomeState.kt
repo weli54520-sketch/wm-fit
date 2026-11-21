@@ -21,9 +21,19 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.core.view.drawToBitmap
 import com.waleed.onyx.OnyxApp
 import com.waleed.onyx.apps.AppInfo
+import com.waleed.onyx.data.AppData
 import com.waleed.onyx.data.Container
+import com.waleed.onyx.data.FolderData
+import com.waleed.onyx.data.GestureAction
+import com.waleed.onyx.grid.FolderMath
+import com.waleed.onyx.grid.GestureMath
+import com.waleed.onyx.grid.Recents
+import com.waleed.onyx.grid.TwoFinger
+import com.waleed.onyx.system.LockService
+import kotlinx.coroutines.Job
 import com.waleed.onyx.data.Item
 import com.waleed.onyx.data.Kind
+import com.waleed.onyx.data.Screen
 import com.waleed.onyx.grid.Box
 import com.waleed.onyx.grid.Cell
 import com.waleed.onyx.grid.DragBrain
@@ -85,12 +95,20 @@ class Drag(
     var slot by mutableStateOf<Slot?>(null)
     var slotReady by mutableStateOf(false)
     var edge by mutableIntStateOf(0)
+    /** فوق نص أيقونة: رقمها (مجلد أو مكدس)، وهل وقف كفاية */
+    var merge by mutableStateOf<Long?>(null)
+    var mergeReady by mutableStateOf(false)
+    /** إصبع ثاني يقلب الصفحات وأنت ماسك الأيقونة */
+    var paging by mutableStateOf(false)
     /** فوق الشريط وفيه مكان: وين يفسحون له (null = ما يفسحون) */
     var dockGap by mutableStateOf<Int?>(null)
     val brain = DragBrain()
 }
 
 data class Menu(val item: Item, val bounds: Rect, val slot: Slot?, val snap: ImageBitmap? = null)
+
+/** ويدجت منبثق فوق أيقونة تطبيق */
+class Popup(val app: AppInfo, val anchor: Rect, val id: Int, val info: AppWidgetProviderInfo)
 
 /** ويدجت نكبره أو نصغره الحين بسحب الزاوية: يتبع الإصبع بالضبط، والخانات تتحدد لما تفلت */
 class Resize(val item: Item, val limits: SpanLimits, startWDp: Float, startHDp: Float) {
@@ -132,6 +150,21 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     var resize by mutableStateOf<Resize?>(null)
         private set
     var toast by mutableStateOf<String?>(null)
+    /** المجلد المفتوح الحين */
+    var openFolder by mutableStateOf<Item?>(null)
+    /** نسمي المجلد أول ما ينفتح */
+    var folderRename by mutableStateOf(false)
+    var popup by mutableStateOf<Popup?>(null)
+    /** نختار "تطبيق الضغطتين" لهالأيقونة */
+    var altPicker by mutableStateOf<Item?>(null)
+    /** الدرج ينفتح والكيبورد جاهز للبحث */
+    var searchFocus by mutableStateOf(false)
+    private var lastEmptyTap = 0L
+    private var lastEmptyX = 0f
+    private var lastEmptyY = 0f
+    private var tapJob: Job? = null
+    private var tapItem = -1L
+    private var pagingStart = 0f
     var dropTick by mutableIntStateOf(0)
         private set
 
@@ -154,6 +187,11 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun gridItems(page: Int) = items.filter { it.container == Container.GRID && it.page == page }
     fun slotItem(slot: Slot) = items.firstOrNull { it.container == slot.container && it.page == slot.index }
     fun lastPage() = items.filter { it.container == Container.GRID }.maxOfOrNull { it.page } ?: 0
+
+    /** التطبيقات داخل المجلد بالترتيب */
+    fun folderChildren(folderId: Long) = items.filter { it.container == Container.FOLDER && it.page == folderId.toInt() }.sortedBy { it.x }
+
+    fun folderData(item: Item) = FolderData.parse(item.data)
 
     // ───────── الشريط مثل الآيفون ─────────
 
@@ -287,7 +325,11 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
 
     fun tap(hit: Hit) {
         when (hit) {
-            is Hit.OnItem -> if (!editing && hit.item.kind == Kind.APP) launch(hit.item, itemRect(hit.item, hit.slot))
+            is Hit.OnItem -> if (!editing) when (hit.item.kind) {
+                Kind.APP -> tapApp(hit.item, itemRect(hit.item, hit.slot))
+                Kind.FOLDER -> if (folderData(hit.item).cover) launchFolderFirst(hit.item) else openFolderUi(hit.item)
+                else -> {}
+            }
             is Hit.OnEmptySlot -> openPicker(hit.slot)
             else -> {}
         }
@@ -323,6 +365,15 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (settings.editStyle == 0) scope.launch { editScale.animateTo(HomeGeometry.EDIT_SCALE, smooth()) }
     }
 
+    /** ضغطة طويلة على مكان فاضي: وضع الترتيب. ولو الترتيب مقفل: الإعدادات على طول (ما تنحبس أبد) */
+    fun longPressEmpty() {
+        buzz()
+        if (settings.lock) {
+            settingsOpen = true
+            say("الترتيب مقفل. تقدر تفتحه من هنا")
+        } else enterEdit()
+    }
+
     fun exitEdit() {
         if (!editing) return
         editing = false
@@ -340,6 +391,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         picker = null
         settingsOpen = false
         galleryOpen = false
+        altPicker = null
+        popup = null
+        closeFolder()
         exitEdit()
     }
 
@@ -354,6 +408,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun startDrag(item: Item, slot: Slot?, pointer: Offset) {
         if (settings.lock) { say("الترتيب مقفل من الإعدادات"); return }
         if (item.kind == Kind.WIDGET && slot != null) return
+        openFolder = null
+        popup = null
         val g = layout ?: return
         val k = k()
         val f = dp(pointer)
@@ -423,16 +479,34 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (e == -1 && d.page > 0) return DragTarget.EdgeAt(-1)
         if (e == 1 && d.page + 1 < pages.count) return DragTarget.EdgeAt(1)
         if (cx >= g.pages.l && cx <= g.pages.r && cy >= g.pages.t - g.rowH / 2 && cy <= g.pages.b + g.rowH / 2) {
+            mergeTarget(d, cx, cy)?.let { return DragTarget.MergeAt(it) }
             val (x, y) = g.cellFor(cx, cy, d.item.w, d.item.h, k())
             return DragTarget.CellAt(d.page, x, y)
         }
         return DragTarget.Nowhere
     }
 
+    /** فوق نص أيقونة (مجلد) أو ويدجت بنفس المقاس (مكدس)؟ */
+    private fun mergeTarget(d: Drag, cx: Float, cy: Float): Long? {
+        val g = layout ?: return null
+        val (lx, ly) = g.toLocal(cx, cy, k())
+        for (o in gridItems(d.page)) {
+            if (o.id == d.item.id) continue
+            val b = g.cellBox(o.x, o.y, o.w, o.h)
+            val dist = kotlin.math.hypot(lx - b.cx, ly - b.cy)
+            if (d.item.kind == Kind.APP && (o.kind == Kind.APP || o.kind == Kind.FOLDER) && o.w == 1 && o.h == 1) {
+                if (dist < g.icon * 0.32f) return o.id
+            } else if (d.item.kind == Kind.WIDGET && o.kind == Kind.WIDGET && o.w == d.item.w && o.h == d.item.h) {
+                if (dist < minOf(b.w, b.h) * 0.22f) return o.id
+            }
+        }
+        return null
+    }
+
     private var lastLogged: DragTarget? = null
 
     private fun tick(d: Drag) {
-        if (drag !== d || pages.animating) return
+        if (drag !== d || pages.animating || d.paging) return
         val t = targetFor(d)
         // سجل للجوال الوهمي: وين الإصبع ووش تحته (يساعدنا نشوف الأخطاء بدون تخمين)
         if (t != lastLogged) {
@@ -441,7 +515,10 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             android.util.Log.d("OnyxDrag", "pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px center=${b?.cx?.roundToInt()},${b?.cy?.roundToInt()}dp size=${b?.w?.roundToInt()}x${b?.h?.roundToInt()}dp kind=${d.item.kind} k=${"%.2f".format(k())} page=${d.page} target=$t")
         }
         d.dockGap = (t as? DragTarget.DockAt)?.index
+        d.merge = (t as? DragTarget.MergeAt)?.id
+        if (t !is DragTarget.MergeAt) d.mergeReady = false
         when (t) {
+            is DragTarget.MergeAt -> { d.slot = null; d.cand = null; d.edge = 0 }
             is DragTarget.DockAt -> { d.slot = null; d.cand = null; d.edge = 0 }
             is DragTarget.CellAt -> { d.cand = Cell(t.x, t.y); d.slot = null; d.edge = 0 }
             is DragTarget.SlotAt -> { d.slot = Slot(t.container, t.index); d.cand = null; d.edge = 0 }
@@ -452,6 +529,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         when (val e = d.brain.update(t, SystemClock.uptimeMillis())) {
             is DragEvent.Commit -> solveFor(d, Cell(e.cell.x, e.cell.y))
             is DragEvent.SlotReady -> d.slotReady = true
+            is DragEvent.MergeReady -> { d.mergeReady = true; buzzLight() }
             is DragEvent.Flip -> {
                 val np = (d.page + e.dir).coerceIn(0, pages.count - 1)
                 if (np != d.page) {
@@ -478,8 +556,10 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             d.solution = r?.cells
             d.overflow = r?.overflow ?: emptyList()
         } else {
-            d.solution = GridEngine.solve(others, moving, g.cols, g.rows)
-            d.overflow = emptyList()
+            // الويدجت ينزل بالمكان اللي اخترته حتى لو الصفحة مليانة: اللي ما يركب ينتقل للصفحة اللي بعدها
+            val r = GridEngine.solveOverflow(others, moving, g.cols, g.rows)
+            d.solution = r?.cells
+            d.overflow = r?.overflow ?: emptyList()
         }
     }
 
@@ -511,7 +591,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             if (box != null) dockDropFrom[it0.id] = Offset(box.cx, box.cy)
         }
         when (t) {
-            is DragTarget.DockAt -> if (it0.kind == Kind.APP) {
+            is DragTarget.MergeAt -> if (d.mergeReady) mergeDrop(it0, t.id, upd)
+            is DragTarget.DockAt -> if (it0.kind != Kind.WIDGET) {
                 val order = DockOrder.drop(dockItems().map { it.id }, it0.id, t.index)
                 order.forEachIndexed { i, id ->
                     val o = if (id == it0.id) it0 else items.first { it.id == id }
@@ -523,7 +604,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             }
             is DragTarget.SlotAt -> {
                 val slot = Slot(t.container, t.index)
-                if (slot != d.fromSlot && it0.kind == Kind.APP) {
+                if (slot != d.fromSlot && it0.kind != Kind.WIDGET) {
                     val target = slotItem(slot)
                     upd += it0.copy(container = slot.container, page = slot.index, x = 0, y = 0)
                     if (target != null && target.id != it0.id) upd += target.copy(container = it0.container, page = it0.page, x = it0.x, y = it0.y)
@@ -552,7 +633,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
                                 .map { placed[it.id] ?: it }
                                 .filter { it.page == p }
                                 .map { Span(it.id, it.x, it.y, it.w, it.h) }
-                            val spot = GridEngine.freeSpot(taken, 1, 1, g.cols, g.rows)
+                            val spot = GridEngine.freeSpot(taken, o.w, o.h, g.cols, g.rows)
                             if (spot != null) { placed[id] = o.copy(page = p, x = spot.x, y = spot.y); break }
                             p++
                         }
@@ -571,6 +652,72 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     }
 
     fun takeDropFrom(id: Long): IntOffset? = dropFrom.remove(id)
+
+    /** فلت فوق نص أيقونة: مجلد جديد، أو تنضاف للمجلد، أو ويدجت ينضم للمكدس */
+    private fun mergeDrop(it0: Item, targetId: Long, upd: MutableList<Item>) {
+        val target = items.firstOrNull { it.id == targetId } ?: return
+        android.util.Log.d("OnyxFolder", "merge ${it0.kind} into ${target.kind} id=$targetId")
+        when {
+            target.kind == Kind.FOLDER && it0.kind == Kind.APP -> {
+                upd += it0.copy(container = Container.FOLDER, page = target.id.toInt(), x = folderChildren(target.id).size, y = 0)
+                say("انضاف للمجلد")
+            }
+            target.kind == Kind.APP && it0.kind == Kind.APP -> {
+                val name = "مجلد"
+                scope.launch {
+                    val id = repo.createFolder(target, it0, name)
+                    val list = mutableListOf(
+                        target.copy(container = Container.FOLDER, page = id.toInt(), x = 0, y = 0),
+                        it0.copy(container = Container.FOLDER, page = id.toInt(), x = 1, y = 0),
+                    )
+                    compactDock(list)
+                    applyLocal(list)
+                    repo.save(list)
+                    android.util.Log.d("OnyxFolder", "created id=$id")
+                }
+                say("صار مجلد")
+            }
+            target.kind == Kind.WIDGET && it0.kind == Kind.WIDGET -> {
+                val td = widgetData(target) ?: return
+                val dd = widgetData(it0) ?: return
+                val merged = td.copy(stack = td.stack + dd.stack.filter { it !in td.stack })
+                val nt = target.copy(data = merged.encode())
+                items = items.filter { it.id != it0.id }.map { if (it.id == nt.id) nt else it }
+                scope.launch { repo.saveKeepWidgets(listOf(nt), listOf(it0)) }
+                say("صار مكدس: اسحب لفوق أو تحت عليه تتنقل")
+            }
+        }
+    }
+
+    // ───────── إصبع ثاني يقلب الصفحات وأنت ماسك الأيقونة ─────────
+
+    fun dragPagingStart() {
+        val d = drag ?: return
+        if (d.paging) return
+        pages.stop()
+        pagingStart = pages.offset
+        d.paging = true
+    }
+
+    fun dragPagingMove(dxPx: Float) {
+        if (drag?.paging != true) return
+        pages.offset = PagerPhysics.dragOffset(pagingStart, dxPx, pageWidthPx(), pages.count)
+    }
+
+    fun dragPagingEnd(vPx: Float) {
+        val d = drag ?: return
+        if (!d.paging) return
+        d.paging = false
+        val start = PagerPhysics.nearest(pagingStart, pages.count)
+        val target = PagerPhysics.settleTarget(start, pages.offset, vPx / density, pages.count)
+        pages.animateTo(target, PagerPhysics.settleDurationMs(pages.offset, target, true))
+        android.util.Log.d("OnyxPages", "paging2 target=$target")
+        if (target != d.page) {
+            d.page = target
+            d.solution = null; d.solvedFor = null; d.overflow = emptyList(); d.cand = null
+            d.brain.pageChanged()
+        }
+    }
 
     /** سجل للجوال الوهمي: الشريط بعد كل تغيير (الترتيب، وهل فيه فراغ) */
     private fun logDock() {
@@ -725,6 +872,16 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     }
 
     fun removeFromHome(item: Item) {
+        if (item.kind == Kind.FOLDER) {
+            val kids = folderChildren(item.id).map { it.copy(container = Container.HIDDEN) }
+            val upd = kids.toMutableList()
+            items = items.filter { it.id != item.id }
+            compactDock(upd)
+            applyLocal(upd)
+            scope.launch { repo.save(upd, delete = listOf(item)) }
+            say("انشال المجلد، تطبيقاته تلقاها بكل التطبيقات")
+            return
+        }
         if (item.kind == Kind.WIDGET) {
             items = items.filter { it.id != item.id }
             scope.launch { repo.save(emptyList(), delete = listOf(item)) }
@@ -788,7 +945,351 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
 
     fun launch(item: Item, bounds: Rect?) {
         val a = catalog.byKey(item.appKey) ?: return
+        pushRecent(a.key)
         val r = bounds?.let { android.graphics.Rect(it.left.toInt(), it.top.toInt(), it.right.toInt(), it.bottom.toInt()) }
         catalog.launch(a, r)
+    }
+
+    // ───────── 0.4: المجلدات، الإيماءات، المنبثق، الإخفاء، النسخة الاحتياطية ─────────
+
+    fun pushRecent(key: String) {
+        settings.recents = Recents.push(settings.recents, key, 8)
+    }
+
+    fun launchApp(a: AppInfo, bounds: Rect? = null) {
+        pushRecent(a.key)
+        val r = bounds?.let { android.graphics.Rect(it.left.toInt(), it.top.toInt(), it.right.toInt(), it.bottom.toInt()) }
+        catalog.launch(a, r)
+    }
+
+    /** ضغطة على تطبيق: لو له "تطبيق الضغطتين" ننتظر شوي نشوف تجي ضغطة ثانية */
+    fun tapApp(item: Item, bounds: Rect?) {
+        val alt = AppData.parse(item.data).alt.takeIf { it.isNotEmpty() }?.let { catalog.byKey(it) }
+        if (alt == null) { launch(item, bounds); return }
+        if (tapJob?.isActive == true && tapItem == item.id) {
+            tapJob?.cancel()
+            tapJob = null
+            launchApp(alt, bounds)
+            return
+        }
+        tapItem = item.id
+        tapJob = scope.launch {
+            delay(GestureMath.DOUBLE_TAP_MS - 20)
+            launch(item, bounds)
+        }
+    }
+
+    fun startAltPicker(item: Item) {
+        menu = null
+        altPicker = item
+        drawerOpen = true
+    }
+
+    fun assignAlt(a: AppInfo) {
+        val it0 = altPicker ?: return
+        val cur = items.firstOrNull { it.id == it0.id } ?: return
+        val u = cur.copy(data = AppData(a.key).encode())
+        applyLocal(listOf(u))
+        scope.launch { repo.save(listOf(u)) }
+        altPicker = null
+        drawerOpen = false
+        say("ضغطتين = ${a.label}")
+    }
+
+    fun clearAlt(item: Item) {
+        val u = item.copy(data = "")
+        applyLocal(listOf(u))
+        scope.launch { repo.save(listOf(u)) }
+        menu = null
+    }
+
+    // ── المجلدات ──
+
+    fun openFolderUi(item: Item, rename: Boolean = false) {
+        menu = null
+        folderRename = rename
+        openFolder = item
+    }
+
+    fun closeFolder() {
+        openFolder = null
+        folderRename = false
+    }
+
+    fun launchFolderFirst(folder: Item) {
+        val first = folderChildren(folder.id).firstOrNull() ?: return
+        launch(first, itemRect(folder, slotOf(folder)))
+    }
+
+    /** السحب لفوق على المجلد: يفتح أول تطبيق (والغطاء بالعكس: يفتح المجلد) */
+    fun folderSwipe(folder: Item) {
+        if (folderData(folder).cover) openFolderUi(folder) else launchFolderFirst(folder)
+    }
+
+    fun slotOf(item: Item): Slot? = if (item.container == Container.SIDE || item.container == Container.DOCK) Slot(item.container, item.page) else null
+
+    fun renameFolder(folder: Item, name: String) {
+        val cur = items.firstOrNull { it.id == folder.id } ?: return
+        val u = cur.copy(data = folderData(cur).copy(name = name.trim().ifEmpty { "مجلد" }).encode())
+        applyLocal(listOf(u))
+        if (openFolder?.id == u.id) openFolder = u
+        scope.launch { repo.save(listOf(u)) }
+    }
+
+    fun toggleCover(folder: Item) {
+        val fd = folderData(folder)
+        val u = folder.copy(data = fd.copy(cover = !fd.cover).encode())
+        applyLocal(listOf(u))
+        scope.launch { repo.save(listOf(u)) }
+        menu = null
+        say(if (!fd.cover) "صار غطاء: الضغطة تفتح أول تطبيق، والسحب لفوق يفتح المجلد" else "رجع مجلد عادي")
+    }
+
+    /** يطلع تطبيق من المجلد لأول مكان فاضي بالصفحة الحالية. ولو بقى واحد، المجلد ينفك */
+    fun removeFromFolder(child: Item) {
+        val folder = items.firstOrNull { it.id == child.page.toLong() && it.kind == Kind.FOLDER } ?: return
+        val upd = ArrayList<Item>()
+        val del = ArrayList<Item>()
+        val g = geo
+        var page = pages.current.coerceAtMost(lastPage())
+        var spot: Cell?
+        while (true) {
+            spot = GridEngine.freeSpot(gridItems(page).map { Span(it.id, it.x, it.y, it.w, it.h) }, 1, 1, g.cols, g.rows)
+            if (spot != null) break
+            page++
+        }
+        upd += child.copy(container = Container.GRID, page = page, x = spot!!.x, y = spot.y)
+        val rest = folderChildren(folder.id).filter { it.id != child.id }
+        rest.forEachIndexed { i, o -> if (o.x != i) upd += o.copy(x = i) }
+        if (FolderMath.shouldDissolve(rest.size)) {
+            rest.firstOrNull()?.let { last -> upd += last.copy(container = folder.container, page = folder.page, x = folder.x, y = folder.y) }
+            del += folder
+            closeFolder()
+        }
+        applyLocal(upd)
+        if (del.isNotEmpty()) items = items.filter { o -> del.none { it.id == o.id } }
+        scope.launch { repo.save(upd, delete = del) }
+        say("طلع من المجلد")
+    }
+
+    /** يفك المجلد: أول تطبيق مكانه، والباقي لأول أماكن فاضية */
+    fun dissolveFolder(folder: Item) {
+        menu = null
+        closeFolder()
+        val kids = folderChildren(folder.id)
+        val upd = ArrayList<Item>()
+        val g = geo
+        val taken = HashMap<Int, MutableList<Span>>()
+        fun takenOn(p: Int) = taken.getOrPut(p) { gridItems(p).filter { it.id != folder.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }.toMutableList() }
+        kids.forEachIndexed { i, k ->
+            if (i == 0) {
+                upd += k.copy(container = folder.container, page = folder.page, x = folder.x, y = folder.y)
+                if (folder.container == Container.GRID) takenOn(folder.page) += Span(k.id, folder.x, folder.y)
+            } else {
+                var p = if (folder.container == Container.GRID) folder.page else pages.current
+                while (true) {
+                    val spot = GridEngine.freeSpot(takenOn(p), 1, 1, g.cols, g.rows)
+                    if (spot != null) { takenOn(p) += Span(k.id, spot.x, spot.y); upd += k.copy(container = Container.GRID, page = p, x = spot.x, y = spot.y); break }
+                    p++
+                }
+            }
+        }
+        applyLocal(upd)
+        items = items.filter { it.id != folder.id }
+        scope.launch { repo.save(upd, delete = listOf(folder)) }
+        say("انفك المجلد")
+    }
+
+    // ── الإخفاء ──
+
+    fun hideApp(a: AppInfo) {
+        settings.hidden = settings.hidden + a.key
+        items.filter { it.appKey == a.key && it.kind == Kind.APP }.forEach { row ->
+            if (row.container == Container.FOLDER) removeFromFolderQuiet(row)
+        }
+        val upd = mutableListOf<Item>()
+        items.filter { it.appKey == a.key && it.kind == Kind.APP }.forEach { upd += it.copy(container = Container.HIDDEN) }
+        compactDock(upd)
+        applyLocal(upd)
+        scope.launch { repo.save(upd) }
+        menu = null
+        say("انخفى ${a.label}. ترجعه من الإعدادات")
+    }
+
+    private fun removeFromFolderQuiet(child: Item) {
+        val rest = folderChildren(child.page.toLong()).filter { it.id != child.id }
+        val upd = rest.mapIndexedNotNull { i, o -> if (o.x != i) o.copy(x = i) else null }
+        applyLocal(upd)
+        scope.launch { repo.save(upd) }
+    }
+
+    fun unhideApp(key: String) {
+        settings.hidden = settings.hidden - key
+        catalog.byKey(key)?.let { addToHome(it) }
+    }
+
+    // ── الويدجت المنبثق والمكدس ──
+
+    /** السحب لفوق على أيقونة تطبيق: ويدجته يطلع فوقها (بدون ما ياخذ مكان بالشاشة) */
+    fun showPopup(item: Item) {
+        val a = catalog.byKey(item.appKey) ?: return
+        val anchor = itemRect(item, slotOf(item)) ?: Rect.Zero
+        val provs = widgets.providers().filter { it.provider.packageName == a.pkg && it.profile == a.user }
+        if (provs.isEmpty()) { say("${a.label} ما له ويدجت"); return }
+        val saved = settings.popupId(a.pkg)
+        val si = if (saved > 0) widgets.info(saved) else null
+        if (si != null) { popup = Popup(a, anchor, saved, si); buzz(); return }
+        widgets.begin(provs.first()) { id ->
+            settings.setPopupId(a.pkg, id)
+            widgets.info(id)?.let { popup = Popup(a, anchor, id, it) }
+        }
+    }
+
+    fun isStack(item: Item) = item.kind == Kind.WIDGET && widgetData(item)?.isStack == true
+
+    fun stackShift(item: Item, dir: Int) {
+        val cur = items.firstOrNull { it.id == item.id } ?: return
+        val d = widgetData(cur) ?: return
+        val u = cur.copy(data = d.shifted(dir).encode())
+        applyLocal(listOf(u))
+        buzzLight()
+        scope.launch { repo.save(listOf(u)) }
+    }
+
+    /** يطلع الويدجت الحالي من المكدس لأول مكان يكفيه */
+    fun unstack(item: Item) {
+        menu = null
+        val d = widgetData(item) ?: return
+        if (!d.isStack) return
+        val out = d.id
+        val rest = d.stack.filter { it != out }
+        val u = item.copy(data = d.copy(id = rest.first(), stack = rest).encode())
+        applyLocal(listOf(u))
+        val g = geo
+        var page = item.page
+        var spot: Cell?
+        while (true) {
+            spot = GridEngine.freeSpot(gridItems(page).map { Span(it.id, it.x, it.y, it.w, it.h) }, item.w, item.h, g.cols, g.rows)
+            if (spot != null) break
+            page++
+        }
+        val row = Item(screen = item.screen, container = Container.GRID, page = page, x = spot!!.x, y = spot.y, w = item.w, h = item.h, kind = Kind.WIDGET,
+            data = WidgetData(out, widgets.info(out)?.provider?.let { Widgets.providerKey(it) } ?: "", d.frame, d.clear).encode())
+        scope.launch { repo.save(listOf(u), insert = listOf(row)) }
+        say("طلع من المكدس")
+    }
+
+    // ── الإيماءات ──
+
+    /** ضغطة على مكان فاضي: لو ضغطتين، نسوي إيماءة الضغطتين */
+    fun emptyTap(p: Offset) {
+        val now = SystemClock.uptimeMillis()
+        val x = p.x / density
+        val y = p.y / density
+        if (!editing && GestureMath.isDoubleTap(lastEmptyTap, lastEmptyX, lastEmptyY, now, x, y)) {
+            lastEmptyTap = 0L
+            android.util.Log.d("OnyxGesture", "double action=${settings.gesture("double")}")
+            performGesture(settings.gesture("double"))
+            return
+        }
+        lastEmptyTap = now; lastEmptyX = x; lastEmptyY = y
+    }
+
+    fun twoFinger(kind: TwoFinger) {
+        val name = when (kind) {
+            TwoFinger.PINCH_IN -> "pinchIn"
+            TwoFinger.PINCH_OUT -> "pinchOut"
+            TwoFinger.SWIPE_UP -> "twoUp"
+            TwoFinger.SWIPE_DOWN -> "twoDown"
+            TwoFinger.NONE -> return
+        }
+        android.util.Log.d("OnyxGesture", "$name action=${settings.gesture(name)}")
+        performGesture(settings.gesture(name))
+    }
+
+    fun performGesture(a: Int) {
+        when (a) {
+            GestureAction.LOCK -> if (!LockService.lock()) {
+                say("فعّل \"قفل الشاشة بالضغطتين\" من إمكانية الوصول")
+                openSystem(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+            GestureAction.NOTIFICATIONS -> openNotifications()
+            GestureAction.QUICK -> openQuick()
+            GestureAction.DRAWER -> drawerOpen = true
+            GestureAction.SEARCH -> { searchFocus = true; drawerOpen = true }
+            GestureAction.EDIT -> if (editing) exitEdit() else longPressEmpty()
+            GestureAction.SETTINGS -> settingsOpen = true
+            GestureAction.CAMERA -> openSystem(android.content.Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+            else -> {}
+        }
+    }
+
+    fun openSystem(i: android.content.Intent) {
+        try {
+            app.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            say("ما قدرت أفتحها")
+        }
+    }
+
+    /** اللوحة السريعة حق سامسونج */
+    fun openQuick() {
+        try {
+            val sb = app.getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("expandSettingsPanel").invoke(sb)
+        } catch (e: Exception) {
+            openNotifications()
+        }
+    }
+
+    /** يفتح اختيار الخلفية حق الجوال (الاستوديو، الخلفيات…) */
+    fun pickWallpaper() {
+        val i = android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER), "اختار الخلفية")
+        openSystem(i)
+    }
+
+    // ── النسخة الاحتياطية ──
+
+    suspend fun exportJson(): String {
+        val o = org.json.JSONObject()
+        o.put("onyx", 1)
+        val arr = org.json.JSONArray()
+        for (it in repo.exportItems()) {
+            arr.put(
+                org.json.JSONObject().put("id", it.id).put("screen", it.screen).put("container", it.container).put("page", it.page)
+                    .put("x", it.x).put("y", it.y).put("w", it.w).put("h", it.h).put("kind", it.kind).put("appKey", it.appKey).put("data", it.data),
+            )
+        }
+        o.put("items", arr)
+        val st = org.json.JSONObject()
+        for ((k, v) in settings.exportAll()) if (v != null && !k.startsWith("popup_")) st.put(k, v)
+        o.put("settings", st)
+        return o.toString()
+    }
+
+    suspend fun importJson(text: String): Boolean = try {
+        val o = org.json.JSONObject(text)
+        val arr = o.getJSONArray("items")
+        val rows = (0 until arr.length()).map { i ->
+            val r = arr.getJSONObject(i)
+            Item(
+                id = r.getLong("id"), screen = r.getInt("screen"), container = r.getInt("container"), page = r.getInt("page"),
+                x = r.getInt("x"), y = r.getInt("y"), w = r.optInt("w", 1), h = r.optInt("h", 1), kind = r.optInt("kind", 0),
+                appKey = r.optString("appKey"), data = r.optString("data"),
+            )
+        }
+        val st = o.optJSONObject("settings")
+        if (st != null) {
+            val m = HashMap<String, Any?>()
+            for (k in st.keys()) m[k] = st.get(k)
+            settings.importAll(m)
+        }
+        repo.importItems(rows)
+        repo.reflow(Screen.OUTER)
+        repo.reflow(Screen.INNER)
+        true
+    } catch (e: Exception) {
+        android.util.Log.w("OnyxBackup", "import", e)
+        false
     }
 }

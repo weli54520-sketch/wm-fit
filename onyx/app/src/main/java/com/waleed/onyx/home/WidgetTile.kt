@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -98,6 +99,8 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
     // خلفية الويدجت نفسه شفافة: الأسود يختفي ويبان الزجاج، والأبيض والألوان تبقى
     val clear = data?.clear != false
     val info = remember(data?.id) { data?.let { state.app.widgets.info(it.id) } }
+    // فوقه ويدجت ثاني وأنت تسحب: بيصيرون مكدس
+    val mergeHere = state.drag?.let { it.merge == item.id && it.mergeReady } == true
     val logged = remember { arrayOfNulls<String>(1) }
 
     // وأنت تكبره: إطار منقط بالمقاس اللي بينزل عليه
@@ -120,7 +123,11 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
         Modifier
             .offset { anim.value }
             .size(boxW, boxH)
-            .graphicsLayer { alpha = if (dragged) 0f else 1f }
+            .graphicsLayer {
+                alpha = if (dragged) 0f else 1f
+                val k = if (mergeHere) 1.04f else 1f
+                scaleX = k; scaleY = k
+            }
             // سجل للجوال الوهمي: مكان الويدجت ومقاسه على الشاشة
             .onGloballyPositioned {
                 val r = it.boundsInRoot()
@@ -138,7 +145,7 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
             // المقاس اللي نقوله للتطبيق: المساحة الفعلية للويدجت
             val contentW = cellW * spanW - WidgetMargin * 2 - inset * 2
             val contentH = cellH * spanH - WidgetMargin * 2 - inset * 2
-            if (data != null && info != null) {
+            if (data != null && info != null) androidx.compose.runtime.key(data.id) {
                 AndroidView(
                     factory = { ctx ->
                         state.app.widgets.host.createView(ctx, data.id, info).also { state.widgetViews[item.id] = it }
@@ -162,6 +169,22 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
                     BasicText(
                         "الويدجت مو متوفر\nضغطة طويلة عشان تشيله",
                         style = TextStyle(color = Onyx.Muted, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 18.sp),
+                    )
+                }
+            }
+        }
+        // المكدس: نقاط صغيرة على الجنب (كم ويدجت ووين أنت)
+        if (data != null && data.isStack) {
+            androidx.compose.foundation.layout.Column(
+                Modifier.align(Alignment.CenterEnd).padding(end = WidgetMargin + 5.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+            ) {
+                for (sid in data.stack) {
+                    Box(
+                        Modifier
+                            .size(5.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(Color.White.copy(alpha = if (sid == data.id) 0.95f else 0.35f)),
                     )
                 }
             }

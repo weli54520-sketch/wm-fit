@@ -93,6 +93,8 @@ sealed class DragTarget {
     data class SlotAt(val container: Int, val index: Int) : DragTarget()
     /** فوق الشريط السفلي وفيه مكان: يفسحون له بمكان [index] (على طول، مثل الآيفون) */
     data class DockAt(val index: Int) : DragTarget()
+    /** فوق نص أيقونة ثانية: لو وقف شوي، يصيرون مجلد (أو تنضاف للمجلد / المكدس) */
+    data class MergeAt(val id: Long) : DragTarget()
     data class EdgeAt(val dir: Int) : DragTarget()
     object Nowhere : DragTarget()
 }
@@ -105,6 +107,8 @@ sealed class DragEvent {
     data class SlotReady(val slot: DragTarget.SlotAt) : DragEvent()
     /** وقف عند الحافة كفاية: تقليب صفحة */
     data class Flip(val dir: Int) : DragEvent()
+    /** وقف فوق نص أيقونة كفاية: جاهز يصير مجلد */
+    data class MergeReady(val target: DragTarget.MergeAt) : DragEvent()
 }
 
 /**
@@ -116,6 +120,7 @@ class DragBrain(
     val slotDwellMs: Long = 200,
     val edgeDwellMs: Long = 500,
     val reflipMs: Long = 900,
+    val mergeDwellMs: Long = 300,
 ) {
     var hover: DragTarget = DragTarget.Nowhere
         private set
@@ -123,6 +128,8 @@ class DragBrain(
     var committed: DragTarget.CellAt? = null
         private set
     var slotReady: DragTarget.SlotAt? = null
+        private set
+    var mergeReady: DragTarget.MergeAt? = null
         private set
     private var lastFlipAt = Long.MIN_VALUE / 2
 
@@ -132,6 +139,7 @@ class DragBrain(
             hover = target
             hoverSince = now
             if (target !is DragTarget.SlotAt) slotReady = null
+            if (target !is DragTarget.MergeAt) mergeReady = null
         }
         val held = now - hoverSince
         return when (target) {
@@ -147,6 +155,8 @@ class DragBrain(
                     DragEvent.Flip(target.dir)
                 } else null
             is DragTarget.DockAt -> null
+            is DragTarget.MergeAt ->
+                if (mergeReady != target && held >= mergeDwellMs) { mergeReady = target; DragEvent.MergeReady(target) } else null
             DragTarget.Nowhere -> null
         }
     }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -43,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -144,6 +146,9 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             BackHandler(enabled = true) {
                 when {
                     state.menu != null -> state.menu = null
+                    state.popup != null -> state.popup = null
+                    state.openFolder != null -> state.closeFolder()
+                    state.altPicker != null -> { state.altPicker = null; state.drawerOpen = false }
                     state.galleryOpen -> state.galleryOpen = false
                     state.picker != null -> { state.picker = null; state.drawerOpen = false }
                     state.drawerOpen -> state.drawerOpen = false
@@ -179,7 +184,11 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             val pageWpx = with(density) { pagesW.toPx() }
 
             // طبقة الشاشة الرئيسية: مدير لمس واحد لكل شي تحتها
-            Box(Modifier.fillMaxSize().homeGestures(state)) {
+            // المجلد المفتوح: الشاشة وراه تتضبب (أو تغمق من الإعدادات)
+            val blur by androidx.compose.animation.core.animateDpAsState(
+                if (state.openFolder != null && settings.folderBg == 0) 18.dp else 0.dp, label = "blur",
+            )
+            Box(Modifier.fillMaxSize().then(if (blur > 0.5.dp) Modifier.blur(blur) else Modifier).homeGestures(state)) {
                 // الصفحات: من حافة الشاشة لين قبل العمود. اللي يطلع عنها ينقص (ما يمر تحت العمود)
                 Box(
                     Modifier
@@ -266,6 +275,8 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             DragOverlay(state, icon)
 
             EditBar(state, top)
+            FolderOverlay(state)
+            PopupOverlay(state)
             ContextMenu(state)
             AppDrawer(state, inner, icon)
             WidgetGallery(state, inner)
@@ -291,7 +302,9 @@ private fun GridTile(state: HomeState, item: Item, cellW: Dp, cellH: Dp, icon: D
     }
     val dragged = state.drag?.item?.id == item.id
     val pressed = state.pressedKey == item.id
-    val press by animateFloatAsState(if (pressed) 0.88f else 1f, pressSpec(pressed, settings), label = "press")
+    // فوق نص هالأيقونة وأنت تسحب: تكبر شوي (بتصير مجلد)
+    val mergeHere = state.drag?.let { it.merge == item.id && it.mergeReady } == true
+    val press by animateFloatAsState(if (pressed) 0.88f else if (mergeHere) 1.14f else 1f, pressSpec(pressed, settings), label = "press")
     // الأيقونة اللي بتطلع للصفحة اللي بعدها (الصفحة مليانة): تختفي بنعومة
     val out by animateFloatAsState(if (state.isOverflow(item.id)) 0f else 1f, Motion.smooth(settings), label = "out")
     val appInfo = state.catalog.byKey(item.appKey)
@@ -312,7 +325,21 @@ private fun GridTile(state: HomeState, item: Item, cellW: Dp, cellH: Dp, icon: D
             },
         contentAlignment = Alignment.Center,
     ) {
-        AppFace(appInfo, state.catalog, icon, settings.iconStyle, settings.labels)
+        // مع الأسماء: الأيقونة تصغر شوي عشان الاسم يركب داخل الخانة (ما ينزل على الصف اللي تحته)
+        val labelH = 20.dp
+        val iconL = if (settings.labels) minOf(icon, cellH - labelH - 6.dp) else icon
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            if (mergeHere) {
+                Box(Modifier.size(iconL), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(iconL * 1.08f).drawBehind { liquidGlass(size.minDimension * 0.27f) })
+                    ItemIcon(state, item, iconL * 0.86f)
+                }
+            } else ItemIcon(state, item, iconL)
+            if (settings.labels) {
+                val label = if (item.kind == Kind.FOLDER) state.folderData(item).name else appInfo?.label.orEmpty()
+                Box(Modifier.size(width = cellW - 4.dp, height = labelH), contentAlignment = Alignment.Center) { AppLabel(label, cellW - 4.dp) }
+            }
+        }
     }
 }
 
@@ -420,7 +447,7 @@ private fun DockTile(state: HomeState, item: Item, b: com.waleed.onyx.grid.Box, 
             .graphicsLayer { scaleX = scale; scaleY = scale },
         contentAlignment = Alignment.Center,
     ) {
-        AppIcon(appInfo, state.catalog, icon, settings.iconStyle)
+        if (appInfo != null || item.kind == Kind.FOLDER) ItemIcon(state, item, icon)
     }
 }
 
@@ -441,7 +468,7 @@ private fun SlotTile(state: HomeState, slot: Slot, icon: Dp) {
             .graphicsLayer { scaleX = scale; scaleY = scale; alpha = if (away) 0f else 1f },
         contentAlignment = Alignment.Center,
     ) {
-        if (appInfo != null) AppIcon(appInfo, state.catalog, icon, state.settings.iconStyle)
+        if (item != null && (appInfo != null || item.kind == Kind.FOLDER)) ItemIcon(state, item, icon)
         else Box(Modifier.size(icon * 0.5f).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)))
     }
 }
@@ -475,7 +502,7 @@ private fun DragOverlay(state: HomeState, icon: Dp) {
         contentAlignment = Alignment.Center,
     ) {
         if (widget) WidgetLifted(d.snap, state.widgetData(d.item)?.frame != false, Modifier.fillMaxSize().padding(WidgetMargin * k), k)
-        else AppIcon(appInfo, state.catalog, icon * k, state.settings.iconStyle)
+        else ItemIcon(state, d.item, icon * k)
     }
 }
 

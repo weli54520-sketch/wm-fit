@@ -11,6 +11,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.dp
 import com.waleed.onyx.data.Kind
+import com.waleed.onyx.grid.GestureMath
 import com.waleed.onyx.grid.PagerPhysics
 import kotlin.math.abs
 
@@ -18,6 +19,8 @@ private sealed class First {
     object Up : First()
     object Cancel : First()
     data class Moved(val delta: Offset) : First()
+    /** إصبع ثاني نزل قبل ما نقرر: إيماءة بإصبعين */
+    data class Two(val a: Offset, val b: Offset, val idB: PointerId) : First()
 }
 
 /**
@@ -29,7 +32,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
     val pass = PointerEventPass.Initial
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = pass)
-        if (state.drag != null || state.resize != null || state.menu != null) return@awaitEachGesture
+        if (state.drag != null || state.resize != null || state.menu != null || state.openFolder != null || state.popup != null) return@awaitEachGesture
         val hit = state.hit(down.position)
         // مقبض تكبير الويدجت: الويدجت يتبع الإصبع (نحسب من الشاشة، مو من المقبض اللي يتحرك)
         if (hit is Hit.Handle) {
@@ -61,7 +64,9 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
             while (r == null) {
                 val e = awaitPointerEvent(pass)
                 val c = e.changes.firstOrNull { it.id == down.id }
+                val other = e.changes.firstOrNull { it.id != down.id && it.pressed }
                 r = when {
+                    c != null && c.pressed && other != null -> First.Two(c.position, other.position, other.id)
                     c == null -> First.Cancel
                     !c.pressed -> First.Up
                     (c.position - down.position).getDistance() > slop -> First.Moved(c.position - down.position)
@@ -79,9 +84,16 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
         state.pressedKey = null
 
         when (first) {
+            is First.Two -> {
+                state.pressedKey = null
+                twoFingerLoop(state, down.id, first.idB, first.a, first.b)
+                state.pages.settle(state.calm())
+            }
             First.Up -> when {
                 // النقاط: تروح للصفحة اللي ضغطت نقطتها
                 hit is Hit.Dots -> state.dotsGo(last.x, fast = false)
+                // ضغطتين على مكان فاضي = إيماءة (قفل الشاشة بالأساس)
+                hit is Hit.Empty && !pagesWereMoving -> state.emptyTap(down.position)
                 pagesWereMoving -> state.pages.settle(state.calm())
                 else -> state.tap(hit)
             }
@@ -103,9 +115,11 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                         dragLoop(state, down.id)
                     }
                     abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, last, tracker)
+                    // المكدس: السحب لفوق وتحت يتنقل بين الويدجت
+                    isWidget && !editing && state.isStack(onItem!!.item) -> stackSwipe(state, down.id, down.position, onItem.item)
                     // الويدجت بالوضع العادي: السحب الطولي له (مثل قائمة التقويم)
                     isWidget && !editing -> {}
-                    else -> verticalSwipe(state, down.id, down.position)
+                    else -> verticalSwipe(state, down.id, down.position, if (editing) null else onItem)
                 }
                 if (state.drag == null) state.pages.settle(state.calm())
             }
@@ -123,8 +137,8 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                         afterLongPress(state, down.id, last, hit, dragStart)
                     }
                     is Hit.OnEmptySlot -> state.openPicker(hit.slot)
-                    // مكان فاضي، أو برا الصفحات (فوق، النقاط، حول الشريط): وضع الترتيب
-                    Hit.Empty, Hit.Dots, Hit.Outside -> { state.buzz(); state.enterEdit() }
+                    // مكان فاضي، أو برا الصفحات (فوق، النقاط، حول الشريط): وضع الترتيب (أو الإعدادات لو مقفل)
+                    Hit.Empty, Hit.Dots, Hit.Outside -> state.longPressEmpty()
                     else -> {}
                 }
             }
@@ -163,17 +177,88 @@ private suspend fun AwaitPointerEventScope.dotsScrub(state: HomeState, id: Point
     }
 }
 
-/** السحب: اللمسة كلها لنا لين ترفع إصبعك */
+/**
+ * السحب: اللمسة كلها لنا لين ترفع إصبعك.
+ * وإصبع ثاني ينزل وأنت ماسك = يقلب الصفحات (مثل الآيفون)، والأيقونة تبقى تحت إصبعك الأول.
+ */
 private suspend fun AwaitPointerEventScope.dragLoop(state: HomeState, id: PointerId) {
+    var second: PointerId? = null
+    var secondStart = Offset.Zero
+    var tracker2 = VelocityTracker()
     while (true) {
         val e = awaitPointerEvent(PointerEventPass.Initial)
         val c = e.changes.firstOrNull { it.id == id }
+        // الإصبع الثاني
+        val s2 = second
+        if (s2 == null) {
+            val o = e.changes.firstOrNull { it.id != id && it.pressed }
+            if (o != null) {
+                second = o.id
+                secondStart = o.position
+                tracker2 = VelocityTracker()
+                track(tracker2, o)
+                o.consume()
+                state.dragPagingStart()
+            }
+        } else {
+            val o = e.changes.firstOrNull { it.id == s2 }
+            if (o == null || !o.pressed) {
+                if (o != null) track(tracker2, o)
+                state.dragPagingEnd(tracker2.calculateVelocity().x)
+                second = null
+            } else {
+                track(tracker2, o)
+                o.consume()
+                state.dragPagingMove(o.position.x - secondStart.x)
+            }
+        }
         if (c == null) break
         c.consume()
         if (!c.pressed) break
         state.dragMove(c.position)
     }
+    if (second != null) state.dragPagingEnd(tracker2.calculateVelocity().x)
     state.dragEnd()
+}
+
+/** إيماءة بإصبعين: قرصة أو سحب لفوق/تحت */
+private suspend fun AwaitPointerEventScope.twoFingerLoop(state: HomeState, idA: PointerId, idB: PointerId, a0: Offset, b0: Offset) {
+    var a1 = a0
+    var b1 = b0
+    while (true) {
+        val e = awaitPointerEvent(PointerEventPass.Initial)
+        val ca = e.changes.firstOrNull { it.id == idA }
+        val cb = e.changes.firstOrNull { it.id == idB }
+        e.changes.forEach { it.consume() }
+        if (ca != null) a1 = ca.position
+        if (cb != null) b1 = cb.position
+        if (ca == null || cb == null || !ca.pressed || !cb.pressed) break
+    }
+    // ننتظر الإصبع الثاني يرتفع عشان ما يبدأ شي ثاني
+    while (true) {
+        val e = awaitPointerEvent(PointerEventPass.Initial)
+        e.changes.forEach { it.consume() }
+        if (e.changes.none { it.pressed }) break
+    }
+    val d = state.density
+    val kind = GestureMath.classify(
+        floatArrayOf(a0.x / d, a0.y / d), floatArrayOf(b0.x / d, b0.y / d),
+        floatArrayOf(a1.x / d, a1.y / d), floatArrayOf(b1.x / d, b1.y / d),
+    )
+    state.twoFinger(kind)
+}
+
+/** المكدس: سحبة لفوق = اللي بعده، لتحت = اللي قبله */
+private suspend fun AwaitPointerEventScope.stackSwipe(state: HomeState, id: PointerId, start: Offset, item: com.waleed.onyx.data.Item) {
+    var dy = 0f
+    while (true) {
+        val e = awaitPointerEvent(PointerEventPass.Initial)
+        val c = e.changes.firstOrNull { it.id == id } ?: break
+        c.consume()
+        dy = c.position.y - start.y
+        if (!c.pressed) break
+    }
+    if (kotlin.math.abs(dy) > 36f * state.density) state.stackShift(item, if (dy < 0) 1 else -1)
 }
 
 /**
@@ -229,8 +314,11 @@ private suspend fun AwaitPointerEventScope.resizeLoop(state: HomeState, id: Poin
     state.resizeEnd()
 }
 
-/** السحب لفوق = كل التطبيقات، لتحت = الإشعارات (من أي مكان) */
-private suspend fun AwaitPointerEventScope.verticalSwipe(state: HomeState, id: PointerId, start: Offset) {
+/**
+ * السحب لفوق = كل التطبيقات، لتحت = الإشعارات (من أي مكان).
+ * لو بدأ على أيقونة تطبيق: لفوق = ويدجته المنبثق. على مجلد: لفوق = أول تطبيق فيه.
+ */
+private suspend fun AwaitPointerEventScope.verticalSwipe(state: HomeState, id: PointerId, start: Offset, on: Hit.OnItem?) {
     var dy = 0f
     var dx = 0f
     while (true) {
@@ -243,6 +331,12 @@ private suspend fun AwaitPointerEventScope.verticalSwipe(state: HomeState, id: P
     }
     if (state.editing || abs(dx) > abs(dy)) return
     val d = state.density
+    if (on != null && dy < -40f * d) {
+        when (on.item.kind) {
+            Kind.APP -> { state.showPopup(on.item); return }
+            Kind.FOLDER -> { state.folderSwipe(on.item); return }
+        }
+    }
     when {
         dy < -60f * d -> state.drawerOpen = true
         dy > 48f * d -> state.openNotifications()

@@ -486,6 +486,11 @@ def run_screen(tag):
         else:
             log("  ❌ ما بدأ سحب الويدجت")
         shot(f"{tag}_10_widget_drag_end")
+        # 0.4: الويدجت ينزل بالمكان اللي اخترته حتى لو الصفحة مليانة (اللي تحته ينتقل)
+        lgw = sh("adb logcat -d -s OnyxWidget:D -v brief")
+        bw = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lgw)
+        moved = bool(bw) and int(bw[-1][1]) < y0 - 60
+        log(f"  {'✅' if moved else '❌'} الويدجت نزل بالمكان الجديد (من y={y0} إلى {bw[-1][1] if bw else '-'})")
         # تكبير بالزاوية: يتبع الإصبع ويتحدد لما تفلت
         lg = sh("adb logcat -d -s OnyxWidget:D -v brief")
         boxes = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lg)
@@ -686,6 +691,92 @@ def run_screen(tag):
         check_aligned("الصفحة الأخيرة")
         home()
     scenario("الصفحة الفاضية بآخر وضع الترتيب", s_last_page)
+
+    # ───────── 0.4: المجلد، الدرج والبحث، القفل ─────────
+
+    def s_folder():
+        home()
+        ic = grid_icons(W, H)
+        a, b = ic[0], ic[1]
+        sh("adb logcat -c")
+        with Record(f"{tag}_19_folder"):
+            long_press_drag(a["x"], a["y"], [(b["x"] - 40, b["y"]), (b["x"], b["y"])], hold=0.8, dwell=1.0)
+            time.sleep(2.0)
+        lg = sh("adb logcat -d -s OnyxFolder:D -v brief")
+        made = "created id=" in lg
+        log(f"  {'✅' if made else '❌'} سحب أيقونة فوق أيقونة = مجلد")
+        home(); time.sleep(1.0)
+        # نفتح المجلد (مكان الأيقونة الثانية)
+        tap(b["x"], b["y"]); time.sleep(1.5)
+        opened = any(n["text"] == "مجلد" for n in nodes())
+        log(f"  {'✅' if opened else '❌'} المجلد ينفتح بضغطة (زجاج سائل واسمه فوق)")
+        shot(f"{tag}_19_folder_open")
+        adb("input keyevent KEYCODE_BACK"); time.sleep(1.0)
+        shot(f"{tag}_19_folder_closed")
+        home()
+    scenario("المجلد: إنشاء وفتح", s_folder)
+
+    def s_drawer():
+        home()
+        swipe(W * 0.5, H * 0.7, W * 0.5, H * 0.25, 250)
+        time.sleep(1.8)
+        ns = nodes()
+        bar = [n for n in ns if "وش تدور" in n["text"]]
+        log(f"  {'✅' if bar else '❌'} السحب لفوق يفتح الدرج وفيه شريط البحث تحت")
+        cats = [n["text"] for n in ns if n["text"] in ("الجوال", "أخرى", "الإنتاجية", "التواصل", "الصور")]
+        log(f"  {'✅' if cats else '❌'} التطبيقات مقسمة فئات: {cats[:4]}")
+        shot(f"{tag}_20_drawer")
+        if bar:
+            tap(bar[0]["x"], bar[0]["y"]); time.sleep(1.0)
+            adb("input text '25*4'"); time.sleep(1.5)
+            calc = any(n["text"].replace(" ", "") == "=100" for n in nodes())
+            log(f"  {'✅' if calc else '❌'} الحاسبة بالبحث: 25*4 = 100")
+            shot(f"{tag}_20_drawer_calc")
+            for _ in range(6):
+                adb("input keyevent KEYCODE_DEL")
+            adb("input text 'Sett'"); time.sleep(1.5)
+            found = any(n["desc"] == "Settings" for n in nodes())
+            log(f"  {'✅' if found else '❌'} البحث يلقى التطبيق (Sett ← Settings)")
+            shot(f"{tag}_20_drawer_search")
+            adb("input keyevent KEYCODE_BACK"); time.sleep(0.6)
+        adb("input keyevent KEYCODE_BACK"); time.sleep(0.8)
+        home()
+    scenario("الدرج: الفئات والبحث والحاسبة", s_drawer)
+
+    def s_lock():
+        home()
+        ic = grid_icons(W, H)
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if n["text"] == "الإعدادات"]
+        tap(row[0]["x"], row[0]["y"]); time.sleep(1.2)
+        # ننزل لين نلقى "قفل الترتيب"
+        t = None
+        for _ in range(8):
+            t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
+            if t:
+                break
+            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(0.8)
+        if not t:
+            raise RuntimeError("ما لقيت قفل الترتيب")
+        tap(t[0]["x"], t[0]["y"]); time.sleep(0.6)
+        adb("input keyevent KEYCODE_BACK"); time.sleep(1.0)
+        # ضغطة طويلة فوق (برا الصفحات) والترتيب مقفل: لازم تفتح الإعدادات، ما تنحبس
+        down(W * 0.5, H * 0.06); time.sleep(0.9); up(W * 0.5, H * 0.06); time.sleep(1.2)
+        opened = any(n["text"] in ("العمود والشريط", "الأيقونات", "الخلفية") for n in nodes())
+        log(f"  {'✅' if opened else '❌'} الترتيب مقفل والضغطة الطويلة تفتح الإعدادات (ما تنحبس)")
+        shot(f"{tag}_21_lock_settings")
+        # نرجع القفل مطفي
+        for _ in range(8):
+            t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
+            if t:
+                break
+            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(0.8)
+        if t:
+            tap(t[0]["x"], t[0]["y"]); time.sleep(0.6)
+        adb("input keyevent KEYCODE_BACK"); time.sleep(0.8)
+        home()
+    scenario("قفل الترتيب ما يحبسك", s_lock)
 
     def s_shade():
         swipe(W * 0.5, H * 0.35, W * 0.5, H * 0.7, 200)

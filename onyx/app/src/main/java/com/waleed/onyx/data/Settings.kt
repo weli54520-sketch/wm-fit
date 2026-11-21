@@ -90,6 +90,95 @@ class Settings(context: Context) {
         get() = _widgetFrame.value
         set(v) { _widgetFrame.value = v; p.edit().putBoolean("widgetFrame", v).apply() }
 
+    // ───────── 0.4 ─────────
+
+    private fun strList(key: String): MutableList<String> =
+        (p.getString(key, "") ?: "").split('\n').filter { it.isNotBlank() }.toMutableList()
+
+    private val _recents = mutableStateOf(strList("recents").toList())
+    /** آخر التطبيقات اللي فتحتها (الجديد أول) */
+    var recents: List<String>
+        get() = _recents.value
+        set(v) { _recents.value = v; p.edit().putString("recents", v.joinToString("\n")).apply() }
+
+    private val _searches = mutableStateOf(strList("searches").toList())
+    /** آخر عمليات البحث */
+    var searches: List<String>
+        get() = _searches.value
+        set(v) { _searches.value = v; p.edit().putString("searches", v.joinToString("\n")).apply() }
+
+    private val _hidden = mutableStateOf(strList("hidden").toSet())
+    /** التطبيقات المخفية (ما تبان بالدرج ولا البحث) */
+    var hidden: Set<String>
+        get() = _hidden.value
+        set(v) { _hidden.value = v; p.edit().putString("hidden", v.joinToString("\n")).apply() }
+
+    // نقطة الإشعارات على الأيقونة
+    private val _dots = bool("dots", true)
+    var dots: Boolean
+        get() = _dots.value
+        set(v) { _dots.value = v; p.edit().putBoolean("dots", v).apply() }
+
+    // الدرج: 0 بالفئات، 1 أبجدي
+    private val _drawerSort = int("drawerSort", 0)
+    var drawerSort: Int
+        get() = _drawerSort.intValue
+        set(v) { _drawerSort.intValue = v; p.edit().putInt("drawerSort", v).apply() }
+
+    // خلفية المجلد المفتوح: 0 تضبيب، 1 تغميق
+    private val _folderBg = int("folderBg", 0)
+    var folderBg: Int
+        get() = _folderBg.intValue
+        set(v) { _folderBg.intValue = v; p.edit().putInt("folderBg", v).apply() }
+
+    // الإيماءات (GestureAction)
+    private val _gDouble = int("gDouble", GestureAction.LOCK)
+    private val _gPinchIn = int("gPinchIn", GestureAction.EDIT)
+    private val _gPinchOut = int("gPinchOut", GestureAction.DRAWER)
+    private val _gTwoUp = int("gTwoUp", GestureAction.SEARCH)
+    private val _gTwoDown = int("gTwoDown", GestureAction.QUICK)
+
+    fun gesture(name: String): Int = when (name) {
+        "double" -> _gDouble.intValue
+        "pinchIn" -> _gPinchIn.intValue
+        "pinchOut" -> _gPinchOut.intValue
+        "twoUp" -> _gTwoUp.intValue
+        "twoDown" -> _gTwoDown.intValue
+        else -> GestureAction.NONE
+    }
+
+    fun setGesture(name: String, v: Int) {
+        when (name) {
+            "double" -> _gDouble.intValue = v
+            "pinchIn" -> _gPinchIn.intValue = v
+            "pinchOut" -> _gPinchOut.intValue = v
+            "twoUp" -> _gTwoUp.intValue = v
+            "twoDown" -> _gTwoDown.intValue = v
+            else -> return
+        }
+        p.edit().putInt("g" + name.replaceFirstChar { it.uppercase() }, v).apply()
+    }
+
+    /** ويدجت منبثق لكل تطبيق: رقم الويدجت المحفوظ (عشان ما نطلب الإذن كل مرة) */
+    fun popupId(pkg: String): Int = p.getInt("popup_$pkg", -1)
+    fun setPopupId(pkg: String, id: Int) { p.edit().putInt("popup_$pkg", id).apply() }
+
+    /** كل الإعدادات (للنسخة الاحتياطية) */
+    fun exportAll(): Map<String, *> = p.all
+
+    fun importAll(m: Map<String, Any?>) {
+        val e = p.edit()
+        for ((k, v) in m) when (v) {
+            is Boolean -> e.putBoolean(k, v)
+            is Int -> e.putInt(k, v)
+            is Long -> e.putInt(k, v.toInt())
+            is Float -> e.putFloat(k, v)
+            is Double -> e.putFloat(k, v.toFloat())
+            is String -> e.putString(k, v)
+        }
+        e.apply()
+    }
+
     // الشبكة لكل شاشة
     private val _outerCols = int("outerCols", 4)
     private val _outerRows = int("outerRows", 6)

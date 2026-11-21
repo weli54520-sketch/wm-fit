@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">WM Onyx</string>
+    <string name="lock_service_desc">يخلي WM Onyx يقفل الشاشة لما تضغط ضغطتين على مكان فاضي. ما يقرا أي شي من الشاشة.</string>
+    <string name="lock_service_label">WM Onyx: قفل الشاشة بالضغطتين</string>
 </resources>

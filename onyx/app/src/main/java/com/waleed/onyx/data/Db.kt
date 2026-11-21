@@ -22,6 +22,8 @@ object Container {
     const val DOCK = 2
     /** تطبيق شلته من الشاشة: يبقى بكل التطبيقات بس */
     const val HIDDEN = 3
+    /** داخل مجلد: page = رقم المجلد، x = الترتيب داخله */
+    const val FOLDER = 4
 }
 
 /** أي شاشة: الخارجية أو الداخلية. كل وحدة لها ترتيب مستقل */
@@ -34,6 +36,8 @@ object Kind {
     const val APP = 0
     /** ويدجت تطبيق ثاني (بياناته بـ data) */
     const val WIDGET = 1
+    /** مجلد (اسمه وشكله بـ data) */
+    const val FOLDER = 2
 }
 
 /** سطر لكل عنصر على الشاشة */

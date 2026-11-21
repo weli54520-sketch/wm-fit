@@ -11,14 +11,33 @@ import android.os.UserManager
 import android.util.Log
 import org.json.JSONObject
 
-/** بيانات الويدجت المحفوظة بسطر العنصر */
-data class WidgetData(val id: Int, val provider: String, val frame: Boolean, val clear: Boolean = true) {
-    fun encode(): String = JSONObject().put("id", id).put("provider", provider).put("frame", frame).put("clear", clear).toString()
+/**
+ * بيانات الويدجت المحفوظة بسطر العنصر.
+ * [stack]: كل الويدجت بالمكدس (الحالي [id] واحد منها). ويدجت عادي = مكدس فيه واحد.
+ */
+data class WidgetData(val id: Int, val provider: String, val frame: Boolean, val clear: Boolean = true, val stack: List<Int> = listOf(id)) {
+    fun encode(): String {
+        val arr = org.json.JSONArray()
+        for (s in stack) arr.put(s)
+        return JSONObject().put("id", id).put("provider", provider).put("frame", frame).put("clear", clear).put("stack", arr).toString()
+    }
+
+    val isStack get() = stack.size > 1
+
+    /** الويدجت اللي بعده (أو قبله) بالمكدس */
+    fun shifted(dir: Int): WidgetData {
+        if (stack.size < 2) return this
+        val i = stack.indexOf(id).coerceAtLeast(0)
+        return copy(id = stack[((i + dir) % stack.size + stack.size) % stack.size])
+    }
 
     companion object {
         fun parse(s: String): WidgetData? = try {
             val o = JSONObject(s)
-            WidgetData(o.getInt("id"), o.optString("provider"), o.optBoolean("frame", true), o.optBoolean("clear", true))
+            val id = o.getInt("id")
+            val arr = o.optJSONArray("stack")
+            val stack = if (arr == null || arr.length() == 0) listOf(id) else (0 until arr.length()).map { arr.getInt(it) }
+            WidgetData(id, o.optString("provider"), o.optBoolean("frame", true), o.optBoolean("clear", true), if (id in stack) stack else listOf(id) + stack)
         } catch (e: Exception) {
             null
         }

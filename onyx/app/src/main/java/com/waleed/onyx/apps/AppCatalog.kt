@@ -177,4 +177,54 @@ class AppCatalog(private val context: Context) {
     fun openInfo(app: AppInfo) {
         runCatching { launcherApps.startAppDetailsActivity(app.component, app.user, null, null) }
     }
+
+    // ───────── اختصارات التطبيق (الضغطة الطويلة) ─────────
+
+    /** اختصارات التطبيق (مثل "رسالة جديدة"). تشتغل بس لما Onyx هو اللانشر الأساسي */
+    fun shortcuts(app: AppInfo): List<android.content.pm.ShortcutInfo> = try {
+        if (!launcherApps.hasShortcutHostPermission()) emptyList() else {
+            val q = LauncherApps.ShortcutQuery()
+                .setPackage(app.pkg)
+                .setQueryFlags(
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                        LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED,
+                )
+            (launcherApps.getShortcuts(q, app.user) ?: emptyList())
+                .filter { it.isEnabled }
+                .sortedWith(compareBy({ if (it.isDynamic) 1 else 0 }, { it.rank }))
+                .take(4)
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    fun shortcutIcon(s: android.content.pm.ShortcutInfo, size: Int): ImageBitmap? = try {
+        launcherApps.getShortcutIconDrawable(s, context.resources.displayMetrics.densityDpi)?.let { draw(it, size, Rect(0, 0, size, size)) }
+    } catch (e: Exception) {
+        null
+    }
+
+    fun startShortcut(s: android.content.pm.ShortcutInfo) {
+        runCatching { launcherApps.startShortcut(s, null, null) }
+    }
+
+    // ───────── الفئات (ترتيب الدرج) ─────────
+
+    fun category(app: AppInfo): String {
+        val c = runCatching { app.info.applicationInfo.category }.getOrDefault(-1)
+        return when (c) {
+            android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "التواصل"
+            android.content.pm.ApplicationInfo.CATEGORY_GAME -> "الألعاب"
+            android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "الصوت والموسيقى"
+            android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> "الفيديو"
+            android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> "الصور"
+            android.content.pm.ApplicationInfo.CATEGORY_NEWS -> "الأخبار"
+            android.content.pm.ApplicationInfo.CATEGORY_MAPS -> "الخرائط والتنقل"
+            android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "الإنتاجية"
+            else -> if (app.pkg.startsWith("com.samsung") || app.pkg.startsWith("com.sec") || app.pkg.startsWith("com.android") || app.pkg.startsWith("com.google.android")) "الجوال" else "أخرى"
+        }
+    }
+
+    /** ترتيب الفئات بالدرج */
+    val categoryOrder = listOf("التواصل", "الإنتاجية", "الصور", "الفيديو", "الصوت والموسيقى", "الخرائط والتنقل", "الأخبار", "الألعاب", "الجوال", "أخرى")
 }

@@ -83,9 +83,53 @@ class HomeRepository(private val dao: ItemDao, private val catalog: AppCatalog, 
         releaseWidgets(delete)
     }
 
+    /** يحفظ بدون ما يرجع أرقام الويدجت للنظام (لما ينضم ويدجت لمكدس، رقمه يبقى مستخدم) */
+    suspend fun saveKeepWidgets(update: List<Item>, delete: List<Item>) = lock.withLock {
+        dao.apply(insert = emptyList(), update = update, delete = delete)
+    }
+
+    /**
+     * مجلد جديد مكان [target]: [target] و[dragged] يدخلون فيه بالترتيب.
+     * يرجع رقم المجلد.
+     */
+    suspend fun createFolder(target: Item, dragged: Item, name: String): Long = lock.withLock {
+        val folder = Item(
+            screen = target.screen, container = target.container, page = target.page, x = target.x, y = target.y,
+            kind = Kind.FOLDER, data = FolderData(name).encode(),
+        )
+        val id = dao.insert(listOf(folder)).first()
+        dao.update(
+            listOf(
+                target.copy(container = Container.FOLDER, page = id.toInt(), x = 0, y = 0),
+                dragged.copy(container = Container.FOLDER, page = id.toInt(), x = 1, y = 0),
+            ),
+        )
+        id
+    }
+
+    /** النسخة الاحتياطية: كل العناصر (بدون الويدجت، أرقامها ما تنتقل) */
+    suspend fun exportItems(): List<Item> = lock.withLock {
+        (dao.all(Screen.OUTER) + dao.all(Screen.INNER)).filter { it.kind != Kind.WIDGET }
+    }
+
+    /** يرجع الترتيب من النسخة الاحتياطية. الويدجت اللي بالشاشة تبقى، واللي يتصادم معها ينتقل لأقرب فاضي */
+    suspend fun importItems(rows: List<Item>) = lock.withLock {
+        val old = (dao.all(Screen.OUTER) + dao.all(Screen.INNER)).filter { it.kind != Kind.WIDGET }
+        dao.apply(insert = emptyList(), update = emptyList(), delete = old)
+        // المجلدات أول، عشان أرقامها الجديدة توصل للتطبيقات اللي داخلها
+        val idMap = HashMap<Long, Long>()
+        for (f in rows.filter { it.kind == Kind.FOLDER }) {
+            idMap[f.id] = dao.insert(listOf(f.copy(id = 0))).first()
+        }
+        val rest = rows.filter { it.kind != Kind.FOLDER }.map {
+            if (it.container == Container.FOLDER) it.copy(id = 0, page = (idMap[it.page.toLong()] ?: -1L).toInt()) else it.copy(id = 0)
+        }.filter { it.container != Container.FOLDER || it.page >= 0 }
+        dao.insert(rest)
+    }
+
     /** الويدجت اللي تنشال: نرجع رقمها للنظام عشان التطبيق يوقف يحدثها */
     private fun releaseWidgets(deleted: List<Item>) {
-        for (it in deleted) if (it.kind == Kind.WIDGET) WidgetData.parse(it.data)?.let { d -> widgets.delete(d.id) }
+        for (it in deleted) if (it.kind == Kind.WIDGET) WidgetData.parse(it.data)?.let { d -> d.stack.forEach { id -> widgets.delete(id) } }
     }
 
     /** بعد ما تتغير الشبكة: كل شي يبقى بمكانه لو يركب، والباقي ينتقل */
