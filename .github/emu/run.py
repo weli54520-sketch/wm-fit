@@ -89,6 +89,7 @@ def down(x, y):
 
 def move(x, y):
     adb(f"input motionevent MOVE {int(x)} {int(y)}")
+    report.append(f"    > move {int(x)},{int(y)}")
 
 
 def up(x, y):
@@ -188,11 +189,16 @@ def check_aligned(title):
 
 def scenario(title, fn):
     log(f"\n## {title}")
+    sh("adb logcat -c")
     try:
         fn()
     except Exception as e:
         log(f"  ❌ فشل: {e}")
         home()
+    drag_log = sh("adb logcat -d -s OnyxDrag:D -v brief")
+    lines = [l.split(": ", 1)[-1] for l in drag_log.splitlines() if "OnyxDrag" in l]
+    for l in lines[-12:]:
+        log(f"    · {l}")
     check_aligned(title)
 
 

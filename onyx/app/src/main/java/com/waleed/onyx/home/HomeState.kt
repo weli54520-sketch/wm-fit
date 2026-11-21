@@ -329,9 +329,17 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         return DragTarget.Nowhere
     }
 
+    private var lastLogged: DragTarget? = null
+
     private fun tick(d: Drag) {
         if (drag !== d || pages.animating) return
         val t = targetFor(d)
+        // سجل للجوال الوهمي: وين الإصبع ووش تحته (يساعدنا نشوف الأخطاء بدون تخمين)
+        if (t != lastLogged) {
+            lastLogged = t
+            val b = dragBoxDp(d)
+            android.util.Log.d("OnyxDrag", "pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px center=${b?.cx?.roundToInt()},${b?.cy?.roundToInt()}dp k=${"%.2f".format(k())} page=${d.page} target=$t")
+        }
         when (t) {
             is DragTarget.CellAt -> { d.cand = Cell(t.x, t.y); d.slot = null; d.edge = 0 }
             is DragTarget.SlotAt -> { d.slot = Slot(t.container, t.index); d.cand = null; d.edge = 0 }
@@ -377,6 +385,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         val d = drag ?: return
         val g = layout
         val t = targetFor(d)
+        android.util.Log.d("OnyxDrag", "drop pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px target=$t")
+        lastLogged = null
         val it0 = d.item
         val upd = ArrayList<Item>()
         // مكان العنصر لحظة الإفلات (عشان ينزل بنعومة من هناك)
