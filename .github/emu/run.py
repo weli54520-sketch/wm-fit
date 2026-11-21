@@ -166,6 +166,26 @@ def set_screen(name):
     time.sleep(2)
 
 
+BASE = {}
+
+
+def grid_left():
+    W, H = screen_wh()
+    ic = [n for n in icons() if n["x"] < W * 0.8]
+    return min((n["box"][0] for n in ic), default=None)
+
+
+def check_aligned(title):
+    """الحارس: بعد أي سيناريو الصفحة لازم تكون واقفة على صفحة كاملة (ما تعلق بالنص)"""
+    time.sleep(1.2)
+    x = grid_left()
+    base = BASE.get("left")
+    if x is None or base is None:
+        return
+    ok = abs(x - base) <= 3
+    log(f"  {'✅' if ok else '❌'} الصفحة واقفة صح بعد ({title}): أول أيقونة x={x} (المفروض {base})")
+
+
 def scenario(title, fn):
     log(f"\n## {title}")
     try:
@@ -173,6 +193,7 @@ def scenario(title, fn):
     except Exception as e:
         log(f"  ❌ فشل: {e}")
         home()
+    check_aligned(title)
 
 
 # ───────── السيناريوهات ─────────
@@ -197,6 +218,7 @@ def run_screen(tag):
     log(f"\n# الشاشة: {tag} ({W}×{H})")
 
     def s_home():
+        BASE["left"] = grid_left()
         shot(f"{tag}_01_home")
         layout_report(tag)
         # فحص على الجوال نفسه: أيقونات الشبكة ما توصل للعمود
@@ -282,6 +304,25 @@ def run_screen(tag):
         home()
     scenario("وضع الترتيب + ضغطة على فاضي", s_edit)
 
+    def s_side_swap():
+        # من الشبكة للعمود: يوقف فوق أيقونة بالعمود ويفلت = يتبادلون
+        ic = icons()
+        side = sorted([n for n in ic if n["x"] > W * 0.82], key=lambda n: n["y"])
+        grid = [n for n in ic if n["x"] <= W * 0.82]
+        if not side or not grid:
+            raise RuntimeError("ما لقيت العمود أو الشبكة")
+        a, s0 = grid[0], side[0]
+        log(f"  قبل: الشبكة={a['desc']} العمود={s0['desc']}")
+        with Record(f"{tag}_08_side_swap"):
+            long_press_drag(a["x"], a["y"], [(s0["x"] - 60, s0["y"]), (s0["x"], s0["y"])], hold=0.8, dwell=0.6)
+            time.sleep(1.2)
+        ic2 = icons()
+        side2 = sorted([n for n in ic2 if n["x"] > W * 0.82], key=lambda n: n["y"])
+        log(f"  بعد: العمود={side2[0]['desc'] if side2 else '-'} " + ("✅ تبادلوا" if side2 and side2[0]["desc"] == a["desc"] else "❌ ما تبادلوا"))
+        shot(f"{tag}_08_side_swap_end")
+        home()
+    scenario("تبديل أيقونة مع العمود", s_side_swap)
+
     def s_shade():
         swipe(W * 0.5, H * 0.35, W * 0.5, H * 0.7, 200)
         time.sleep(1.5)
@@ -289,6 +330,19 @@ def run_screen(tag):
         adb("cmd statusbar collapse")
         time.sleep(1)
     scenario("سحب لتحت (الإشعارات)", s_shade)
+
+    def s_flipback():
+        # سحبة بطيئة قصيرة لازم ترجع لنفس الصفحة، وسحبة طويلة تقلب صفحة وحدة
+        before = grid_left()
+        swipe(W * 0.55, H * 0.45, W * 0.40, H * 0.45, 700)
+        time.sleep(1.5)
+        log(f"  سحبة قصيرة بطيئة: {'✅ رجعت' if abs((grid_left() or 0) - (before or 0)) <= 3 else '❌ ما رجعت'}")
+        swipe(W * 0.75, H * 0.45, W * 0.10, H * 0.45, 500)
+        time.sleep(1.5)
+        shot(f"{tag}_09_page2")
+        swipe(W * 0.10, H * 0.45, W * 0.75, H * 0.45, 500)
+        time.sleep(1.5)
+    scenario("سحبة قصيرة ترجع، وطويلة تقلب", s_flipback)
 
 
 def main():
