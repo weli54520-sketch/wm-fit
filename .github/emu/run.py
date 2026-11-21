@@ -304,7 +304,11 @@ def run_screen(tag):
         with Record(f"{tag}_05_edge"):
             long_press_drag(a["x"], a["y"], [(W * 0.80, a["y"]), (W * 0.97, a["y"])], hold=0.8, dwell=0.2)
             time.sleep(0.2)
-        # نسخة ثانية: يوقف عند الحافة ثانيتين
+        shot(f"{tag}_05_edge_dropped")
+        # نسخة ثانية: من الصفحة الأولى، يوقف عند الحافة لين تتقلب، يرجع للنص ويفلت
+        home(); time.sleep(1.5)
+        ic = [n for n in icons() if n["x"] < W * 0.75]
+        a = ic[-1]
         with Record(f"{tag}_05b_edge_hold"):
             down(a["x"], a["y"]); time.sleep(0.8)
             for f in (0.6, 0.8, 0.9, 0.97):

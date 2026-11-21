@@ -384,7 +384,16 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun dragEnd() {
         val d = drag ?: return
         val g = layout
-        val t = targetFor(d)
+        var t = targetFor(d)
+        // فلت عند طرف الصفحة: ينزل بالصفحة اللي قدامك بأقرب خانة (ما يضيع النقل)
+        if (t is DragTarget.EdgeAt && g != null) {
+            val b = dragBoxDp(d)
+            if (b != null) {
+                val cx = b.cx.coerceIn(g.grid.l + 1f, g.grid.r - 1f)
+                val (x, y) = g.cellFor(cx, b.cy, d.item.w, d.item.h, k())
+                t = DragTarget.CellAt(d.page, x, y)
+            }
+        }
         android.util.Log.d("OnyxDrag", "drop pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px target=$t")
         lastLogged = null
         val it0 = d.item
