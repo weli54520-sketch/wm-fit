@@ -32,7 +32,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.unit.DpSize
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -77,15 +77,22 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
     val spanW = item.w
     val spanH = item.h
     // وأنت تكبره: يتبع إصبعك بالضبط. بعد ما تفلت: ينزل بنعومة على الخانات
-    val sizeAnim = remember { Animatable(DpSize(cellW * item.w, cellH * item.h), DpSize.VectorConverter) }
+    val wAnim = remember { Animatable((cellW * item.w).value) }
+    val hAnim = remember { Animatable((cellH * item.h).value) }
     val liveW = r?.liveW
     val liveH = r?.liveH
     LaunchedEffect(liveW, liveH, item.w, item.h, cellW, cellH) {
-        if (liveW != null && liveH != null) sizeAnim.snapTo(DpSize(liveW.dp, liveH.dp))
-        else sizeAnim.animateTo(DpSize(cellW * item.w, cellH * item.h), Motion.smooth(settings))
+        if (liveW != null && liveH != null) {
+            wAnim.snapTo(liveW)
+            hAnim.snapTo(liveH)
+        } else {
+            // العرض والطول ينزلون مع بعض
+            launch { wAnim.animateTo((cellW * item.w).value, Motion.smooth(settings)) }
+            hAnim.animateTo((cellH * item.h).value, Motion.smooth(settings))
+        }
     }
-    val boxW = sizeAnim.value.width
-    val boxH = sizeAnim.value.height
+    val boxW = wAnim.value.dp
+    val boxH = hAnim.value.dp
     val dragged = state.drag?.item?.id == item.id
     val frame = data?.frame != false
     // خلفية الويدجت نفسه شفافة: الأسود يختفي ويبان الزجاج، والأبيض والألوان تبقى
