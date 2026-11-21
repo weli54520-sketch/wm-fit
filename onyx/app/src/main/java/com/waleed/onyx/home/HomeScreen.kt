@@ -164,6 +164,8 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                 }
             }
             LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { state.closeAll() }
+            LifecycleEventEffect(Lifecycle.Event.ON_STOP) { state.onHidden() }
+            LifecycleEventEffect(Lifecycle.Event.ON_START) { state.onShown() }
 
             val shrink = state.editing && settings.editStyle == 0
             val outline by animateFloatAsState(if (shrink) 1f else 0f, Motion.smooth(settings), label = "outline")
@@ -188,7 +190,18 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             val blur by androidx.compose.animation.core.animateDpAsState(
                 if (state.openFolder != null && settings.folderBg == 0) 18.dp else 0.dp, label = "blur",
             )
-            Box(Modifier.fillMaxSize().then(if (blur > 0.5.dp) Modifier.blur(blur) else Modifier).homeGestures(state)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    // فتح تطبيق / الرجوع: الشاشة كلها (والشريط) تصغر وتبهت وترجع بنبضة. على كرت الشاشة بس
+                    .graphicsLayer {
+                        val z = state.homeZoom.value
+                        scaleX = z; scaleY = z
+                        alpha = (1f - (1f - z) * 6f).coerceIn(0f, 1f)
+                    }
+                    .then(if (blur > 0.5.dp) Modifier.blur(blur) else Modifier)
+                    .homeGestures(state),
+            ) {
                 // الصفحات: من حافة الشاشة لين قبل العمود. اللي يطلع عنها ينقص (ما يمر تحت العمود)
                 Box(
                     Modifier

@@ -965,10 +965,33 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         val a = catalog.byKey(item.appKey) ?: return
         pushRecent(a.key)
         val r = bounds?.let { android.graphics.Rect(it.left.toInt(), it.top.toInt(), it.right.toInt(), it.bottom.toInt()) }
-        catalog.launch(a, r)
+        appLeaving()
+        catalog.launch(a, r, widgets.activity?.window?.decorView)
     }
 
     // ───────── 0.4: المجلدات، الإيماءات، المنبثق، الإخفاء، النسخة الاحتياطية ─────────
+
+    // ───────── فتح التطبيقات والرجوع (مثل الآيفون، بحدود اللي يسمح فيه أندرويد) ─────────
+
+    /** الشاشة الرئيسية وأنت تفتح تطبيق: تبهت وتصغر شوي. وترجع بنبضة لما ترجع. كله scale + alpha */
+    val homeZoom = Animatable(1f)
+
+    fun appLeaving() {
+        scope.launch { homeZoom.animateTo(0.94f, androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+    }
+
+    /** الشاشة انخفت (فتحت تطبيق): نجهزها صغيرة عشان ترجع بنبضة */
+    fun onHidden() {
+        scope.launch { homeZoom.snapTo(0.92f) }
+    }
+
+    /** رجعت للرئيسية: الأيقونات ترجع لمكانها بنبضة ناعمة، والاتجاه ما ينعكس */
+    fun onShown() {
+        if (homeZoom.value >= 0.999f) return
+        scope.launch {
+            homeZoom.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.82f, stiffness = if (settings.reduceMotion) 3000f else 320f))
+        }
+    }
 
     fun pushRecent(key: String) {
         settings.recents = Recents.push(settings.recents, key, 8)
@@ -977,7 +1000,8 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun launchApp(a: AppInfo, bounds: Rect? = null) {
         pushRecent(a.key)
         val r = bounds?.let { android.graphics.Rect(it.left.toInt(), it.top.toInt(), it.right.toInt(), it.bottom.toInt()) }
-        catalog.launch(a, r)
+        appLeaving()
+        catalog.launch(a, r, widgets.activity?.window?.decorView)
     }
 
     /** ضغطة على تطبيق: لو له "تطبيق الضغطتين" ننتظر شوي نشوف تجي ضغطة ثانية */

@@ -170,8 +170,18 @@ class AppCatalog(private val context: Context) {
         return bmp.asImageBitmap()
     }
 
-    fun launch(app: AppInfo, source: Rect?) {
-        runCatching { launcherApps.startMainActivity(app.component, app.user, source, null) }
+    /**
+     * يفتح التطبيق. [from] = الشاشة الحالية: التطبيق يكبر من مكان الأيقونة وحجمها لين يعبي الشاشة
+     * (حركة النظام على كرت الشاشة، مثل الآيفون). لو سامسونج فرضت حركتها، تمشي حركتها.
+     */
+    fun launch(app: AppInfo, source: Rect?, from: android.view.View? = null) {
+        val opts = if (source != null && from != null && source.width() > 0) {
+            runCatching {
+                android.app.ActivityOptions.makeScaleUpAnimation(from, source.left, source.top, source.width(), source.height()).toBundle()
+            }.getOrNull()
+        } else null
+        runCatching { launcherApps.startMainActivity(app.component, app.user, source, opts) }
+            .onFailure { runCatching { launcherApps.startMainActivity(app.component, app.user, source, null) } }
     }
 
     fun openInfo(app: AppInfo) {
