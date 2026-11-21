@@ -76,7 +76,50 @@ data class HomeGeometry(
         return Box(c.cx - icon / 2, c.cy - icon / 2, c.cx + icon / 2, c.cy + icon / 2)
     }
 
+    // ───────── من الشاشة للشبكة وبالعكس (k = تصغير وضع الترتيب حول نص منطقة الصفحات) ─────────
+
+    /** نقطة على الشاشة ← مكانها بالصفحة لو ما كانت مصغرة */
+    fun toLocal(x: Float, y: Float, k: Float): Pair<Float, Float> =
+        (pages.cx + (x - pages.cx) / k) to (pages.cy + (y - pages.cy) / k)
+
+    /** مستطيل بالصفحة ← مكانه على الشاشة بعد التصغير */
+    fun toScreen(b: Box, k: Float) = Box(
+        pages.cx + (b.l - pages.cx) * k, pages.cy + (b.t - pages.cy) * k,
+        pages.cx + (b.r - pages.cx) * k, pages.cy + (b.b - pages.cy) * k,
+    )
+
+    /** الخانة اللي ينزل فيها عنصر مقاسه w×h لو نصه عند (cx, cy) على الشاشة */
+    fun cellFor(cx: Float, cy: Float, w: Int, h: Int, k: Float): Pair<Int, Int> {
+        val (lx, ly) = toLocal(cx, cy, k)
+        val x = Math.round((lx - grid.l) / cell - w / 2f).coerceIn(0, (cols - w).coerceAtLeast(0))
+        val y = Math.round((ly - grid.t) / rowH - h / 2f).coerceIn(0, (rows - h).coerceAtLeast(0))
+        return x to y
+    }
+
+    /** الإصبع بمنطقة تقليب الصفحة؟ -1 يسار، 1 يمين (آخر منطقة الصفحات قبل العمود)، 0 لا */
+    fun edgeAt(x: Float, y: Float): Int {
+        if (y < pages.t || y > pages.b) return 0
+        return when {
+            x >= pages.l && x < pages.l + EDGE_ZONE -> -1
+            x > pages.r - EDGE_ZONE && x <= pages.r + 1f -> 1
+            else -> 0
+        }
+    }
+
+    /** أيقونة بالعمود تحت الإصبع: رقمها، أو null */
+    fun sideSlotAt(x: Float, y: Float): Int? =
+        if (!sideOn) null else sideSlots.indexOfFirst { x >= it.l && x <= it.r && y >= it.t && y <= it.b }.takeIf { it >= 0 }
+
+    /** أيقونة بالشريط تحت الإصبع: رقمها، أو null */
+    fun dockSlotAt(x: Float, y: Float): Int? =
+        dockSlots.indexOfFirst { x >= it.l && x <= it.r && y >= it.t && y <= it.b }.takeIf { it >= 0 }
+
+    /** داخل منطقة الصفحات؟ */
+    fun inPages(x: Float, y: Float) = x >= pages.l && x <= pages.r && y >= pages.t && y <= pages.b
+
     companion object {
+        /** عرض منطقة تقليب الصفحة وأنت تسحب */
+        const val EDGE_ZONE = 28f
         const val INNER_MIN_WIDTH = 600f
         const val EDGE = 6f
         const val SIDE_PAD = 7f
