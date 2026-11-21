@@ -53,6 +53,28 @@ object PagerPhysics {
         return (min + (full - min) * remaining).roundToInt()
     }
 
+    /**
+     * مدة الحركة بعد ما تفلت إصبعك، بحيث تبدأ بنفس سرعة إصبعك (ما توقف وتبدأ من صفر).
+     * الحركة تبطّئ بالنهاية (منحنى سرعته بالبداية = ضعف المتوسط)، فالمدة = 2 × المسافة ÷ السرعة.
+     * [velocityPagesPerSec] سرعة الإصبع بوحدة الصفحات، موجبة لو رايحة باتجاه الهدف.
+     */
+    fun flingDurationMs(from: Float, to: Int, velocityPagesPerSec: Float, calm: Boolean): Int {
+        val dist = abs(to - from)
+        val calmMs = settleDurationMs(from, to, calm)
+        if (dist < 0.001f) return 0
+        if (velocityPagesPerSec <= 0.2f) return calmMs
+        val ms = (2f * dist / velocityPagesPerSec * 1000f).roundToInt()
+        return ms.coerceIn(if (calm) 240 else 200, calmMs)
+    }
+
+    /**
+     * بوضع الترتيب: لمست أيقونة وحركت. سحبة سريعة بالعرض = تقليب صفحات، غير كذا = نقل الأيقونة.
+     * (مثل الآيفون: السحبة السريعة تقلب، والإمساك ثم التحريك ينقل)
+     */
+    const val EDIT_SWIPE_MAX_MS = 180L
+    fun editTouchIsPageSwipe(elapsedMs: Long, dx: Float, dy: Float): Boolean =
+        elapsedMs < EDIT_SWIPE_MAX_MS && abs(dx) > abs(dy) * 1.2f
+
     /** الصفحة الأقرب للمكان الحالي */
     fun nearest(offset: Float, pageCount: Int): Int = offset.roundToInt().coerceIn(0, (pageCount - 1).coerceAtLeast(0))
 

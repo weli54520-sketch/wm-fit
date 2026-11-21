@@ -263,6 +263,8 @@ def run_screen(tag):
     scenario("الشاشة الرئيسية", s_home)
 
     def s_pages():
+        adb("dumpsys gfxinfo com.waleed.onyx reset")
+        sh("adb logcat -c")
         with Record(f"{tag}_02_pages"):
             swipe(W * 0.75, H * 0.45, W * 0.15, H * 0.45, 140)   # سحبة سريعة
             time.sleep(1.5)
@@ -271,7 +273,39 @@ def run_screen(tag):
             swipe(W * 0.15, H * 0.45, W * 0.85, H * 0.45, 140)   # رجوع
             time.sleep(1.5)
         shot(f"{tag}_02_pages_end")
+        lg = sh("adb logcat -d -s OnyxPages:D -v brief")
+        targets = re.findall(r"target=(\d+)", lg)
+        log(f"  الصفحات بعد كل سحبة: {targets}")
+        # المفروض: سريعة يسار = الصفحة 1، بطيئة قصيرة يمين = ترجع 1، سريعة يمين = 0
+        ok = targets[-3:] == ["1", "1", "0"] if len(targets) >= 3 else False
+        log(f"  {'✅' if ok else '❌'} اتجاه التقليب صح (ما يرجع للخلف بالغلط)")
+        gfx = adb("dumpsys gfxinfo com.waleed.onyx")
+        jank = re.search(r"Janky frames: (\d+) \(([\d.]+)%\)", gfx)
+        p90 = re.search(r"90th percentile: (\d+)ms", gfx)
+        p99 = re.search(r"99th percentile: (\d+)ms", gfx)
+        if jank:
+            log(f"  النعومة (جوال وهمي بطيء، للمقارنة بس): إطارات متأخرة {jank.group(2)}% · 90%={p90.group(1) if p90 else '-'}ms · 99%={p99.group(1) if p99 else '-'}ms")
     scenario("تقليب الصفحات (سريع، بطيء، رجوع)", s_pages)
+
+    def s_edit_swipe():
+        # بوضع الترتيب: سحبة سريعة فوق الأيقونات لازم تقلب الصفحة (مو تنقل أيقونة)
+        ic = [n for n in icons() if n["x"] < W * 0.75]
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
+        tap(row[0]["x"], row[0]["y"]); time.sleep(1.0)
+        ic = [n for n in icons() if n["x"] < W * 0.75]
+        b = ic[len(ic) // 2]
+        sh("adb logcat -c")
+        swipe(b["x"] + W * 0.25, b["y"], b["x"] - W * 0.35, b["y"], 90)
+        time.sleep(1.5)
+        lg = sh("adb logcat -d -s OnyxPages:D OnyxDrag:D -v brief")
+        flipped = re.search(r"OnyxPages.*target=1", lg) is not None
+        dragged = "OnyxDrag" in lg
+        log(f"  {'✅' if flipped and not dragged else '❌'} سحبة سريعة بوضع الترتيب قلبت الصفحة" + (" (بس بدأ سحب أيقونة!)" if dragged else ""))
+        shot(f"{tag}_11_edit_swipe")
+        home()
+    scenario("بوضع الترتيب: سحبة سريعة فوق الأيقونات", s_edit_swipe)
 
     def s_menu():
         ic = [n for n in icons() if n["x"] < W * 0.75]
@@ -377,7 +411,8 @@ def run_screen(tag):
         if not cards:
             raise RuntimeError("المعرض فاضي")
         # أول بطاقة 2×2 أو أي وحدة
-        c = next((n for n in cards if n["text"] in ("2×2", "4×2")), cards[0])
+        # ويدجت يتكبر (تقويم 3×2 أو 4×2)، وإلا أي واحد
+        c = next((n for n in cards if n["text"] in ("3×2", "4×2")), next((n for n in cards if n["text"] == "2×2"), cards[0]))
         sh("adb logcat -c")
         tap(c["x"], c["y"] - 180); time.sleep(3)
         # نافذة إذن النظام: نوافق
@@ -417,6 +452,31 @@ def run_screen(tag):
         else:
             log("  ❌ ما بدأ سحب الويدجت")
         shot(f"{tag}_10_widget_drag_end")
+        # تكبير بالزاوية: يتبع الإصبع ويتحدد لما تفلت
+        lg = sh("adb logcat -d -s OnyxWidget:D -v brief")
+        boxes = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lg)
+        if boxes:
+            x0, y0, w0, h0 = map(int, boxes[-1])
+            hx, hy = x0 + w0 - 40, y0 + h0 - 40
+            sh("adb logcat -c")
+            with Record(f"{tag}_12_widget_resize"):
+                down(hx, hy); time.sleep(0.3)
+                step = w0 / max(1, round(w0 / (dens * 80)))
+                for i in range(1, 9):
+                    move(hx + i * 0.2 * step, hy + i * 0.2 * step)
+                time.sleep(0.6)
+                up(hx + 1.6 * step, hy + 1.6 * step)
+                time.sleep(1.2)
+            lg = sh("adb logcat -d -s OnyxResize:D -v brief")
+            lives = [int(v) for v in re.findall(r"live=(\d+)x\d+", lg)]
+            end = re.search(r"end cells=(\d+)x(\d+) from=(\d+)x(\d+)", lg)
+            follows = len(lives) >= 4 and all(b >= a for a, b in zip(lives, lives[1:])) and len(set(lives)) >= 4
+            log(f"  {'✅' if follows else '❌'} التكبير يتبع الإصبع: {lives}")
+            if end:
+                log(f"  {'✅' if int(end.group(1)) > int(end.group(3)) else '❌'} بعد ما فلت: {end.group(3)}×{end.group(4)} ← {end.group(1)}×{end.group(2)}")
+            else:
+                log("  ❌ ما بدأ التكبير (المقبض؟)")
+            shot(f"{tag}_12_widget_resize_end")
         home()
     scenario("ويدجت: إضافة، قائمة، سحب", s_widget)
 

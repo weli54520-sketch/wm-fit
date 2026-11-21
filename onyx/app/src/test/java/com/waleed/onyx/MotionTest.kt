@@ -187,3 +187,24 @@ class MotionTest {
         assertTrue(x + 4 <= g.cols && y + 2 <= g.rows)
     }
 }
+
+class FlingTest {
+    @Test
+    fun releaseKeepsFingerSpeed() {
+        // نص صفحة باقية، الإصبع 3 صفحات بالثانية: 2×0.5÷3 = 333ms (السرعة بالبداية = سرعة الإصبع)
+        assertEquals(333, PagerPhysics.flingDurationMs(1.5f, 2, 3f, calm = true))
+        // إصبع بطيء: الحركة الهادية العادية
+        assertEquals(PagerPhysics.settleDurationMs(1.5f, 2, true), PagerPhysics.flingDurationMs(1.5f, 2, 0.1f, calm = true))
+        // سريع جداً: ما تنزل تحت 240
+        assertEquals(240, PagerPhysics.flingDurationMs(1.5f, 2, 50f, calm = true))
+    }
+
+    @Test
+    fun editModeQuickSideSwipeTurnsPages() {
+        assertTrue(PagerPhysics.editTouchIsPageSwipe(90, 40f, 5f))
+        // ماسك شوي وبعدين حرك = نقل
+        assertTrue(!PagerPhysics.editTouchIsPageSwipe(300, 40f, 5f))
+        // سريع بس لفوق/تحت = نقل
+        assertTrue(!PagerPhysics.editTouchIsPageSwipe(90, 10f, 40f))
+    }
+}

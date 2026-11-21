@@ -137,7 +137,7 @@ fun ContextMenu(state: HomeState) {
             val canConfig = isWidget && state.canReconfigure(menu.item)
             val itemsCount = when {
                 menu.slot != null -> 2
-                isWidget -> 3 + (if (canResize) 1 else 0) + (if (canConfig) 1 else 0)
+                isWidget -> 4 + (if (canResize) 1 else 0) + (if (canConfig) 1 else 0)
                 else -> 3
             }
             val menuH = (46 * itemsCount + 12).dp
@@ -164,6 +164,8 @@ fun ContextMenu(state: HomeState) {
                             val framed = state.widgetData(menu.item)?.frame != false
                             if (canResize) MenuRow("المقاس") { state.enterEdit(); state.say("اسحب الزاوية اللي تحت عشان تكبره أو تصغره") }
                             MenuRow(if (framed) "شيل الإطار الزجاجي" else "حط إطار زجاجي") { state.menu = null; state.toggleFrame(menu.item) }
+                            val clear = state.widgetData(menu.item)?.clear != false
+                            MenuRow(if (clear) "رجّع خلفية الويدجت" else "خلفية شفافة كاملة") { state.menu = null; state.toggleClear(menu.item) }
                             if (canConfig) MenuRow("إعدادات الويدجت") { state.menu = null; state.reconfigure(menu.item) }
                             MenuRow("ترتيب الشاشة") { state.enterEdit() }
                             MenuRow("شيل الويدجت", red = true) { state.menu = null; state.removeFromHome(menu.item) }

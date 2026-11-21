@@ -12,13 +12,13 @@ import android.util.Log
 import org.json.JSONObject
 
 /** بيانات الويدجت المحفوظة بسطر العنصر */
-data class WidgetData(val id: Int, val provider: String, val frame: Boolean) {
-    fun encode(): String = JSONObject().put("id", id).put("provider", provider).put("frame", frame).toString()
+data class WidgetData(val id: Int, val provider: String, val frame: Boolean, val clear: Boolean = true) {
+    fun encode(): String = JSONObject().put("id", id).put("provider", provider).put("frame", frame).put("clear", clear).toString()
 
     companion object {
         fun parse(s: String): WidgetData? = try {
             val o = JSONObject(s)
-            WidgetData(o.getInt("id"), o.optString("provider"), o.optBoolean("frame", true))
+            WidgetData(o.getInt("id"), o.optString("provider"), o.optBoolean("frame", true), o.optBoolean("clear", true))
         } catch (e: Exception) {
             null
         }

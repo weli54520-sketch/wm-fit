@@ -31,6 +31,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -71,15 +73,42 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
         anim.animateTo(target, Motion.smooth(settings))
     }
     val r = state.resize?.takeIf { it.item.id == item.id }
-    val spanW = r?.w ?: item.w
-    val spanH = r?.h ?: item.h
-    val boxW by animateDpAsState(cellW * spanW, Motion.smooth(settings), label = "wW")
-    val boxH by animateDpAsState(cellH * spanH, Motion.smooth(settings), label = "wH")
+    // المقاس اللي نقوله للتطبيق: يتغير بس بعد ما تفلت (عشان ما يعيد رسم نفسه مع كل حركة)
+    val spanW = item.w
+    val spanH = item.h
+    // وأنت تكبره: يتبع إصبعك بالضبط. بعد ما تفلت: ينزل بنعومة على الخانات
+    val sizeAnim = remember { Animatable(DpSize(cellW * item.w, cellH * item.h), DpSize.VectorConverter) }
+    val liveW = r?.liveW
+    val liveH = r?.liveH
+    LaunchedEffect(liveW, liveH, item.w, item.h, cellW, cellH) {
+        if (liveW != null && liveH != null) sizeAnim.snapTo(DpSize(liveW.dp, liveH.dp))
+        else sizeAnim.animateTo(DpSize(cellW * item.w, cellH * item.h), Motion.smooth(settings))
+    }
+    val boxW = sizeAnim.value.width
+    val boxH = sizeAnim.value.height
     val dragged = state.drag?.item?.id == item.id
     val frame = data?.frame != false
+    // خلفية الويدجت نفسه شفافة: الأسود يختفي ويبان الزجاج، والأبيض والألوان تبقى
+    val clear = data?.clear != false
     val info = remember(data?.id) { data?.let { state.app.widgets.info(it.id) } }
     val logged = remember { arrayOfNulls<String>(1) }
 
+    // وأنت تكبره: إطار منقط بالمقاس اللي بينزل عليه
+    if (r != null) {
+        Box(
+            Modifier
+                .offset { anim.value }
+                .size(cellW * r.w, cellH * r.h)
+                .padding(WidgetMargin)
+                .drawBehind {
+                    drawRoundRect(
+                        Color.White.copy(alpha = 0.55f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(WidgetCorner.toPx()),
+                        style = Stroke(1.5.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 8f))),
+                    )
+                },
+        )
+    }
     Box(
         Modifier
             .offset { anim.value }
@@ -118,7 +147,8 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(inset)
-                        .then(if (frame) Modifier.clip(RoundedCornerShape(WidgetCorner - inset)) else Modifier),
+                        .then(if (frame) Modifier.clip(RoundedCornerShape(WidgetCorner - inset)) else Modifier)
+                        .then(if (clear) Modifier.graphicsLayer { renderEffect = BlackToClear } else Modifier),
                 )
             } else {
                 Box(Modifier.fillMaxSize().then(if (frame) Modifier else Modifier.smokeGlass(RoundedCornerShape(WidgetCorner))), contentAlignment = Alignment.Center) {
@@ -136,7 +166,23 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
     }
 }
 
-/** مقبض بالزاوية: تسحبه وتكبر أو تصغر الويدجت خانة خانة */
+/**
+ * يخلي الأسود شفاف والفاتح يبقى (للويدجت اللي لها خلفية سودا مثل الساعة):
+ * الشفافية = سطوع اللون، فالأسود يختفي، والأبيض والعقارب والكتابة تبقى واضحة.
+ */
+private val BlackToClear: androidx.compose.ui.graphics.RenderEffect by lazy {
+    val m = android.graphics.ColorMatrix(
+        floatArrayOf(
+            1f, 0f, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f, 0f,
+            0f, 0f, 1f, 0f, 0f,
+            0.9f, 0.9f, 0.9f, 1f, -255f,
+        ),
+    )
+    android.graphics.RenderEffect.createColorFilterEffect(android.graphics.ColorMatrixColorFilter(m)).asComposeRenderEffect()
+}
+
+/** مقبض بالزاوية (شكل بس: اللمس عند مدير اللمس) */
 @Composable
 private fun ResizeHandle(state: HomeState, item: Item, alpha: Float, modifier: Modifier) {
     val active = state.resize?.item?.id == item.id
@@ -144,24 +190,7 @@ private fun ResizeHandle(state: HomeState, item: Item, alpha: Float, modifier: M
     Box(
         modifier
             .size(40.dp)
-            .graphicsLayer { this.alpha = alpha; scaleX = scale; scaleY = scale }
-            .pointerInput(item.id) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    state.resizeStart(item)
-                    var total = Offset.Zero
-                    while (true) {
-                        val e = awaitPointerEvent()
-                        val c = e.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!c.pressed) { c.consume(); break }
-                        total += c.position - c.previousPosition
-                        c.consume()
-                        state.resizeMove(total.x, total.y)
-                    }
-                    state.resizeEnd()
-                }
-            },
+            .graphicsLayer { this.alpha = alpha; scaleX = scale; scaleY = scale },
         contentAlignment = Alignment.Center,
     ) {
         Box(

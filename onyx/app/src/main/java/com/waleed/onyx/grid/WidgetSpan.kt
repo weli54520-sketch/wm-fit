@@ -3,6 +3,9 @@ package com.waleed.onyx.grid
 import kotlin.math.ceil
 import kotlin.math.floor
 
+/** مقاس الويدجت وأنت تكبره: الحي (dp) والخانات */
+data class LiveSize(val wDp: Float, val hDp: Float, val w: Int, val h: Int)
+
 /** حدود مقاس الويدجت بالخانات */
 data class SpanLimits(val minW: Int, val maxW: Int, val minH: Int, val maxH: Int) {
     fun clampW(w: Int) = w.coerceIn(minW, maxW)
@@ -51,6 +54,32 @@ object WidgetSpan {
             maxH.coerceAtLeast(curH).coerceAtMost(rows),
         )
     }
+
+    /**
+     * تكبير الويدجت بالزاوية: الويدجت يتبع إصبعك بالضبط (مقاس حي بالـ dp)،
+     * والمقاس بالخانات يتغير بس لما تدخل 60% بالخانة الجديدة (أو ترجع 60%)، عشان ما يتذبذب.
+     * يرجع (العرض الحي، الطول الحي، الخانات عرض، الخانات طول).
+     */
+    fun liveResize(
+        startW: Int, startH: Int, curW: Int, curH: Int, dxDp: Float, dyDp: Float,
+        cell: Float, rowH: Float, x: Int, y: Int, cols: Int, rows: Int, lim: SpanLimits,
+    ): LiveSize {
+        val maxW = minOf(lim.maxW, cols - x).coerceAtLeast(lim.minW)
+        val maxH = minOf(lim.maxH, rows - y).coerceAtLeast(lim.minH)
+        val liveW = (startW * cell + dxDp).coerceIn(lim.minW * cell, maxW * cell)
+        val liveH = (startH * rowH + dyDp).coerceIn(lim.minH * rowH, maxH * rowH)
+        return LiveSize(liveW, liveH, snap(liveW / cell, curW, lim.minW, maxW), snap(liveH / rowH, curH, lim.minH, maxH))
+    }
+
+    /** خانات بتأخير 60%: يكبر لما يتجاوز cur + 0.6، ويصغر لما ينزل تحت cur − 0.6 */
+    fun snap(units: Float, cur: Int, min: Int, max: Int): Int {
+        var c = cur.coerceIn(min, max)
+        while (c < max && units >= c + HYSTERESIS) c++
+        while (c > min && units <= c - HYSTERESIS) c--
+        return c
+    }
+
+    const val HYSTERESIS = 0.6f
 
     /** المقاس الجديد وأنت تسحب الزاوية: [dx] و [dy] بالبكسل من بداية السحب */
     fun resized(startW: Int, startH: Int, dx: Float, dy: Float, cellW: Float, cellH: Float, x: Int, y: Int, cols: Int, rows: Int, lim: SpanLimits): Pair<Int, Int> {

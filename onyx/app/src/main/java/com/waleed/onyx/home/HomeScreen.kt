@@ -130,7 +130,8 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
             val pageCount = (gridItems.maxOfOrNull { it.page } ?: 0) + 1 + (if (state.editing) 1 else 0)
             val pages = state.pages
             pages.count = pageCount
-            pages.clamp()
+            // ما نقرا مكان الصفحات وقت الرسم (كان يعيد رسم الشاشة كلها مع كل حركة إصبع)
+            LaunchedEffect(pageCount) { pages.clamp() }
 
             BackHandler(enabled = true) {
                 when {
@@ -153,8 +154,18 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
 
             val shrink = state.editing && settings.editStyle == 0
             val outline by animateFloatAsState(if (shrink) 1f else 0f, Motion.smooth(settings), label = "outline")
-            // الصفحات اللي تبان: تتغير بس لما يتغير المدى (مو مع كل حركة إصبع)
-            val visible by remember { derivedStateOf { PagerPhysics.visible(pages.offset, pages.count) } }
+            // الصفحات المرسومة: اللي وقفت عليها واللي جنبها، + اللي بين يديك الحين.
+            // الجديدة ترتسم بعد ما توقف، مو وسط السحب (هذا كان سبب التقطيع أول كل سحبة)
+            val visible by remember {
+                derivedStateOf {
+                    val o = pages.offset
+                    val s = pages.settled
+                    val a = minOf(s - 1, kotlin.math.floor(o).toInt()).coerceAtLeast(0)
+                    val b = maxOf(s + 1, kotlin.math.ceil(o).toInt()).coerceAtMost(pages.count - 1)
+                    a..b
+                }
+            }
+            val currentPage by remember { derivedStateOf { pages.current } }
             val pagesW = g.pages.w.dp
             val gapPx = with(density) { PageGap.toPx() }
             val pageWpx = with(density) { pagesW.toPx() }
@@ -216,7 +227,7 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
 
                 PageDots(
                     count = pageCount,
-                    current = pages.current,
+                    current = currentPage,
                     modifier = Modifier.offset(y = g.dots.t.dp).fillMaxWidth().height(g.dots.h.dp),
                 )
 

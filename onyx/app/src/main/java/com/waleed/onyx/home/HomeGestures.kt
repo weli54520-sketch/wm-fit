@@ -31,7 +31,12 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
         val down = awaitFirstDown(requireUnconsumed = false, pass = pass)
         if (state.drag != null || state.resize != null || state.menu != null) return@awaitEachGesture
         val hit = state.hit(down.position)
-        if (hit is Hit.Handle) return@awaitEachGesture
+        // مقبض تكبير الويدجت: الويدجت يتبع الإصبع (نحسب من الشاشة، مو من المقبض اللي يتحرك)
+        if (hit is Hit.Handle) {
+            down.consume()
+            resizeLoop(state, down.id, down.position, hit)
+            return@awaitEachGesture
+        }
 
         val slop = viewConfiguration.touchSlop
         val holdMs = maxOf(viewConfiguration.longPressTimeoutMillis, 450L)
@@ -47,6 +52,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
         if (!editing && onItem != null && !isWidget && !pagesWereMoving) state.pressedKey = onItem.slot ?: onItem.item.id
 
         var last = down.position
+        var lastTime = down.uptimeMillis
         val first: First? = withTimeoutOrNull(holdMs) {
             var r: First? = null
             while (r == null) {
@@ -60,6 +66,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                 }
                 if (c != null) {
                     last = c.position
+                    lastTime = c.uptimeMillis
                     if (editing && onItem != null) c.consume()
                 }
             }
@@ -75,14 +82,18 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
             is First.Moved -> {
                 val d = first.delta
                 when {
-                    // بوضع الترتيب: لمس أيقونة وتحريك = سحب على طول
+                    // بوضع الترتيب: سحبة سريعة بالعرض فوق الأيقونات = تقليب صفحات (مثل الآيفون)
+                    editing && onItem != null && onItem.slot == null && state.inPages(down.position) &&
+                        PagerPhysics.editTouchIsPageSwipe(lastTime - down.uptimeMillis, d.x, d.y) ->
+                        pageSwipe(state, down.id, last)
+                    // بوضع الترتيب: إمساك وتحريك = نقل الأيقونة
                     editing && onItem != null -> {
                         // نمسكه من مكان اللمسة الأولى بالضبط، وبعدين يلحق الإصبع (بدون ما يتأخر عنه)
                         state.startDrag(onItem.item, onItem.slot, down.position)
                         state.dragMove(last)
                         dragLoop(state, down.id)
                     }
-                    abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, down.position)
+                    abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, last)
                     // الويدجت بالوضع العادي: السحب الطولي له (مثل قائمة التقويم)
                     isWidget && !editing -> {}
                     else -> verticalSwipe(state, down.id, down.position)
@@ -143,7 +154,10 @@ private suspend fun AwaitPointerEventScope.dragLoop(state: HomeState, id: Pointe
     state.dragEnd()
 }
 
-/** تقليب الصفحات بإصبعك: الصفحة تلحق إصبعك، وإذا فلت تنتهي على صفحة كاملة */
+/**
+ * تقليب الصفحات بإصبعك: الصفحة تلحق إصبعك من أول ما يتعدى حد اللمس (بدون قفزة)،
+ * وإذا فلت تكمل بنفس سرعة إصبعك لين صفحة كاملة.
+ */
 private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: PointerId, start: Offset) {
     val pages = state.pages
     pages.stop()
@@ -159,9 +173,31 @@ private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: Point
         if (!c.pressed) break
         pages.offset = PagerPhysics.dragOffset(startOffset, c.position.x - start.x, width, pages.count)
     }
-    val v = tracker.calculateVelocity().x / state.density
-    val target = PagerPhysics.settleTarget(startPage, pages.offset, v, pages.count)
-    pages.animateTo(target, PagerPhysics.settleDurationMs(pages.offset, target, state.calm()))
+    // السرعة من الإصبع نفسه (بكسل بالثانية، موجب = يمين)
+    val vPx = tracker.calculateVelocity().x
+    val target = PagerPhysics.settleTarget(startPage, pages.offset, vPx / state.density, pages.count)
+    // سرعة الإصبع باتجاه الهدف بوحدة الصفحات (الصفحة الجاية = الإصبع رايح يسار)
+    val toward = when {
+        target > pages.offset -> -vPx / width
+        target < pages.offset -> vPx / width
+        else -> 0f
+    }
+    android.util.Log.d("OnyxPages", "release offset=${"%.2f".format(pages.offset)} v=${vPx.toInt()}px/s target=$target")
+    pages.animateTo(target, PagerPhysics.flingDurationMs(pages.offset, target, toward, state.calm()))
+}
+
+/** تكبير الويدجت بالمقبض: المقاس يتبع إصبعك، والخانات تتحدد لما تفلت */
+private suspend fun AwaitPointerEventScope.resizeLoop(state: HomeState, id: PointerId, start: Offset, hit: Hit.Handle) {
+    state.resizeStart(hit.item)
+    if (state.resize == null) return
+    while (true) {
+        val e = awaitPointerEvent(PointerEventPass.Initial)
+        val c = e.changes.firstOrNull { it.id == id } ?: break
+        c.consume()
+        if (!c.pressed) break
+        state.resizeDrag(c.position.x - start.x, c.position.y - start.y)
+    }
+    state.resizeEnd()
 }
 
 /** السحب لفوق = كل التطبيقات، لتحت = الإشعارات (من أي مكان) */

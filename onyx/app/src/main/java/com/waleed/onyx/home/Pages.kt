@@ -13,8 +13,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** تبطّئ بالنهاية بدون ارتداد (حركة "صفحات" بالكتاب) */
-val Decelerate = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+/**
+ * تبطّئ بالنهاية بدون ارتداد (حركة "صفحات" بالكتاب).
+ * سرعتها بالبداية = ضعف المتوسط، فتكمل بسرعة إصبعك بدل ما توقف وتبدأ من صفر.
+ */
+val Decelerate = CubicBezierEasing(0.33f, 0.66f, 0.66f, 1f)
 
 /**
  * الصفحات: نكتبها بنفسنا بدل الأداة الجاهزة، عشان نتحكم بالسرعة وما تعلق بالنص أبد.
@@ -24,6 +27,9 @@ class PagesState(private val scope: CoroutineScope) {
     var offset by mutableFloatStateOf(0f)
     var count by mutableIntStateOf(1)
     var animating by mutableStateOf(false)
+        private set
+    /** آخر صفحة وقفت عليها (يتغير بس لما توقف، عشان ما نرسم صفحات جديدة وسط الحركة) */
+    var settled by mutableIntStateOf(0)
         private set
     private var job: Job? = null
 
@@ -41,7 +47,7 @@ class PagesState(private val scope: CoroutineScope) {
         stop()
         val target = page.coerceIn(0, (count - 1).coerceAtLeast(0)).toFloat()
         val from = offset
-        if (from == target) return
+        if (from == target) { settled = target.toInt(); return }
         animating = true
         val mine = scope.launch {
             animate(from, target, animationSpec = tween(durationMs, easing = Decelerate)) { v, _ -> offset = v }
@@ -53,6 +59,7 @@ class PagesState(private val scope: CoroutineScope) {
                 animating = false
                 // مهما صار: ننتهي على صفحة كاملة
                 if (offset != target && it == null) offset = target
+                if (it == null) settled = target.toInt()
             }
         }
     }
@@ -68,5 +75,6 @@ class PagesState(private val scope: CoroutineScope) {
     fun clamp() {
         val max = (count - 1).coerceAtLeast(0).toFloat()
         if (!animating && offset > max) offset = max
+        if (settled > max.toInt()) settled = max.toInt()
     }
 }

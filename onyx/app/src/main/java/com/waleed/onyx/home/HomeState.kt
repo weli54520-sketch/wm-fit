@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -51,8 +52,8 @@ data class Slot(val container: Int, val index: Int)
 sealed class Hit {
     data class OnItem(val item: Item, val slot: Slot?) : Hit()
     data class OnEmptySlot(val slot: Slot) : Hit()
-    /** مقبض تكبير الويدجت: يتعامل معه المقبض نفسه */
-    object Handle : Hit()
+    /** مقبض تكبير الويدجت */
+    data class Handle(val item: Item) : Hit()
     /** مكان فاضي بالصفحات */
     object Empty : Hit()
     /** برا الصفحات والعمود والشريط (فوق، النقاط…) */
@@ -85,8 +86,12 @@ class Drag(
 
 data class Menu(val item: Item, val bounds: Rect, val slot: Slot?, val snap: ImageBitmap? = null)
 
-/** ويدجت نكبره أو نصغره الحين بسحب الزاوية */
-class Resize(val item: Item, val limits: SpanLimits) {
+/** ويدجت نكبره أو نصغره الحين بسحب الزاوية: يتبع الإصبع بالضبط، والخانات تتحدد لما تفلت */
+class Resize(val item: Item, val limits: SpanLimits, startWDp: Float, startHDp: Float) {
+    /** المقاس الحي (dp) تحت إصبعك */
+    var liveW by mutableFloatStateOf(startWDp)
+    var liveH by mutableFloatStateOf(startHDp)
+    /** المقاس بالخانات اللي بينزل عليه */
     var w by mutableIntStateOf(item.w)
     var h by mutableIntStateOf(item.h)
     var solution by mutableStateOf<Map<Long, Cell>?>(null)
@@ -183,7 +188,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             if (lx >= b.l && lx <= b.r && ly >= b.t && ly <= b.b) {
                 if (editing && it.kind == Kind.WIDGET && canResize(it)) {
                     // مقبض التكبير بالزاوية اللي تحت (40 مربع)
-                    if (lx >= b.r - 40f && ly >= b.b - 40f) return Hit.Handle
+                    if (lx >= b.r - 44f && ly >= b.b - 44f) return Hit.Handle(it)
                 }
                 return Hit.OnItem(it, null)
             }
@@ -519,6 +524,14 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         }
     }
 
+    /** خلفية الويدجت نفسه شفافة (الأسود يختفي ويبان الزجاج والخلفية) */
+    fun toggleClear(item: Item) {
+        val d = widgetData(item) ?: return
+        val u = item.copy(data = d.copy(clear = !d.clear).encode())
+        applyLocal(listOf(u))
+        scope.launch { repo.save(listOf(u)) }
+    }
+
     fun toggleFrame(item: Item) {
         val d = widgetData(item) ?: return
         val u = item.copy(data = d.copy(frame = !d.frame).encode())
@@ -548,23 +561,33 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             info.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0,
             g.cellW, g.cellH, g.cols, g.rows,
         )
-        resize = Resize(item, lim).also { it.solution = emptyMap() }
+        val L = layout ?: return
+        resize = Resize(item, lim, item.w * L.cell, item.h * L.rowH).also { it.solution = emptyMap() }
         buzz()
     }
 
-    /** [dx] [dy] بالبكسل من بداية السحب */
-    fun resizeMove(dx: Float, dy: Float) {
+    /** [dxPx] [dyPx] من بداية السحب (بكسل الشاشة): الويدجت يتبع الإصبع، والخانات بتأخير 60% */
+    fun resizeDrag(dxPx: Float, dyPx: Float) {
         val r = resize ?: return
-        val g = geo
-        val (w, h) = WidgetSpan.resized(r.item.w, r.item.h, dx, dy, g.cellW, g.cellH, r.item.x, r.item.y, g.cols, g.rows, r.limits)
-        if (w == r.w && h == r.h) return
+        val g = layout ?: return
+        val k = k()
+        val s = WidgetSpan.liveResize(
+            r.item.w, r.item.h, r.w, r.h, dxPx / (density * k), dyPx / (density * k),
+            g.cell, g.rowH, r.item.x, r.item.y, g.cols, g.rows, r.limits,
+        )
+        r.liveW = s.wDp
+        r.liveH = s.hDp
+        android.util.Log.d("OnyxResize", "live=${s.wDp.roundToInt()}x${s.hDp.roundToInt()}")
+        if (s.w == r.w && s.h == r.h) return
         val others = gridItems(r.item.page).filter { it.id != r.item.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }
-        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, w, h), g.cols, g.rows) ?: return
-        r.w = w; r.h = h; r.solution = sol
+        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, s.w, s.h), g.cols, g.rows) ?: return
+        r.w = s.w; r.h = s.h; r.solution = sol
+        android.util.Log.d("OnyxResize", "cells=${s.w}x${s.h}")
     }
 
     fun resizeEnd() {
         val r = resize ?: return
+        android.util.Log.d("OnyxResize", "end cells=${r.w}x${r.h} from=${r.item.w}x${r.item.h}")
         resize = null
         val sol = r.solution ?: return
         if (r.w == r.item.w && r.h == r.item.h) return
