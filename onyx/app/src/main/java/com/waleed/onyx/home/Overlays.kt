@@ -115,7 +115,8 @@ fun ContextMenu(state: HomeState) {
         val b = menu.bounds
         val appInfo = state.catalog.byKey(menu.item.appKey)
         val isWidget = menu.item.kind == Kind.WIDGET
-        // الأيقونة (أو الويدجت) مرفوعة بمكانها
+        // الأيقونة (أو الويدجت) مرفوعة بمكانها. لو السحب بدأ: تختفي فوراً (الأيقونة اللي بيدك هي الوحيدة)
+        val cut = m == null && state.menuCut
         with(density) {
             val iconSize = (if (menu.slot != null) b.width else minOf(b.width, b.height) * 0.76f * state.settings.iconScale).toDp()
             Box(
@@ -124,7 +125,7 @@ fun ContextMenu(state: HomeState) {
                     .size(b.width.toDp(), b.height.toDp())
                     .graphicsLayer {
                         val s = 1f + (if (isWidget) 0.03f else 0.08f) * shown
-                        scaleX = s; scaleY = s; alpha = shown
+                        scaleX = s; scaleY = s; alpha = if (cut) 0f else shown
                     },
                 contentAlignment = Alignment.Center,
             ) {
@@ -136,9 +137,9 @@ fun ContextMenu(state: HomeState) {
             val canResize = isWidget && state.canResize(menu.item)
             val canConfig = isWidget && state.canReconfigure(menu.item)
             val itemsCount = when {
-                menu.slot != null -> 2
-                isWidget -> 4 + (if (canResize) 1 else 0) + (if (canConfig) 1 else 0)
-                else -> 3
+                menu.slot != null -> 3
+                isWidget -> 5 + (if (canResize) 1 else 0) + (if (canConfig) 1 else 0)
+                else -> 4
             }
             val menuH = (46 * itemsCount + 12).dp
             val below = b.bottom + 14.dp.toPx() + menuH.toPx() < constraints.maxHeight - 40.dp.toPx()
@@ -168,12 +169,15 @@ fun ContextMenu(state: HomeState) {
                             MenuRow(if (clear) "رجّع خلفية الويدجت" else "خلفية شفافة كاملة") { state.menu = null; state.toggleClear(menu.item) }
                             if (canConfig) MenuRow("إعدادات الويدجت") { state.menu = null; state.reconfigure(menu.item) }
                             MenuRow("ترتيب الشاشة") { state.enterEdit() }
+                            MenuRow("الإعدادات") { state.menu = null; state.settingsOpen = true }
                             MenuRow("شيل الويدجت", red = true) { state.menu = null; state.removeFromHome(menu.item) }
                         } else if (menu.slot != null) {
                             MenuRow("بدّل التطبيق") { state.menu = null; state.picker = menu.slot; state.drawerOpen = true }
                             MenuRow("ترتيب الشاشة") { state.enterEdit() }
+                            MenuRow("الإعدادات") { state.menu = null; state.settingsOpen = true }
                         } else {
                             MenuRow("ترتيب الشاشة") { state.enterEdit() }
+                            MenuRow("الإعدادات") { state.menu = null; state.settingsOpen = true }
                             MenuRow("معلومات التطبيق") { state.menu = null; appInfo?.let { state.catalog.openInfo(it) } }
                             MenuRow("شيله من الشاشة", red = true) { state.menu = null; state.removeFromHome(menu.item) }
                         }

@@ -31,6 +31,9 @@ class PagesState(private val scope: CoroutineScope) {
     /** آخر صفحة وقفت عليها (يتغير بس لما توقف، عشان ما نرسم صفحات جديدة وسط الحركة) */
     var settled by mutableIntStateOf(0)
         private set
+    /** الصفحة اللي رايحين لها الحين */
+    var target by mutableIntStateOf(0)
+        private set
     private var job: Job? = null
 
     /** الصفحة الحالية (الأقرب) */
@@ -46,6 +49,7 @@ class PagesState(private val scope: CoroutineScope) {
     fun animateTo(page: Int, durationMs: Int) {
         stop()
         val target = page.coerceIn(0, (count - 1).coerceAtLeast(0)).toFloat()
+        this.target = target.toInt()
         val from = offset
         if (from == target) { settled = target.toInt(); return }
         animating = true
@@ -71,10 +75,15 @@ class PagesState(private val scope: CoroutineScope) {
         if (offset != t.toFloat()) animateTo(t, PagerPhysics.settleDurationMs(offset, t, calm))
     }
 
-    /** لما ينقص عدد الصفحات */
+    /**
+     * لما ينقص عدد الصفحات (مثلاً طلعت من وضع الترتيب وأنت على الصفحة الفاضية):
+     * ترجع للصفحة اللي قبلها بحركة ناعمة، مو قفزة.
+     */
     fun clamp() {
-        val max = (count - 1).coerceAtLeast(0).toFloat()
-        if (!animating && offset > max) offset = max
-        if (settled > max.toInt()) settled = max.toInt()
+        val max = (count - 1).coerceAtLeast(0)
+        if (offset > max || (animating && target > max)) {
+            android.util.Log.d("OnyxPages", "clamp animate from=${"%.2f".format(offset)} to=$max")
+            animateTo(max, PagerPhysics.settleDurationMs(offset, max, true))
+        }
     }
 }

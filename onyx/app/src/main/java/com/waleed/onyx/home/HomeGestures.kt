@@ -79,13 +79,18 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
         state.pressedKey = null
 
         when (first) {
-            First.Up -> {
-                if (pagesWereMoving) state.pages.settle(state.calm()) else state.tap(hit)
+            First.Up -> when {
+                // النقاط: تروح للصفحة اللي ضغطت نقطتها
+                hit is Hit.Dots -> state.dotsGo(last.x, fast = false)
+                pagesWereMoving -> state.pages.settle(state.calm())
+                else -> state.tap(hit)
             }
             First.Cancel -> state.pages.settle(state.calm())
             is First.Moved -> {
                 val d = first.delta
                 when {
+                    // السحب على النقاط: تتنقل بين الصفحات مع إصبعك (مثل الآيفون)
+                    hit is Hit.Dots && abs(d.x) >= abs(d.y) -> dotsScrub(state, down.id, last)
                     // بوضع الترتيب: سحبة سريعة بالعرض فوق الأيقونات = تقليب صفحات (مثل الآيفون)
                     editing && onItem != null && onItem.slot == null && state.inPages(down.position) &&
                         PagerPhysics.editTouchIsPageSwipe(lastTime - down.uptimeMillis, d.x, d.y) ->
@@ -118,7 +123,8 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                         afterLongPress(state, down.id, last, hit, dragStart)
                     }
                     is Hit.OnEmptySlot -> state.openPicker(hit.slot)
-                    Hit.Empty -> { state.buzz(); state.enterEdit() }
+                    // مكان فاضي، أو برا الصفحات (فوق، النقاط، حول الشريط): وضع الترتيب
+                    Hit.Empty, Hit.Dots, Hit.Outside -> { state.buzz(); state.enterEdit() }
                     else -> {}
                 }
             }
@@ -142,6 +148,18 @@ private suspend fun AwaitPointerEventScope.afterLongPress(state: HomeState, id: 
             }
             return
         }
+    }
+}
+
+/** السحب على النقاط: الصفحة اللي تحت إصبعك */
+private suspend fun AwaitPointerEventScope.dotsScrub(state: HomeState, id: PointerId, start: Offset) {
+    state.dotsGo(start.x, fast = true)
+    while (true) {
+        val e = awaitPointerEvent(PointerEventPass.Initial)
+        val c = e.changes.firstOrNull { it.id == id } ?: break
+        c.consume()
+        if (!c.pressed) break
+        state.dotsGo(c.position.x, fast = true)
     }
 }
 

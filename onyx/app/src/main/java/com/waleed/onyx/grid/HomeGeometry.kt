@@ -65,7 +65,43 @@ data class HomeGeometry(
     val dockSlots: List<Box>,
     /** أقصى عدد يركب بالشريط السفلي بهالشاشة */
     val dockMax: Int,
+    /** المسافة بين نص أيقونة ونص اللي جنبها بالشريط (ثابتة مهما كان العدد) */
+    val dockStep: Float = 0f,
 ) {
+    // ───────── الشريط مثل الآيفون: الأيقونات متجمعة بالنص، والزجاج على قدها ─────────
+
+    /** أماكن [n] أيقونات بالشريط، متجمعة بالنص بمسافة ثابتة */
+    fun dockRow(n: Int): List<Box> {
+        val d = dock ?: return emptyList()
+        if (n <= 0) return emptyList()
+        val first = d.cx - dockStep * (n - 1) / 2f
+        return (0 until n).map { k ->
+            val cx = first + dockStep * k
+            Box(cx - dockIcon / 2, d.cy - dockIcon / 2, cx + dockIcon / 2, d.cy + dockIcon / 2)
+        }
+    }
+
+    /** زجاج الشريط لـ [n] أيقونات (أقل شي مكان وحدة). بالعدد الأقصى = [dock] بالضبط */
+    fun dockGlass(n: Int): Box? {
+        val d = dock ?: return null
+        val w = (dockStep * n.coerceAtLeast(1) + 16f).coerceAtMost(d.w)
+        return Box(d.cx - w / 2, d.t, d.cx + w / 2, d.b)
+    }
+
+    /** وين تنحط الأيقونة لو فلتها عند [x] والشريط فيه [n] أماكن (مع مكانها) */
+    fun dockInsertIndex(x: Float, n: Int): Int {
+        val d = dock ?: return 0
+        if (n <= 1) return 0
+        val first = d.cx - dockStep * (n - 1) / 2f
+        return Math.round((x - first) / dockStep).coerceIn(0, n - 1)
+    }
+
+    /** منطقة الشريط وأنت تسحب (عرض الشريط كامل، وشوي فوقه) */
+    fun inDockZone(x: Float, y: Float): Boolean {
+        val d = dock ?: return false
+        return x >= d.l && x <= d.r && y >= d.t - 12f && y <= d.b + 12f
+    }
+
     /** خانة بالشبكة (x,y) */
     fun cellBox(x: Int, y: Int, w: Int = 1, h: Int = 1) =
         Box(grid.l + x * cell, grid.t + y * rowH, grid.l + (x + w) * cell, grid.t + (y + h) * rowH)
@@ -205,6 +241,7 @@ data class HomeGeometry(
                 icon = icon, padStart = padStart, pages = pages, grid = grid, dots = dots,
                 sideOn = i.sideOn, sideCount = sideCount, sideIcon = sideIcon, sideGap = sideGap, side = side, sideSlots = sideSlots,
                 dockOn = i.dockOn, dockIcon = dockIcon, dock = dock, dockSlots = dockSlots, dockMax = dockMax,
+                dockStep = if (dock == null) 0f else (dock.w - 16f) / dockCount,
             )
         }
     }

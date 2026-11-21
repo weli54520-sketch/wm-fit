@@ -91,6 +91,8 @@ object PagerPhysics {
 sealed class DragTarget {
     data class CellAt(val page: Int, val x: Int, val y: Int) : DragTarget()
     data class SlotAt(val container: Int, val index: Int) : DragTarget()
+    /** فوق الشريط السفلي وفيه مكان: يفسحون له بمكان [index] (على طول، مثل الآيفون) */
+    data class DockAt(val index: Int) : DragTarget()
     data class EdgeAt(val dir: Int) : DragTarget()
     object Nowhere : DragTarget()
 }
@@ -144,6 +146,7 @@ class DragBrain(
                     committed = null
                     DragEvent.Flip(target.dir)
                 } else null
+            is DragTarget.DockAt -> null
             DragTarget.Nowhere -> null
         }
     }

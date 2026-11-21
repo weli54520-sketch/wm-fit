@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,6 +46,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -65,6 +72,7 @@ import com.waleed.onyx.data.Container
 import com.waleed.onyx.data.Item
 import com.waleed.onyx.data.Kind
 import com.waleed.onyx.data.Screen
+import com.waleed.onyx.grid.DotsMath
 import com.waleed.onyx.grid.GeoInput
 import com.waleed.onyx.grid.HomeGeometry
 import com.waleed.onyx.grid.PagerPhysics
@@ -248,22 +256,8 @@ fun HomeScreen(app: OnyxApp, homePresses: StateFlow<Int>) {
                     }
                 }
 
-                // الشريط السفلي (اختياري)
-                val dock = g.dock
-                if (dock != null) {
-                    Box(
-                        Modifier
-                            .offset(x = dock.l.dp, y = dock.t.dp)
-                            .size(dock.w.dp, dock.h.dp)
-                            .smokeGlass(RoundedCornerShape((dock.h * 0.43f).dp)),
-                    ) {
-                        g.dockSlots.forEachIndexed { i, b ->
-                            Box(Modifier.offset(x = (b.l - dock.l).dp, y = (b.t - dock.t).dp)) {
-                                SlotTile(state, Slot(Container.DOCK, i), g.dockIcon.dp)
-                            }
-                        }
-                    }
-                }
+                // الشريط السفلي (اختياري): مثل الآيفون، متجمع بالنص والزجاج على قده
+                if (g.dock != null) DockBar(state, g)
             }
 
             // لمعة الحافة: الصفحة بتتقلب
@@ -352,6 +346,84 @@ private fun GhostCell(state: HomeState, page: Int, cellW: Dp, cellH: Dp, icon: D
     )
 }
 
+/**
+ * الشريط السفلي مثل الآيفون (كتاب المواصفات، الفصل ٥): الأيقونات متجمعة بالنص،
+ * تفسح مكان للمسحوبة وتتجمع لما تطلع، والزجاج يصغر ويكبر معها. كله بحركة ناعمة.
+ */
+@Composable
+private fun DockBar(state: HomeState, g: HomeGeometry) {
+    val dock = g.dock ?: return
+    val (list, plus) = state.dockView()
+    val n = list.size + if (plus) 1 else 0
+    val row = g.dockRow(n)
+    val glass = g.dockGlass(n) ?: return
+    val spec = Motion.smooth<Float>(state.settings)
+    val gl by animateFloatAsState(glass.l, spec, label = "dockL")
+    val gw by animateFloatAsState(glass.w, spec, label = "dockW")
+    val shown by animateFloatAsState(if (n > 0) 1f else 0f, spec, label = "dockShown")
+    if (shown > 0.01f) {
+        Box(
+            Modifier
+                .offset(x = gl.dp, y = dock.t.dp)
+                .size(gw.dp, dock.h.dp)
+                .graphicsLayer { alpha = shown }
+                .smokeGlass(RoundedCornerShape((dock.h * 0.43f).dp)),
+        )
+    }
+    list.forEachIndexed { i, id ->
+        if (id == null) return@forEachIndexed
+        val item = state.items.firstOrNull { it.id == id } ?: return@forEachIndexed
+        key(id) { DockTile(state, item, row[i], g.dockIcon.dp) }
+    }
+    if (plus) {
+        val b = row[n - 1]
+        key("plus") {
+            val a by animateFloatAsState(1f, spec, label = "plus")
+            Box(
+                Modifier.offset(x = b.l.dp, y = b.t.dp).size(g.dockIcon.dp).graphicsLayer { alpha = a },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size((g.dockIcon * 0.62f).dp).clip(CircleShape).background(Color.White.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.foundation.text.BasicText(
+                        "+",
+                        style = androidx.compose.ui.text.TextStyle(color = Color.White.copy(alpha = 0.85f), fontSize = (g.dockIcon * 0.34f).sp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** أيقونة بالشريط: تمشي لمكانها الجديد بنعومة (ولو نزلت من إصبعك، تنزل من مكان الإفلات) */
+@Composable
+private fun DockTile(state: HomeState, item: Item, b: com.waleed.onyx.grid.Box, icon: Dp) {
+    val settings = state.settings
+    val target = Offset(b.cx, b.cy)
+    val anim = remember { Animatable(state.takeDockDrop(item.id) ?: target, Offset.VectorConverter) }
+    LaunchedEffect(target, state.dropTick) {
+        state.takeDockDrop(item.id)?.let { anim.snapTo(it) }
+        anim.animateTo(target, Motion.smooth(settings))
+    }
+    val slot = Slot(Container.DOCK, item.page)
+    val dragging = state.drag
+    val hover = dragging?.slot == slot && dragging.slotReady
+    val pressed = state.pressedKey == slot
+    val scale by animateFloatAsState(if (hover) 1.12f else if (pressed) 0.88f else 1f, pressSpec(pressed, settings), label = "dockTile")
+    val appInfo = state.catalog.byKey(item.appKey)
+    Box(
+        Modifier
+            .offset { IntOffset(((anim.value.x - b.w / 2) * density).roundToInt(), ((anim.value.y - b.h / 2) * density).roundToInt()) }
+            .size(icon)
+            .graphicsLayer { scaleX = scale; scaleY = scale },
+        contentAlignment = Alignment.Center,
+    ) {
+        AppIcon(appInfo, state.catalog, icon, settings.iconStyle)
+    }
+}
+
 /** أيقونة بالعمود أو الشريط: ترسم بس */
 @Composable
 private fun SlotTile(state: HomeState, slot: Slot, icon: Dp) {
@@ -407,22 +479,51 @@ private fun DragOverlay(state: HomeState, icon: Dp) {
     }
 }
 
+/**
+ * نقاط الصفحات: أول نقطة بيت (الرئيسية)، والحالية أوضح.
+ * كل نقطة بخانة عرضها ثابت (DotsMath) عشان الضغط والسحب عليها يعرف أي صفحة بالضبط.
+ */
 @Composable
 private fun PageDots(count: Int, current: Int, modifier: Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+    Box(modifier, contentAlignment = Alignment.Center) {
         if (count > 1) {
-            for (i in 0 until count) {
-                val w by animateFloatAsState(if (i == current) 16f else 6f, label = "dot")
-                Box(
-                    Modifier
-                        .padding(horizontal = 3.5.dp)
-                        .size(width = w.dp, height = 6.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = if (i == current) 1f else 0.38f)),
-                )
+            Row(
+                Modifier
+                    .width((DotsMath.SLOT * count).dp)
+                    .fillMaxHeight()
+                    .semantics { contentDescription = "dots:$count:$current" },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                for (i in 0 until count) {
+                    val on = i == current
+                    val a by animateFloatAsState(if (on) 1f else 0.38f, tween(220), label = "dotA")
+                    val k by animateFloatAsState(if (on) 1.2f else 1f, tween(220), label = "dotK")
+                    Box(Modifier.width(DotsMath.SLOT.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Canvas(Modifier.size(9.dp).graphicsLayer { scaleX = k; scaleY = k; alpha = a }) {
+                            if (i == 0) drawHome() else drawCircle(Color.White, radius = size.minDimension * 0.36f)
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+/** بيت صغير (أول نقطة = الرئيسية) */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHome() {
+    val w = size.width
+    val h = size.height
+    val p = Path().apply {
+        moveTo(w * 0.5f, 0f)
+        lineTo(w, h * 0.46f)
+        lineTo(w * 0.86f, h * 0.46f)
+        lineTo(w * 0.86f, h)
+        lineTo(w * 0.14f, h)
+        lineTo(w * 0.14f, h * 0.46f)
+        lineTo(0f, h * 0.46f)
+        close()
+    }
+    drawPath(p, Color.White)
 }
 
 /** ضغطة الأيقونة: تصغر بسرعة (0.12 ثانية) وترجع بارتداد خفيف */

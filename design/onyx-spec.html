@@ -141,6 +141,8 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
     <div><span class="k">الطول</span><span class="v">الأيقونة + <span class="num">20</span></span></div>
     <div><span class="k">العرض</span><span class="v">الخارجية <span class="en">W − 32</span>. الداخلية <span class="num">66%</span> من <span class="en">W</span> وأقصى شي <span class="num">640</span></span></div>
     <div><span class="k">الزوايا</span><span class="v">زاوية <span class="num">43%</span> من الطول<span class="st ok">معتمد</span></span></div>
+    <div><span class="k">مثل الآيفون</span><span class="v">العدد اللي فوق = <b>أقصى</b> عدد. الأيقونات متجمعة بالنص بمسافة ثابتة، والزجاج على قدها (يصغر ويكبر بنعومة). ما فيه خانات فاضية بالنص أبد<span class="st ok">معتمد · وليد 0.3.2</span></span></div>
+    <div><span class="k">بوضع الترتيب</span><span class="v">لو فيه مكان، تطلع دائرة <b>+</b> بآخر الشريط: ضغطة = تختار تطبيق</span></div>
   </div>
 
   <h3>الزجاج المدخّن</h3>
@@ -192,6 +194,10 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
         <tr><td>أي مكان بالصفحات</td><td>سحب لفوق</td><td>كل التطبيقات</td><td>ولا شي</td></tr>
         <tr><td>أي مكان بالصفحات</td><td>سحب لتحت</td><td>الإشعارات أو اللوحة السريعة (الفصل 7)</td><td>ولا شي</td></tr>
         <tr><td>العمود أو الشريط</td><td>ضغطة / ضغطة طويلة</td><td>تفتح / قائمة (بدّل، شيل)</td><td>سحب منه أو إليه</td></tr>
+        <tr><td>أيقونة أو ويدجت</td><td>القائمة</td><td>فيها "ترتيب الشاشة" و"الإعدادات" دايماً (ما تحتاج مكان فاضي)<span class="st ok">0.3.2</span></td><td>-</td></tr>
+        <tr><td>برا الصفحات (فوق، النقاط، حول الشريط)</td><td>ضغطة طويلة</td><td>يدخل وضع الترتيب</td><td>ولا شي</td></tr>
+        <tr><td>النقاط</td><td>ضغطة</td><td>تروح للصفحة اللي ضغطت نقطتها. أول نقطة = بيت (الرئيسية)<span class="st ok">0.3.2</span></td><td>نفسه</td></tr>
+        <tr><td>النقاط</td><td>سحب بالعرض</td><td>تتنقل بين الصفحات مع إصبعك (مثل الآيفون)</td><td>نفسه</td></tr>
         <tr><td>داخل الويدجت</td><td>ضغطة</td><td>للويدجت نفسه (مثل زر التقويم)</td><td>ولا شي</td></tr>
         <tr><td>الويدجت</td><td>ضغطة طويلة</td><td>قائمة الويدجت</td><td>يبدأ السحب</td></tr>
       </tbody>
@@ -206,7 +212,7 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
   <div class="spec">
     <div><span class="k">الصفحة</span><span class="v">تصغر لـ <span class="num">0.88</span> حول نص منطقة الصفحات، وأطراف الصفحة اللي قبلها واللي بعدها تبان بالجنب<span class="st ok">طريقة الأصلي</span></span></div>
     <div><span class="k">العمود والشريط</span><span class="v">ما يصغرون ولا يتحركون. والصفحة تصغر داخل منطقتها، فما تقرب منهم أبد<span class="st no">ممنوع التداخل</span></span></div>
-    <div><span class="k">الصفحة الفاضية</span><span class="v">وحدة بآخر الصفحات طول ما أنت بوضع الترتيب، تنحذف لو طلعت وهي فاضية</span></div>
+    <div><span class="k">الصفحة الفاضية</span><span class="v">وحدة بآخر الصفحات طول ما أنت بوضع الترتيب، تنحذف لو طلعت وهي فاضية. لو كنت واقف عليها: ترجع للصفحة اللي قبلها <b>بحركة ناعمة</b>، مو قفزة<span class="st ok">0.3.2</span></span></div>
   </div>
   <h3>وأنت تسحب</h3>
   <div class="spec">
@@ -225,7 +231,11 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
   </div>
   <h3>العمود والشريط</h3>
   <div class="spec">
-    <div><span class="k">النزول عليهم</span><span class="v">توقف فوق أيقونة فيهم <span class="num">200ms</span>، تكبر شوي، وتفلت: يتبادلون</span></div>
+    <div><span class="k">العمود</span><span class="v">توقف فوق أيقونة فيه <span class="num">200ms</span>، تكبر شوي، وتفلت: يتبادلون</span></div>
+    <div><span class="k">الشريط (فيه مكان)</span><span class="v">مثل الآيفون: أول ما توصل الشريط، الأيقونات تفسح مكان تحت إصبعك بحركة ناعمة، وتفلت: تنحط بالمكان. وداخل الشريط نفسه تقدر تغير الترتيب كذا<span class="st ok">معتمد · وليد 0.3.2</span></span></div>
+    <div><span class="k">الشريط (مليان)</span><span class="v">من برا: توقف فوق أيقونة <span class="num">200ms</span> وتفلت: يتبادلون</span></div>
+    <div><span class="k">الطلوع من الشريط</span><span class="v">أول ما تطلع الأيقونة، الباقي يتجمع بالنص والزجاج يصغر. ولو رجعت، يفسحون لك</span></div>
+    <div><span class="k">بداية السحب</span><span class="v">القائمة والأيقونة المرفوعة تختفي <b>فوراً</b>. أيقونة وحدة بس تحت إصبعك (ما فيه نسخة باهتة)<span class="st ok">0.3.2</span></span></div>
     <div><span class="k">السحب منهم</span><span class="v">بوضع الترتيب تقدر تسحب أي أيقونة من العمود أو الشريط للشبكة</span></div>
     <div><span class="k">الويدجت</span><span class="v">ما ينحط بالعمود أو الشريط</span></div>
   </div>
@@ -281,7 +291,7 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
     <div><span class="k">من زاوية فوق</span><span class="v">نافذة عائمة</span></div>
     <div><span class="k">التطبيقات الأخيرة والأزواج</span><span class="v">مثل ما هي</span></div>
   </div>
-  <h3>اللي يضيفه Onyx من الشاشة الرئيسية (نسخة <span class="num">0.3.1</span>)</h3>
+  <h3>اللي يضيفه Onyx من الشاشة الرئيسية (نسخة <span class="num">0.3.3</span>)</h3>
   <div class="spec">
     <div><span class="k">"افتح بشاشة مقسومة"</span><span class="v">بقائمة الأيقونة: تختار التطبيق الثاني (فيه بحث)، وينفتحون جنب بعض<span class="st mine">اقتراحي</span></span></div>
     <div><span class="k">أيقونة زوج</span><span class="v">أيقونة وحدة بمقاس باقي الأيقونات (أيقونتين صغار مايلة على زجاج مدخّن)، تفتح التطبيقين مع بعض. تنحط بالشبكة أو العمود أو الشريط<span class="st mine">اقتراحي</span></span></div>
@@ -311,6 +321,10 @@ ul, ol { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: 
     <li>ممنوع ضغطة على مكان فاضي تطلعك من وضع الترتيب.</li>
     <li>ممنوع الارتداد بحركة الأماكن والصفحات.</li>
     <li>ممنوع Onyx يخرب أي طريقة من طرق سامسونج للشاشة المقسومة (شريط المهام، الإصبعين، الزاوية، الأخيرة، الأزواج). نتأكد منها كل نسخة.</li>
+    <li>ممنوع مكان فاضي بنص الشريط السفلي، وممنوع أيقوناته تطلع من زجاجه أو تتداخل.</li>
+    <li>ممنوع أيقونتين بنفس المكان بالشريط، أو أيقونة تختفي منه بعد أي سحب.</li>
+    <li>ممنوع نسخة ثانية من الأيقونة تبان وأنت تسحبها.</li>
+    <li>ممنوع الصفحة تقفز (تتغير بدون حركة) لما تنقص الصفحات.</li>
     <li>ممنوع عدد الصفوف يزيد عن اختيار وليد، وممنوع الخانة تكون أطول من عرضها.</li>
   </ul>
 </section>

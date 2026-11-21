@@ -1,5 +1,6 @@
-# الجوال الوهمي: يبني WM Onyx، يشغله على Emulator بمقاس الفولد، يسوي سيناريوهات ثابتة ويصوّرها.
-# الصور تنرفع لفرع emu-shots عشان Claude يشوفها قبل ما توصل أي نسخة لوليد.
+# الجوال الوهمي: يبني WM Onyx مرة وحدة، ويشغله على جوالين وهميين بالتوازي (الخارجية والداخلية)،
+# يسوي سيناريوهات ثابتة ويصوّرها. الصور تنرفع لفرع emu-shots عشان Claude يشوفها قبل ما توصل أي نسخة لوليد.
+# أسرع: الشاشتين مع بعض + الجوال الوهمي محفوظ جاهز (AVD cache) بدل ما يشتغل من الصفر كل مرة.
 name: Onyx Emulator
 
 on:
@@ -17,10 +18,13 @@ concurrency:
   group: onyx-emulator
   cancel-in-progress: true
 
+env:
+  EMU_OPTS: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+
 jobs:
-  emulator:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +39,27 @@ jobs:
         working-directory: onyx
         run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onyx-apk
+          path: onyx/app/build/outputs/apk/release/app-release.apk
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        screen: [outer, inner]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: onyx-apk
+          path: apk
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -44,6 +69,30 @@ jobs:
       - name: Install ffmpeg
         run: which ffmpeg || (sudo apt-get update -q && sudo apt-get install -y -q ffmpeg)
 
+      # الجوال الوهمي محفوظ جاهز بعد أول تشغيل (يوفر وقت الإقلاع)
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-pixel7-v1
+
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          ram-size: 4096M
+          force-avd-creation: false
+          disable-animations: false
+          emulator-options: ${{ env.EMU_OPTS }}
+          script: echo "AVD snapshot ready"
+
       - name: Run scenarios on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -52,22 +101,39 @@ jobs:
           arch: x86_64
           profile: pixel_7
           ram-size: 4096M
+          force-avd-creation: false
           disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: python3 .github/emu/run.py onyx/app/build/outputs/apk/release/app-release.apk emu-out
+          emulator-options: -no-snapshot-save ${{ env.EMU_OPTS }}
+          script: python3 .github/emu/run.py apk/app-release.apk emu-out ${{ matrix.screen }}
 
-      - name: Upload shots (backup)
+      - name: Upload shots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: emu-shots
+          name: emu-${{ matrix.screen }}
           path: emu-out
           if-no-files-found: warn
 
+  publish:
+    needs: emulator
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: emu-*
+          path: parts
+
       - name: Publish shots to emu-shots branch
-        if: always()
         run: |
-          [ -d emu-out ] || exit 0
+          mkdir -p emu-out
+          : > emu-out/REPORT.md
+          for s in outer inner; do
+            d="parts/emu-$s"
+            [ -d "$d" ] || { echo "## ❌ الشاشة $s ما اشتغلت" >> emu-out/REPORT.md; continue; }
+            [ -f "$d/REPORT.md" ] && { cat "$d/REPORT.md" >> emu-out/REPORT.md; echo >> emu-out/REPORT.md; rm "$d/REPORT.md"; }
+            cp -r "$d"/. emu-out/
+          done
           cd emu-out
           echo "commit: ${{ github.sha }} · run: ${{ github.run_id }}" > RUN.txt
           git init -q

@@ -29,6 +29,8 @@ import com.waleed.onyx.grid.Cell
 import com.waleed.onyx.grid.DragBrain
 import com.waleed.onyx.grid.DragEvent
 import com.waleed.onyx.grid.DragTarget
+import com.waleed.onyx.grid.DockOrder
+import com.waleed.onyx.grid.DotsMath
 import com.waleed.onyx.grid.GridEngine
 import com.waleed.onyx.grid.HomeGeometry
 import com.waleed.onyx.grid.PagerPhysics
@@ -56,6 +58,8 @@ sealed class Hit {
     data class Handle(val item: Item) : Hit()
     /** مكان فاضي بالصفحات */
     object Empty : Hit()
+    /** نقاط الصفحات */
+    object Dots : Hit()
     /** برا الصفحات والعمود والشريط (فوق، النقاط…) */
     object Outside : Hit()
 }
@@ -81,6 +85,8 @@ class Drag(
     var slot by mutableStateOf<Slot?>(null)
     var slotReady by mutableStateOf(false)
     var edge by mutableIntStateOf(0)
+    /** فوق الشريط وفيه مكان: وين يفسحون له (null = ما يفسحون) */
+    var dockGap by mutableStateOf<Int?>(null)
     val brain = DragBrain()
 }
 
@@ -116,6 +122,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     var drag by mutableStateOf<Drag?>(null)
         private set
     var menu by mutableStateOf<Menu?>(null)
+    /** القائمة انسكرت لأن السحب بدأ: الأيقونة المرفوعة تختفي فوراً (ما تبقى نسخة باهتة) */
+    var menuCut by mutableStateOf(false)
+        private set
     var drawerOpen by mutableStateOf(false)
     var picker by mutableStateOf<Slot?>(null)
     var settingsOpen by mutableStateOf(false)
@@ -139,10 +148,59 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     /** شكل كل ويدجت على الشاشة، عشان نصوره لما يرتفع أو يتسحب */
     val widgetViews = HashMap<Long, View>()
     private val dropFrom = HashMap<Long, IntOffset>()
+    /** أيقونة نزلت بالشريط: مكانها لحظة الإفلات (dp على الشاشة) عشان تنزل بنعومة من هناك */
+    private val dockDropFrom = HashMap<Long, Offset>()
 
     fun gridItems(page: Int) = items.filter { it.container == Container.GRID && it.page == page }
     fun slotItem(slot: Slot) = items.firstOrNull { it.container == slot.container && it.page == slot.index }
     fun lastPage() = items.filter { it.container == Container.GRID }.maxOfOrNull { it.page } ?: 0
+
+    // ───────── الشريط مثل الآيفون ─────────
+
+    fun dockCapacity() = layout?.dockSlots?.size ?: settings.dockCount
+
+    /** أيقونات الشريط بالترتيب (بدون فراغات) */
+    fun dockItems() = items.filter { it.container == Container.DOCK }.sortedBy { it.page }.take(dockCapacity())
+
+    /** رقم حفظ جديد لآخر الشريط (ما يتعارض مع أي أيقونة فيه) */
+    private fun nextDockPage() = (items.filter { it.container == Container.DOCK }.maxOfOrNull { it.page } ?: -1) + 1
+
+    /**
+     * شكل الشريط الحين: الأيقونات بالترتيب (null = المكان اللي يفسحونه للمسحوبة)،
+     * و + بالآخر لو فيه مكان وأنت بوضع الترتيب.
+     */
+    fun dockView(): Pair<List<Long?>, Boolean> {
+        val ids = dockItems().map { it.id }
+        val d = drag
+        if (d != null) {
+            val fromDock = d.fromSlot?.container == Container.DOCK
+            return DockOrder.arrange(ids, if (fromDock) d.item.id else null, d.dockGap) to false
+        }
+        return ids to (editing && ids.size < dockCapacity())
+    }
+
+    /** مكان أيقونة بالشريط الحين (dp) */
+    fun dockBox(id: Long): Box? {
+        val g = layout ?: return null
+        val (list, plus) = dockView()
+        val i = list.indexOf(id)
+        if (i < 0) return null
+        return g.dockRow(list.size + if (plus) 1 else 0).getOrNull(i)
+    }
+
+    fun takeDockDrop(id: Long): Offset? = dockDropFrom.remove(id)
+
+    /** بعد أي تغيير: الشريط يرجع متجمع 0،1،2… (ما يبقى فراغ بالنص) */
+    private fun compactDock(upd: MutableList<Item>) {
+        val map = LinkedHashMap<Long, Item>()
+        for (u in upd) map[u.id] = u
+        val merged = items.map { map[it.id] ?: it }
+        val dock = merged.filter { it.container == Container.DOCK }
+            .sortedWith(compareBy({ it.page }, { if (map.containsKey(it.id)) 0 else 1 }))
+        dock.forEachIndexed { i, o -> if (o.page != i) map[o.id] = o.copy(page = i) }
+        upd.clear()
+        upd += map.values
+    }
 
     /** أيقونة بتطلع من الصفحة المليانة وأنت تسحب */
     fun isOverflow(id: Long): Boolean = drag?.overflow?.contains(id) == true
@@ -176,11 +234,21 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             val s = Slot(Container.SIDE, i)
             return slotItem(s)?.let { Hit.OnItem(it, s) } ?: Hit.OnEmptySlot(s)
         }
-        g.dockSlotAt(d.x, d.y)?.let { i ->
-            val s = Slot(Container.DOCK, i)
-            return slotItem(s)?.let { Hit.OnItem(it, s) } ?: Hit.OnEmptySlot(s)
+        if (g.dock != null) {
+            val (list, plus) = dockView()
+            val row = g.dockRow(list.size + if (plus) 1 else 0)
+            val i = row.indexOfFirst { d.x >= it.l && d.x <= it.r && d.y >= it.t && d.y <= it.b }
+            if (i >= 0) {
+                val id = list.getOrNull(i)
+                val item = id?.let { x -> items.firstOrNull { it.id == x } }
+                return if (item != null) Hit.OnItem(item, Slot(Container.DOCK, item.page))
+                else Hit.OnEmptySlot(Slot(Container.DOCK, nextDockPage()))
+            }
         }
-        if (!g.inPages(d.x, d.y)) return Hit.Outside
+        if (!g.inPages(d.x, d.y)) {
+            if (d.y >= g.dots.t - 6f && d.y <= g.dots.b + 4f && DotsMath.onRow(d.x, g.width / 2f, pages.count)) return Hit.Dots
+            return Hit.Outside
+        }
         val page = pages.current
         val (lx, ly) = g.toLocal(d.x, d.y, k())
         for (it in gridItems(page)) {
@@ -209,7 +277,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun itemRect(item: Item, slot: Slot?): Rect? {
         val g = layout ?: return null
         if (slot != null) {
-            val b = if (slot.container == Container.SIDE) g.sideSlots.getOrNull(slot.index) else g.dockSlots.getOrNull(slot.index)
+            val b = if (slot.container == Container.SIDE) g.sideSlots.getOrNull(slot.index) else dockBox(item.id)
             return b?.let { px(it) }
         }
         return px(g.toScreen(g.cellBox(item.x, item.y, item.w, item.h), k()))
@@ -223,6 +291,21 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             is Hit.OnEmptySlot -> openPicker(hit.slot)
             else -> {}
         }
+    }
+
+    /** النقاط: الصفحة اللي تحت الإصبع (ضغطة أو سحب) */
+    fun dotsGo(xPx: Float, fast: Boolean) {
+        val g = layout ?: return
+        val i = DotsMath.indexAt(xPx / density, g.width / 2f, pages.count)
+        if (i == pages.current && !pages.animating) return
+        if (pages.animating && i == pages.target) return
+        android.util.Log.d("OnyxPages", "dots go=$i")
+        if (fast) buzzLight()
+        pages.animateTo(i, if (fast) 260 else PagerPhysics.settleDurationMs(pages.offset, i, calm()))
+    }
+
+    private fun buzzLight() {
+        if (settings.haptics) haptic?.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
     fun openPicker(slot: Slot) {
@@ -279,7 +362,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             Offset((f.x - b.l) / k, (f.y - b.t) / k)
         } else {
             // من العمود أو الشريط: نمسكه من نص خانة عادية
-            val b = (if (slot.container == Container.SIDE) g.sideSlots[slot.index] else g.dockSlots[slot.index])
+            val b = (if (slot.container == Container.SIDE) g.sideSlots.getOrNull(slot.index) else dockBox(item.id)) ?: return
             Offset(g.cell / 2 + (f.x - b.cx), g.rowH / 2 + (f.y - b.cy))
         }
         val snap = if (item.kind == Kind.WIDGET) snapshot(item.id) else null
@@ -287,6 +370,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (!editing) return
         pages.settle(calm())
         val d = Drag(item, slot, grab, pages.current, snap).also { it.pointer = pointer }
+        if (menu != null) menuCut = true
         drag = d
         menu = null
         buzz()
@@ -322,7 +406,16 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         val cy = b.cy
         if (d.item.kind != Kind.WIDGET) {
             g.sideSlotAt(cx, cy)?.let { return DragTarget.SlotAt(Container.SIDE, it) }
-            g.dockSlotAt(cx, cy)?.let { return DragTarget.SlotAt(Container.DOCK, it) }
+            if (g.inDockZone(cx, cy)) {
+                val dock = dockItems()
+                val fromDock = d.fromSlot?.container == Container.DOCK
+                // فيه مكان (أو من الشريط نفسه): يفسحون له تحت إصبعك مثل الآيفون
+                if (DockOrder.canInsert(dock.size, dockCapacity(), fromDock))
+                    return DragTarget.DockAt(g.dockInsertIndex(cx, DockOrder.slotsWhileHovering(dock.size, fromDock)))
+                // مليان: فوق أيقونة = تبديل
+                val i = g.dockRow(dock.size).indexOfFirst { cx >= it.l && cx <= it.r }
+                return if (i >= 0) DragTarget.SlotAt(Container.DOCK, dock[i].page) else DragTarget.Nowhere
+            }
         }
         val e = g.edgeAt(cx, cy)
         if (e == -1 && d.page > 0) return DragTarget.EdgeAt(-1)
@@ -345,7 +438,9 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             val b = dragBoxDp(d)
             android.util.Log.d("OnyxDrag", "pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px center=${b?.cx?.roundToInt()},${b?.cy?.roundToInt()}dp size=${b?.w?.roundToInt()}x${b?.h?.roundToInt()}dp kind=${d.item.kind} k=${"%.2f".format(k())} page=${d.page} target=$t")
         }
+        d.dockGap = (t as? DragTarget.DockAt)?.index
         when (t) {
+            is DragTarget.DockAt -> { d.slot = null; d.cand = null; d.edge = 0 }
             is DragTarget.CellAt -> { d.cand = Cell(t.x, t.y); d.slot = null; d.edge = 0 }
             is DragTarget.SlotAt -> { d.slot = Slot(t.container, t.index); d.cand = null; d.edge = 0 }
             is DragTarget.EdgeAt -> { d.edge = t.dir; d.slot = null; d.cand = null }
@@ -410,13 +505,27 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             val (lx, ly) = g.toLocal(box.l, box.t, k())
             dropFrom[it0.id] = IntOffset(((lx - g.grid.l) * density).roundToInt(), ((ly - g.grid.t) * density).roundToInt())
         }
+        fun rememberDockDrop() {
+            if (box != null) dockDropFrom[it0.id] = Offset(box.cx, box.cy)
+        }
         when (t) {
+            is DragTarget.DockAt -> if (it0.kind == Kind.APP) {
+                val order = DockOrder.drop(dockItems().map { it.id }, it0.id, t.index)
+                order.forEachIndexed { i, id ->
+                    val o = if (id == it0.id) it0 else items.first { it.id == id }
+                    val u = if (id == it0.id) o.copy(container = Container.DOCK, page = i, x = 0, y = 0) else o.copy(page = i)
+                    if (u != o) upd += u
+                }
+                rememberDockDrop()
+                android.util.Log.d("OnyxDock", "drop at=${t.index} order=${order.joinToString(",")}")
+            }
             is DragTarget.SlotAt -> {
                 val slot = Slot(t.container, t.index)
                 if (slot != d.fromSlot && it0.kind == Kind.APP) {
                     val target = slotItem(slot)
                     upd += it0.copy(container = slot.container, page = slot.index, x = 0, y = 0)
                     if (target != null && target.id != it0.id) upd += target.copy(container = it0.container, page = it0.page, x = it0.x, y = it0.y)
+                    if (slot.container == Container.DOCK) rememberDockDrop()
                 }
             }
             is DragTarget.CellAt -> {
@@ -451,13 +560,21 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             }
             else -> if (d.fromSlot == null && d.page == it0.page) rememberDropFrom()
         }
+        compactDock(upd)
         applyLocal(upd)
         dropTick++
         drag = null
+        logDock()
         if (upd.isNotEmpty()) { buzz(); scope.launch { repo.save(upd) } }
     }
 
     fun takeDropFrom(id: Long): IntOffset? = dropFrom.remove(id)
+
+    /** سجل للجوال الوهمي: الشريط بعد كل تغيير (الترتيب، وهل فيه فراغ) */
+    private fun logDock() {
+        val all = items.filter { it.container == Container.DOCK }.sortedBy { it.page }
+        android.util.Log.d("OnyxDock", "dock pages=${all.joinToString(",") { it.page.toString() }} apps=${all.joinToString(",") { it.appKey.substringBefore('/') }}")
+    }
 
     private fun applyLocal(upd: List<Item>) {
         if (upd.isEmpty()) return
@@ -480,6 +597,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     fun openMenu(item: Item, slot: Slot?) {
         val b = itemRect(item, slot) ?: return
         val snap = if (item.kind == Kind.WIDGET) snapshot(item.id) else null
+        menuCut = false
         menu = Menu(item, b, slot, snap)
         buzz()
     }
@@ -610,9 +728,10 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             say("انشال الويدجت")
             return
         }
-        val u = item.copy(container = Container.HIDDEN)
-        applyLocal(listOf(u))
-        scope.launch { repo.save(listOf(u)) }
+        val upd = mutableListOf(item.copy(container = Container.HIDDEN))
+        compactDock(upd)
+        applyLocal(upd)
+        scope.launch { repo.save(upd) }
         say("انشال من الشاشة، تلقاه بكل التطبيقات")
     }
 
@@ -657,6 +776,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             target != null -> upd += target.copy(appKey = appInfo.key)
             else -> ins += Item(screen = screen, container = slot.container, page = slot.index, x = 0, y = 0, appKey = appInfo.key)
         }
+        compactDock(upd)
         applyLocal(upd)
         scope.launch { repo.save(upd, insert = ins) }
         picker = null

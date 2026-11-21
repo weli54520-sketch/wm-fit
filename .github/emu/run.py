@@ -17,6 +17,8 @@ import xml.etree.ElementTree as ET
 
 APK = sys.argv[1]
 OUT = sys.argv[2]
+# أي شاشة (الشاشتين يشتغلون بالتوازي على جوالين وهميين)
+ONLY = sys.argv[3].split(",") if len(sys.argv) > 3 else None
 PKG = "com.waleed.onyx"
 os.makedirs(OUT, exist_ok=True)
 report = []
@@ -487,6 +489,173 @@ def run_screen(tag):
         home()
     scenario("ويدجت: إضافة، قائمة، سحب", s_widget)
 
+    # ───────── 0.3.2: الشريط مثل الآيفون، النقاط، القائمة، الصفحة الأخيرة ─────────
+
+    def dock_icons():
+        return sorted([n for n in icons() if n["y"] > H * 0.86 and n["x"] < W * 0.97], key=lambda n: n["x"])
+
+    def dock_log():
+        lg = sh("adb logcat -d -s OnyxDock:D -v brief")
+        return [l.split(": ", 1)[-1] for l in lg.splitlines() if "OnyxDock" in l]
+
+    def dock_contiguous():
+        ls = [l for l in dock_log() if l.startswith("dock pages=")]
+        if not ls:
+            return None
+        pages = [int(x) for x in re.search(r"pages=([\d,]*)", ls[-1]).group(1).split(",") if x != ""]
+        return pages == list(range(len(pages)))
+
+    def dots():
+        d = [n for n in nodes() if n["desc"].startswith("dots:")]
+        if not d:
+            return None
+        _, count, cur = d[0]["desc"].split(":")
+        return {"count": int(count), "cur": int(cur), "box": d[0]["box"]}
+
+    def dot_xy(dd, i):
+        x1, y1, x2, y2 = dd["box"]
+        slot = (x2 - x1) / dd["count"]
+        return x1 + slot * (i + 0.5), (y1 + y2) / 2
+
+    def s_dock_reorder():
+        home()
+        dk = dock_icons()
+        log(f"  الشريط قبل: {[n['desc'] for n in dk]}")
+        if len(dk) < 3:
+            raise RuntimeError("الشريط فيه أقل من ٣ أيقونات")
+        a = dk[0]
+        sh("adb logcat -c")
+        with Record(f"{tag}_13_dock_reorder"):
+            long_press_drag(a["x"], a["y"], [(dk[1]["x"], a["y"] - 10), (dk[2]["x"], a["y"])], hold=0.8, dwell=0.7)
+            time.sleep(1.4)
+        home()
+        dk2 = dock_icons()
+        names = [n["desc"] for n in dk2]
+        log(f"  الشريط بعد: {names}")
+        for l in dock_log()[-3:]:
+            log(f"    · {l}")
+        ok = len(dk2) == len(dk) and a["desc"] in names and names.index(a["desc"]) == 2
+        log(f"  {'✅' if ok else '❌'} ترتيب داخل الشريط: {a['desc']} صار ثالث")
+        shot(f"{tag}_13_dock_reorder_end")
+    scenario("الشريط: تغيير الترتيب داخله", s_dock_reorder)
+
+    def s_dock_out_in():
+        home()
+        dk = dock_icons()
+        a = dk[-1]
+        sh("adb logcat -c")
+        with Record(f"{tag}_14_dock_out"):
+            long_press_drag(a["x"], a["y"], [(a["x"], a["y"] - H * 0.15), (W * 0.4, H * 0.42)], hold=0.8, dwell=0.7)
+            time.sleep(1.4)
+        home()
+        dk2 = dock_icons()
+        log(f"  طلعت {a['desc']}: الشريط {len(dk)} ← {len(dk2)} {[n['desc'] for n in dk2]}")
+        log(f"  {'✅' if len(dk2) == len(dk) - 1 and a['desc'] not in [n['desc'] for n in dk2] else '❌'} الأيقونة طلعت من الشريط")
+        cont = dock_contiguous()
+        log(f"  {'✅' if cont else '❌'} ما فيه فراغ بالشريط (المحفوظ 0،1،2…)")
+        if len(dk2) >= 2:
+            xs = [n["x"] for n in dk2]
+            gaps = [xs[k + 1] - xs[k] for k in range(len(xs) - 1)]
+            mid = (xs[0] + xs[-1]) / 2
+            log(f"  {'✅' if abs(mid - W / 2) <= W * 0.02 else '❌'} الباقي متجمع بالنص (النص {mid:.0f}، الشاشة {W / 2:.0f})")
+            log(f"  {'✅' if max(gaps) - min(gaps) <= 6 else '❌'} المسافات بينهم متساوية {gaps}")
+        shot(f"{tag}_14_dock_out_end")
+        # ترجع للشريط: يفسحون لها بين الأولى والثانية
+        g = [n for n in icons() if n["desc"] == a["desc"] and n["y"] < H * 0.86]
+        if not g:
+            raise RuntimeError("ما لقيت الأيقونة بالشبكة")
+        b = g[0]
+        dk2 = dock_icons()
+        tx = (dk2[0]["x"] + dk2[1]["x"]) / 2 if len(dk2) >= 2 else W / 2
+        sh("adb logcat -c")
+        with Record(f"{tag}_15_dock_in"):
+            long_press_drag(b["x"], b["y"], [(b["x"], dk2[0]["y"] - H * 0.06), (tx, dk2[0]["y"])], hold=0.8, dwell=0.9)
+            time.sleep(1.4)
+        home()
+        dk3 = dock_icons()
+        names = [n["desc"] for n in dk3]
+        log(f"  رجعت: {names}")
+        for l in dock_log()[-3:]:
+            log(f"    · {l}")
+        log(f"  {'✅' if len(dk3) == len(dk) and names[1:2] == [a['desc']] else '❌'} رجعت للشريط بالمكان الثاني")
+        log(f"  {'✅' if dock_contiguous() else '❌'} الشريط متجمع بعد الرجوع")
+        shot(f"{tag}_15_dock_in_end")
+    scenario("الشريط: طلوع أيقونة ورجوعها", s_dock_out_in)
+
+    def s_dots():
+        home()
+        dd = dots()
+        if not dd:
+            raise RuntimeError("ما لقيت النقاط")
+        log(f"  النقاط: {dd['count']} صفحات، الحالية {dd['cur']}")
+        last = dd["count"] - 1
+        x, y = dot_xy(dd, last)
+        tap(x, y); time.sleep(1.5)
+        d2 = dots()
+        log(f"  {'✅' if d2 and d2['cur'] == last else '❌'} ضغطة على آخر نقطة ← الصفحة {d2['cur'] if d2 else '-'}")
+        shot(f"{tag}_16_dots_last")
+        x, y = dot_xy(d2 or dd, 0)
+        tap(x, y); time.sleep(1.5)
+        d3 = dots()
+        log(f"  {'✅' if d3 and d3['cur'] == 0 else '❌'} ضغطة على البيت ← الرئيسية")
+        check_aligned("ضغطة البيت")
+        if dd["count"] >= 3:
+            x0, y0 = dot_xy(dd, 0)
+            x2, _ = dot_xy(dd, 2)
+            with Record(f"{tag}_16_dots_scrub"):
+                down(x0, y0)
+                for k in range(1, 7):
+                    move(x0 + (x2 - x0) * k / 6, y0)
+                    time.sleep(0.1)
+                up(x2, y0)
+                time.sleep(1.5)
+            d4 = dots()
+            log(f"  {'✅' if d4 and d4['cur'] == 2 else '❌'} سحب على النقاط ← الصفحة {d4['cur'] if d4 else '-'}")
+            check_aligned("سحب النقاط")
+        home()
+    scenario("النقاط: البيت، الضغط، السحب", s_dots)
+
+    def s_menu_settings():
+        home()
+        ic = [n for n in icons() if n["x"] < W * 0.75 and n["y"] < H * 0.8]
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if n["text"] == "الإعدادات"]
+        log(f"  {'✅' if row else '❌'} زر الإعدادات موجود بقائمة الأيقونة")
+        if row:
+            tap(row[0]["x"], row[0]["y"]); time.sleep(1.2)
+            opened = any(n["text"] == "العمود والشريط" for n in nodes())
+            log(f"  {'✅' if opened else '❌'} انفتحت الإعدادات بدون مكان فاضي")
+            shot(f"{tag}_17_menu_settings")
+        adb("input keyevent KEYCODE_BACK"); time.sleep(0.8)
+        home()
+    scenario("القائمة: الإعدادات من أي أيقونة", s_menu_settings)
+
+    def s_last_page():
+        home()
+        ic = [n for n in icons() if n["x"] < W * 0.75 and n["y"] < H * 0.8]
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
+        tap(row[0]["x"], row[0]["y"]); time.sleep(1.2)
+        dd = dots()
+        x, y = dot_xy(dd, dd["count"] - 1)
+        tap(x, y); time.sleep(1.5)
+        shot(f"{tag}_18_empty_page")
+        done = [n for n in nodes() if n["text"] == "تم"]
+        sh("adb logcat -c")
+        with Record(f"{tag}_18_last_page"):
+            tap(done[0]["x"], done[0]["y"])
+            time.sleep(2.0)
+        lg = sh("adb logcat -d -s OnyxPages:D -v brief")
+        smooth = "clamp animate" in lg
+        d2 = dots()
+        log(f"  {'✅' if smooth else '❌'} طلعت من الصفحة الفاضية بحركة (مو قفزة)")
+        log(f"  {'✅' if d2 and d2['cur'] == d2['count'] - 1 else '❌'} وقفت على آخر صفحة فيها شي ({d2['cur'] if d2 else '-'} من {d2['count'] if d2 else '-'})")
+        check_aligned("الصفحة الأخيرة")
+        home()
+    scenario("الصفحة الفاضية بآخر وضع الترتيب", s_last_page)
+
     def s_shade():
         swipe(W * 0.5, H * 0.35, W * 0.5, H * 0.7, 200)
         time.sleep(1.5)
@@ -526,11 +695,16 @@ def main():
     time.sleep(3)
     home()
     for tag in SCREENS:
+        if ONLY and tag not in ONLY:
+            continue
         set_screen(tag)
         run_screen(tag)
     adb("wm size reset"); adb("wm density reset")
+    ok = sum(1 for l in report if "✅" in l)
+    bad = [l.strip() for l in report if "❌" in l]
+    head = [f"**الخلاصة: {ok} ✅ · {len(bad)} ❌**"] + [f"- {l}" for l in bad]
     with open(f"{OUT}/REPORT.md", "w") as f:
-        f.write("\n".join(report) + "\n")
+        f.write("\n".join(report[:2] + head + report[2:]) + "\n")
 
 
 if __name__ == "__main__":
