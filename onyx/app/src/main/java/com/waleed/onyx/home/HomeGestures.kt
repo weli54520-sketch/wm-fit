@@ -191,6 +191,7 @@ private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: Point
 }
 
 /** يضيف كل نقاط الإصبع للسرعة: المجمّعة (لو الجوال تأخر) والأخيرة */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun track(tracker: VelocityTracker, c: androidx.compose.ui.input.pointer.PointerInputChange) {
     for (h in c.historical) tracker.addPosition(h.uptimeMillis, h.position)
     tracker.addPosition(c.uptimeMillis, c.position)
