@@ -119,6 +119,8 @@ class Resize(val item: Item, val limits: SpanLimits, startWDp: Float, startHDp: 
     var w by mutableIntStateOf(item.w)
     var h by mutableIntStateOf(item.h)
     var solution by mutableStateOf<Map<Long, Cell>?>(null)
+    /** أيقونات ما لقت مكان بالصفحة وأنت تكبر الويدجت: تنتقل للصفحة اللي بعدها */
+    var overflow by mutableStateOf<List<Long>>(emptyList())
 }
 
 /**
@@ -241,7 +243,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
     }
 
     /** أيقونة بتطلع من الصفحة المليانة وأنت تسحب */
-    fun isOverflow(id: Long): Boolean = drag?.overflow?.contains(id) == true
+    fun isOverflow(id: Long): Boolean = drag?.overflow?.contains(id) == true || resize?.overflow?.contains(id) == true
 
     /** المكان المؤقت لعنصر وأنت تسحب أو تكبر ويدجت (بعد ما يوقف الإصبع) */
     fun previewCell(page: Int, id: Long): Cell? {
@@ -495,7 +497,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             val b = g.cellBox(o.x, o.y, o.w, o.h)
             val dist = kotlin.math.hypot(lx - b.cx, ly - b.cy)
             if (d.item.kind == Kind.APP && (o.kind == Kind.APP || o.kind == Kind.FOLDER) && o.w == 1 && o.h == 1) {
-                if (dist < g.icon * 0.32f) return o.id
+                if (dist < g.icon * 0.38f) return o.id
             } else if (d.item.kind == Kind.WIDGET && o.kind == Kind.WIDGET && o.w == d.item.w && o.h == d.item.h) {
                 if (dist < minOf(b.w, b.h) * 0.22f) return o.id
             }
@@ -847,9 +849,10 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         android.util.Log.d("OnyxResize", "live=${s.wDp.roundToInt()}x${s.hDp.roundToInt()}")
         if (s.w == r.w && s.h == r.h) return
         val others = gridItems(r.item.page).filter { it.id != r.item.id }.map { Span(it.id, it.x, it.y, it.w, it.h) }
-        val sol = GridEngine.solve(others, Span(r.item.id, r.item.x, r.item.y, s.w, s.h), g.cols, g.rows)
-        if (sol == null) { android.util.Log.d("OnyxResize", "noroom cells=${s.w}x${s.h}"); return }
-        r.w = s.w; r.h = s.h; r.solution = sol
+        // مثل النقل: لو الصفحة مليانة، اللي ما يركب ينتقل للصفحة اللي بعدها (ما يرفض التكبير)
+        val res = GridEngine.solveOverflow(others, Span(r.item.id, r.item.x, r.item.y, s.w, s.h), g.cols, g.rows)
+        if (res == null) { android.util.Log.d("OnyxResize", "noroom cells=${s.w}x${s.h}"); return }
+        r.w = s.w; r.h = s.h; r.solution = res.cells; r.overflow = res.overflow
         android.util.Log.d("OnyxResize", "cells=${s.w}x${s.h}")
     }
 
@@ -866,6 +869,21 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
             if (q.x != o.x || q.y != o.y) upd += o.copy(x = q.x, y = q.y)
         }
         upd += r.item.copy(w = r.w, h = r.h)
+        // اللي ما ركب: لأول مكان فاضي بالصفحات اللي بعدها
+        val g = layout
+        if (g != null) for (id in r.overflow) {
+            val o = items.firstOrNull { it.id == id } ?: continue
+            var p = r.item.page + 1
+            while (true) {
+                val taken = items.filter { it.container == Container.GRID && it.id != id }
+                    .map { x -> upd.firstOrNull { it.id == x.id } ?: x }
+                    .filter { it.page == p }
+                    .map { Span(it.id, it.x, it.y, it.w, it.h) }
+                val spot = GridEngine.freeSpot(taken, o.w, o.h, g.cols, g.rows)
+                if (spot != null) { upd.removeAll { it.id == id }; upd += o.copy(page = p, x = spot.x, y = spot.y); break }
+                p++
+            }
+        }
         applyLocal(upd)
         buzz()
         scope.launch { repo.save(upd) }

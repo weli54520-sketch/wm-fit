@@ -316,7 +316,7 @@ private suspend fun AwaitPointerEventScope.resizeLoop(state: HomeState, id: Poin
 
 /**
  * السحب لفوق = كل التطبيقات، لتحت = الإشعارات (من أي مكان).
- * لو بدأ على أيقونة تطبيق: لفوق = ويدجته المنبثق. على مجلد: لفوق = أول تطبيق فيه.
+ * لو بدأ على أيقونة بالعمود أو الشريط: لفوق = ويدجتها المنبثق، أو أول تطبيق بالمجلد.
  */
 private suspend fun AwaitPointerEventScope.verticalSwipe(state: HomeState, id: PointerId, start: Offset, on: Hit.OnItem?) {
     var dy = 0f
@@ -331,7 +331,8 @@ private suspend fun AwaitPointerEventScope.verticalSwipe(state: HomeState, id: P
     }
     if (state.editing || abs(dx) > abs(dy)) return
     val d = state.density
-    if (on != null && dy < -40f * d) {
+    // على أيقونة بالعمود أو الشريط بس (بالصفحات السحب لفوق يفتح الدرج دايماً، حتى لو الصفحة مليانة)
+    if (on != null && on.slot != null && dy < -40f * d) {
         when (on.item.kind) {
             Kind.APP -> { state.showPopup(on.item); return }
             Kind.FOLDER -> { state.folderSwipe(on.item); return }

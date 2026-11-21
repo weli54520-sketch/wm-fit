@@ -138,7 +138,7 @@ def nodes():
             continue
         x1, y1, x2, y2 = map(int, b)
         out.append({
-            "desc": n.get("content-desc", ""), "text": n.get("text", ""),
+            "desc": n.get("content-desc", ""), "text": n.get("text", ""), "cls": n.get("class", ""),
             "id": n.get("resource-id", ""), "x": (x1 + x2) / 2, "y": (y1 + y2) / 2,
             "w": x2 - x1, "h": y2 - y1, "box": [x1, y1, x2, y2],
         })
@@ -487,10 +487,9 @@ def run_screen(tag):
             log("  ❌ ما بدأ سحب الويدجت")
         shot(f"{tag}_10_widget_drag_end")
         # 0.4: الويدجت ينزل بالمكان اللي اخترته حتى لو الصفحة مليانة (اللي تحته ينتقل)
-        lgw = sh("adb logcat -d -s OnyxWidget:D -v brief")
-        bw = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lgw)
-        moved = bool(bw) and int(bw[-1][1]) < y0 - 60
-        log(f"  {'✅' if moved else '❌'} الويدجت نزل بالمكان الجديد (من y={y0} إلى {bw[-1][1] if bw else '-'})")
+        drops = re.findall(r"drop pointer=\S+ target=(\w+)", lg)
+        moved = bool(drops) and drops[-1].startswith("CellAt")
+        log(f"  {'✅' if moved else '❌'} الويدجت نزل بالمكان اللي اختاره (الإفلات: {drops[-1] if drops else '-'})")
         # تكبير بالزاوية: يتبع الإصبع ويتحدد لما تفلت
         lg = sh("adb logcat -d -s OnyxWidget:D -v brief")
         boxes = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lg)
@@ -501,21 +500,21 @@ def run_screen(tag):
             with Record(f"{tag}_12_widget_resize"):
                 down(hx, hy); time.sleep(0.3)
                 step = w0 / max(1, round(w0 / (dens * 80)))
-                # بالعرض بس (عمود زيادة): الصفحة مليانة، فالقطري ما يلقى مكان
+                # لتحت (صف زيادة): الصفحة مليانة، واللي ما يركب ينتقل للصفحة الجاية
                 for i in range(1, 9):
-                    move(hx + i * 0.2 * step, hy)
+                    move(hx, hy + i * 0.2 * step)
                 time.sleep(0.6)
-                up(hx + 1.6 * step, hy)
+                up(hx, hy + 1.6 * step)
                 time.sleep(1.2)
             lg = sh("adb logcat -d -s OnyxResize:D -v brief")
             for l in [l.split(": ", 1)[-1] for l in lg.splitlines() if "cells=" in l][-4:]:
                 log(f"    · {l}")
-            lives = [int(v) for v in re.findall(r"live=(\d+)x\d+", lg)]
+            lives = [int(v) for v in re.findall(r"live=\d+x(\d+)", lg)]
             end = re.search(r"end cells=(\d+)x(\d+) from=(\d+)x(\d+)", lg)
             follows = len(lives) >= 4 and all(b >= a for a, b in zip(lives, lives[1:])) and len(set(lives)) >= 4
             log(f"  {'✅' if follows else '❌'} التكبير يتبع الإصبع: {lives}")
             if end:
-                log(f"  {'✅' if int(end.group(1)) > int(end.group(3)) else '❌'} بعد ما فلت: {end.group(3)}×{end.group(4)} ← {end.group(1)}×{end.group(2)}")
+                log(f"  {'✅' if int(end.group(2)) > int(end.group(4)) else '❌'} بعد ما فلت: {end.group(3)}×{end.group(4)} ← {end.group(1)}×{end.group(2)}")
             else:
                 log("  ❌ ما بدأ التكبير (المقبض؟)")
             shot(f"{tag}_12_widget_resize_end")
@@ -697,6 +696,12 @@ def run_screen(tag):
     def s_folder():
         home()
         ic = grid_icons(W, H)
+        a0 = ic[0]
+        # ندخل وضع الترتيب أول (الصفحة تصغر)، وبعدين نقرا الأماكن الجديدة
+        down(a0["x"], a0["y"]); time.sleep(0.9); up(a0["x"], a0["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
+        tap(row[0]["x"], row[0]["y"]); time.sleep(1.2)
+        ic = sorted(grid_icons(W, H), key=lambda n: (round(n["y"] / 40), n["x"]))
         a, b = ic[0], ic[1]
         sh("adb logcat -c")
         with Record(f"{tag}_19_folder"):
@@ -706,8 +711,14 @@ def run_screen(tag):
         made = "created id=" in lg
         log(f"  {'✅' if made else '❌'} سحب أيقونة فوق أيقونة = مجلد")
         home(); time.sleep(1.0)
-        # نفتح المجلد (مكان الأيقونة الثانية)
-        tap(b["x"], b["y"]); time.sleep(1.5)
+        # نفتح المجلد (مكان الأيقونة الثانية، بعد ما ترجع الصفحة لحجمها)
+        ic2 = sorted(grid_icons(W, H), key=lambda n: (round(n["y"] / 40), n["x"]))
+        fx, fy = (ic2[0]["x"], ic2[0]["y"]) if ic2 else (b["x"], b["y"])
+        lgf = sh("adb logcat -d -s OnyxWidget:D OnyxFolder:D -v brief")
+        folders = [n for n in nodes() if n["desc"].startswith("مجلد")]
+        log(f"  {'✅' if folders else '❌'} أيقونة المجلد على الشاشة")
+        tap(folders[0]["x"], folders[0]["y"]) if folders else tap(fx, fy)
+        time.sleep(1.5)
         opened = any(n["text"] == "مجلد" for n in nodes())
         log(f"  {'✅' if opened else '❌'} المجلد ينفتح بضغطة (زجاج سائل واسمه فوق)")
         shot(f"{tag}_19_folder_open")
@@ -718,12 +729,15 @@ def run_screen(tag):
 
     def s_drawer():
         home()
-        swipe(W * 0.5, H * 0.7, W * 0.5, H * 0.25, 250)
+        # من النقاط (تحت الشبكة) أو أي مكان: الدرج لازم ينفتح حتى لو بدأت على أيقونة
+        ic = grid_icons(W, H)
+        sx, sy = (ic[len(ic) // 2]["x"], ic[len(ic) // 2]["y"]) if ic else (W * 0.5, H * 0.6)
+        swipe(sx, sy, sx, sy - H * 0.35, 250)
         time.sleep(1.8)
         ns = nodes()
-        bar = [n for n in ns if "وش تدور" in n["text"]]
+        bar = [n for n in ns if "EditText" in n["cls"]]
         log(f"  {'✅' if bar else '❌'} السحب لفوق يفتح الدرج وفيه شريط البحث تحت")
-        cats = [n["text"] for n in ns if n["text"] in ("الجوال", "أخرى", "الإنتاجية", "التواصل", "الصور")]
+        cats = [n["text"] for n in ns if n["text"] in ("الجوال", "أخرى", "الإنتاجية", "التواصل", "الصور", "الفيديو")]
         log(f"  {'✅' if cats else '❌'} التطبيقات مقسمة فئات: {cats[:4]}")
         shot(f"{tag}_20_drawer")
         if bar:
@@ -756,10 +770,12 @@ def run_screen(tag):
             t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
             if t:
                 break
-            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(0.8)
+            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(1.8)
         if not t:
             raise RuntimeError("ما لقيت قفل الترتيب")
-        tap(t[0]["x"], t[0]["y"]); time.sleep(0.6)
+        time.sleep(1.0)
+        t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
+        tap(t[0]["x"], t[0]["y"]); time.sleep(0.8)
         adb("input keyevent KEYCODE_BACK"); time.sleep(1.0)
         # ضغطة طويلة فوق (برا الصفحات) والترتيب مقفل: لازم تفتح الإعدادات، ما تنحبس
         down(W * 0.5, H * 0.06); time.sleep(0.9); up(W * 0.5, H * 0.06); time.sleep(1.2)

@@ -53,6 +53,8 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -141,7 +143,7 @@ fun ItemIcon(state: HomeState, item: Item, size: Dp) {
         val kids = state.folderChildren(item.id)
         val fd = state.folderData(item)
         val hasNotif = state.settings.dots && kids.any { k -> state.catalog.byKey(k.appKey)?.pkg?.let { notifs.containsKey(it) } == true }
-        Box(Modifier.size(size)) {
+        Box(Modifier.size(size).semantics { contentDescription = "مجلد ${fd.name}" }) {
             if (fd.cover && kids.isNotEmpty()) AppIcon(state.catalog.byKey(kids.first().appKey), state.catalog, size, state.settings.iconStyle)
             else FolderIcon(state, kids, size)
             if (hasNotif) NotifDot(size * 0.2f, Modifier.align(Alignment.TopEnd).offset(x = size * 0.04f, y = -size * 0.04f))
