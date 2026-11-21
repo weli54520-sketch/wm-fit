@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -76,12 +78,19 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
     val dragged = state.drag?.item?.id == item.id
     val frame = data?.frame != false
     val info = remember(data?.id) { data?.let { state.app.widgets.info(it.id) } }
+    val logged = remember { arrayOfNulls<String>(1) }
 
     Box(
         Modifier
             .offset { anim.value }
             .size(boxW, boxH)
-            .graphicsLayer { alpha = if (dragged) 0f else 1f },
+            .graphicsLayer { alpha = if (dragged) 0f else 1f }
+            // سجل للجوال الوهمي: مكان الويدجت ومقاسه على الشاشة
+            .onGloballyPositioned {
+                val r = it.boundsInRoot()
+                val key = "${r.left.toInt()},${r.top.toInt()},${r.width.toInt()},${r.height.toInt()}"
+                if (logged[0] != key) { logged[0] = key; android.util.Log.d("OnyxWidget", "id=${item.id} box=$key") }
+            },
     ) {
         Box(
             Modifier

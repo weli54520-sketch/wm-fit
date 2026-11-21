@@ -338,7 +338,7 @@ class HomeState(val app: OnyxApp, private val scope: CoroutineScope) {
         if (t != lastLogged) {
             lastLogged = t
             val b = dragBoxDp(d)
-            android.util.Log.d("OnyxDrag", "pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px center=${b?.cx?.roundToInt()},${b?.cy?.roundToInt()}dp k=${"%.2f".format(k())} page=${d.page} target=$t")
+            android.util.Log.d("OnyxDrag", "pointer=${d.pointer.x.roundToInt()},${d.pointer.y.roundToInt()}px center=${b?.cx?.roundToInt()},${b?.cy?.roundToInt()}dp size=${b?.w?.roundToInt()}x${b?.h?.roundToInt()}dp kind=${d.item.kind} k=${"%.2f".format(k())} page=${d.page} target=$t")
         }
         when (t) {
             is DragTarget.CellAt -> { d.cand = Cell(t.x, t.y); d.slot = null; d.edge = 0 }

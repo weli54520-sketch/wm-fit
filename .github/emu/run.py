@@ -357,6 +357,65 @@ def run_screen(tag):
         home()
     scenario("تبديل أيقونة مع العمود", s_side_swap)
 
+    def s_widget():
+        # نضيف ويدجت حقيقي من المعرض، ونجرب قائمته ونسحبه
+        ic = [n for n in icons() if n["x"] < W * 0.75]
+        a = ic[0]
+        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
+        row = [n for n in nodes() if "ترتيب الشاشة" in n["text"]]
+        tap(row[0]["x"], row[0]["y"]); time.sleep(1.0)
+        plus = [n for n in nodes() if "ويدجت" in n["text"]]
+        if not plus:
+            raise RuntimeError("ما لقيت زر + ويدجت")
+        tap(plus[0]["x"], plus[0]["y"]); time.sleep(3.5)
+        shot(f"{tag}_10_gallery")
+        cards = [n for n in nodes() if re.fullmatch(r"\d×\d", n["text"])]
+        if not cards:
+            raise RuntimeError("المعرض فاضي")
+        # أول بطاقة 2×2 أو أي وحدة
+        c = next((n for n in cards if n["text"] in ("2×2", "4×2")), cards[0])
+        sh("adb logcat -c")
+        tap(c["x"], c["y"] - 180); time.sleep(3)
+        # نافذة إذن النظام: نوافق
+        for _ in range(3):
+            btn = [n for n in nodes() if n["id"] == "android:id/button1" or n["text"].upper() in ("CREATE", "ALLOW", "إنشاء", "سماح")]
+            box = [n for n in nodes() if "checkbox" in n["id"].lower() or n["id"] == "android:id/checkbox"]
+            if box: tap(box[0]["x"], box[0]["y"]); time.sleep(0.5)
+            if btn:
+                tap(btn[0]["x"], btn[0]["y"]); time.sleep(3)
+            else:
+                break
+        time.sleep(2)
+        shot(f"{tag}_10_widget_added")
+        lg = sh("adb logcat -d -s OnyxWidget:D -v brief")
+        boxes = re.findall(r"box=(-?\d+),(-?\d+),(\d+),(\d+)", lg)
+        if not boxes:
+            raise RuntimeError("الويدجت ما انضاف (ما فيه سجل)")
+        x0, y0, w0, h0 = map(int, boxes[-1])
+        log(f"  ✅ انضاف ويدجت: {w0}×{h0}px")
+        cx, cy = x0 + w0 // 2, y0 + h0 // 2
+        # قائمة الويدجت
+        down(cx, cy); time.sleep(0.9); up(cx, cy); time.sleep(0.8)
+        shot(f"{tag}_10_widget_menu")
+        adb("input keyevent KEYCODE_BACK"); time.sleep(0.8)
+        # سحب الويدجت
+        sh("adb logcat -c")
+        with Record(f"{tag}_10_widget_drag"):
+            long_press_drag(cx, cy, [(cx, cy - 250), (cx, cy - 400)], hold=0.8, dwell=0.8)
+            time.sleep(1.2)
+        lg = sh("adb logcat -d -s OnyxDrag:D -v brief")
+        sizes = re.findall(r"size=(\d+)x(\d+)dp kind=1 k=([\d.]+)", lg)
+        dens = SCREENS[tag][1] / 160
+        if sizes:
+            sw, shh, k = int(sizes[-1][0]), int(sizes[-1][1]), float(sizes[-1][2])
+            ok = sw <= w0 / dens * 1.02 + 2 and shh <= h0 / dens * 1.02 + 2
+            log(f"  {'✅' if ok else '❌'} الويدجت وهو يتسحب ما يكبر: {sw}×{shh}dp (الويدجت {w0/dens:.0f}×{h0/dens:.0f}dp)")
+        else:
+            log("  ❌ ما بدأ سحب الويدجت")
+        shot(f"{tag}_10_widget_drag_end")
+        home()
+    scenario("ويدجت: إضافة، قائمة، سحب", s_widget)
+
     def s_shade():
         swipe(W * 0.5, H * 0.35, W * 0.5, H * 0.7, 200)
         time.sleep(1.5)
