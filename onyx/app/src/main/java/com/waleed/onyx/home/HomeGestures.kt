@@ -53,6 +53,9 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
 
         var last = down.position
         var lastTime = down.uptimeMillis
+        // سرعة الإصبع من أول لمسة، بكل النقاط (حتى المجمّعة لو الجوال تأخر إطار)
+        val tracker = VelocityTracker()
+        tracker.addPosition(down.uptimeMillis, down.position)
         val first: First? = withTimeoutOrNull(holdMs) {
             var r: First? = null
             while (r == null) {
@@ -65,6 +68,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                     else -> null
                 }
                 if (c != null) {
+                    track(tracker, c)
                     last = c.position
                     lastTime = c.uptimeMillis
                     if (editing && onItem != null) c.consume()
@@ -85,7 +89,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                     // بوضع الترتيب: سحبة سريعة بالعرض فوق الأيقونات = تقليب صفحات (مثل الآيفون)
                     editing && onItem != null && onItem.slot == null && state.inPages(down.position) &&
                         PagerPhysics.editTouchIsPageSwipe(lastTime - down.uptimeMillis, d.x, d.y) ->
-                        pageSwipe(state, down.id, last)
+                        pageSwipe(state, down.id, last, tracker)
                     // بوضع الترتيب: إمساك وتحريك = نقل الأيقونة
                     editing && onItem != null -> {
                         // نمسكه من مكان اللمسة الأولى بالضبط، وبعدين يلحق الإصبع (بدون ما يتأخر عنه)
@@ -93,7 +97,7 @@ fun Modifier.homeGestures(state: HomeState): Modifier = pointerInput(state) {
                         state.dragMove(last)
                         dragLoop(state, down.id)
                     }
-                    abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, last)
+                    abs(d.x) > abs(d.y) && state.inPages(down.position) -> pageSwipe(state, down.id, last, tracker)
                     // الويدجت بالوضع العادي: السحب الطولي له (مثل قائمة التقويم)
                     isWidget && !editing -> {}
                     else -> verticalSwipe(state, down.id, down.position)
@@ -158,20 +162,20 @@ private suspend fun AwaitPointerEventScope.dragLoop(state: HomeState, id: Pointe
  * تقليب الصفحات بإصبعك: الصفحة تلحق إصبعك من أول ما يتعدى حد اللمس (بدون قفزة)،
  * وإذا فلت تكمل بنفس سرعة إصبعك لين صفحة كاملة.
  */
-private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: PointerId, start: Offset) {
+private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: PointerId, start: Offset, tracker: VelocityTracker) {
     val pages = state.pages
     pages.stop()
     val startOffset = pages.offset
     val startPage = PagerPhysics.nearest(startOffset, pages.count)
     val width = state.pageWidthPx()
-    val tracker = VelocityTracker()
     while (true) {
         val e = awaitPointerEvent(PointerEventPass.Initial)
         val c = e.changes.firstOrNull { it.id == id } ?: break
         c.consume()
-        tracker.addPosition(c.uptimeMillis, c.position)
-        if (!c.pressed) break
+        track(tracker, c)
+        // مكان الإصبع الأخير (حتى لحظة الرفع) يحدد الصفحة
         pages.offset = PagerPhysics.dragOffset(startOffset, c.position.x - start.x, width, pages.count)
+        if (!c.pressed) break
     }
     // السرعة من الإصبع نفسه (بكسل بالثانية، موجب = يمين)
     val vPx = tracker.calculateVelocity().x
@@ -184,6 +188,12 @@ private suspend fun AwaitPointerEventScope.pageSwipe(state: HomeState, id: Point
     }
     android.util.Log.d("OnyxPages", "release offset=${"%.2f".format(pages.offset)} v=${vPx.toInt()}px/s target=$target")
     pages.animateTo(target, PagerPhysics.flingDurationMs(pages.offset, target, toward, state.calm()))
+}
+
+/** يضيف كل نقاط الإصبع للسرعة: المجمّعة (لو الجوال تأخر) والأخيرة */
+private fun track(tracker: VelocityTracker, c: androidx.compose.ui.input.pointer.PointerInputChange) {
+    for (h in c.historical) tracker.addPosition(h.uptimeMillis, h.position)
+    tracker.addPosition(c.uptimeMillis, c.position)
 }
 
 /** تكبير الويدجت بالمقبض: المقاس يتبع إصبعك، والخانات تتحدد لما تفلت */

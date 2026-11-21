@@ -411,10 +411,17 @@ def run_screen(tag):
         if not cards:
             raise RuntimeError("المعرض فاضي")
         # أول بطاقة 2×2 أو أي وحدة
-        # ويدجت يتكبر (تقويم 3×2 أو 4×2)، وإلا أي واحد
-        c = next((n for n in cards if n["text"] in ("3×2", "4×2")), next((n for n in cards if n["text"] == "2×2"), cards[0]))
+        # ويدجت التقويم (يتكبر وما يحتاج إعداد)، بالاسم
+        named = [n for n in nodes() if n["text"] in ("Calendar schedule", "Calendar month view")]
+        dens0 = SCREENS[tag][1] / 160
         sh("adb logcat -c")
-        tap(c["x"], c["y"] - 180); time.sleep(3)
+        if named:
+            c = named[0]
+            tap(c["x"], c["y"] - 85 * dens0)
+        else:
+            c = cards[0]
+            tap(c["x"], c["y"] - 100 * dens0)
+        time.sleep(3)
         # نافذة إذن النظام: نوافق
         for _ in range(3):
             btn = [n for n in nodes() if n["id"] == "android:id/button1" or n["text"].upper() in ("CREATE", "ALLOW", "إنشاء", "سماح")]
