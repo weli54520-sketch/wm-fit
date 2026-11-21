@@ -36,6 +36,13 @@ class MainActivity : ComponentActivity() {
 
     /** للجوال الوهمي بس: adb يطلب صفحات مليانة عشان نختبر التقليب والنقل */
     private fun maybeTestFill(i: Intent?) {
+        // للجوال الوهمي: يشغل أو يطفي "قفل الترتيب" (عشان نختبر إنه ما يحبس الإعدادات)
+        i?.getStringExtra("onyx_test_lock")?.let { v ->
+            if (v.startsWith("wm-emu-2026:")) {
+                (application as OnyxApp).settings.lock = v.endsWith(":on")
+                i.removeExtra("onyx_test_lock")
+            }
+        }
         if (i?.getStringExtra("onyx_test_fill") != "wm-emu-2026") return
         i.removeExtra("onyx_test_fill")
         val app = application as OnyxApp

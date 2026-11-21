@@ -474,7 +474,9 @@ def run_screen(tag):
         # سحب الويدجت
         sh("adb logcat -c")
         with Record(f"{tag}_10_widget_drag"):
-            long_press_drag(cx, cy, [(cx, cy - 250), (cx, cy - 400)], hold=0.8, dwell=0.8)
+            # لفوق لو فيه مكان، وإلا لتحت (لازم ينزل داخل الصفحة)
+            dy = -1 if cy > H * 0.45 else 1
+            long_press_drag(cx, cy, [(cx, cy + dy * 200), (cx, cy + dy * 320)], hold=0.8, dwell=0.8)
             time.sleep(1.2)
         lg = sh("adb logcat -d -s OnyxDrag:D -v brief")
         sizes = re.findall(r"size=(\d+)x(\d+)dp kind=1 k=([\d.]+)", lg)
@@ -487,7 +489,7 @@ def run_screen(tag):
             log("  ❌ ما بدأ سحب الويدجت")
         shot(f"{tag}_10_widget_drag_end")
         # 0.4: الويدجت ينزل بالمكان اللي اخترته حتى لو الصفحة مليانة (اللي تحته ينتقل)
-        drops = re.findall(r"drop pointer=\S+ target=(\w+)", lg)
+        drops = [d.split(".")[-1] for d in re.findall(r"drop pointer=\S+ target=([\w.$]+)", lg)]
         moved = bool(drops) and drops[-1].startswith("CellAt")
         log(f"  {'✅' if moved else '❌'} الويدجت نزل بالمكان اللي اختاره (الإفلات: {drops[-1] if drops else '-'})")
         # تكبير بالزاوية: يتبع الإصبع ويتحدد لما تفلت
@@ -759,38 +761,17 @@ def run_screen(tag):
 
     def s_lock():
         home()
-        ic = grid_icons(W, H)
-        a = ic[0]
-        down(a["x"], a["y"]); time.sleep(0.9); up(a["x"], a["y"]); time.sleep(0.8)
-        row = [n for n in nodes() if n["text"] == "الإعدادات"]
-        tap(row[0]["x"], row[0]["y"]); time.sleep(1.2)
-        # ننزل لين نلقى "قفل الترتيب"
-        t = None
-        for _ in range(8):
-            t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
-            if t:
-                break
-            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(1.8)
-        if not t:
-            raise RuntimeError("ما لقيت قفل الترتيب")
-        time.sleep(1.0)
-        t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
-        tap(t[0]["x"], t[0]["y"]); time.sleep(0.8)
-        adb("input keyevent KEYCODE_BACK"); time.sleep(1.0)
+        adb(f"am start -n {PKG}/.MainActivity --es onyx_test_lock wm-emu-2026:on")
+        time.sleep(1.5)
+        home()
         # ضغطة طويلة فوق (برا الصفحات) والترتيب مقفل: لازم تفتح الإعدادات، ما تنحبس
         down(W * 0.5, H * 0.06); time.sleep(0.9); up(W * 0.5, H * 0.06); time.sleep(1.2)
         opened = any(n["text"] in ("العمود والشريط", "الأيقونات", "الخلفية") for n in nodes())
         log(f"  {'✅' if opened else '❌'} الترتيب مقفل والضغطة الطويلة تفتح الإعدادات (ما تنحبس)")
         shot(f"{tag}_21_lock_settings")
-        # نرجع القفل مطفي
-        for _ in range(8):
-            t = [n for n in nodes() if n["text"] == "قفل الترتيب"]
-            if t:
-                break
-            swipe(W * 0.5, H * 0.75, W * 0.5, H * 0.3, 300); time.sleep(0.8)
-        if t:
-            tap(t[0]["x"], t[0]["y"]); time.sleep(0.6)
         adb("input keyevent KEYCODE_BACK"); time.sleep(0.8)
+        adb(f"am start -n {PKG}/.MainActivity --es onyx_test_lock wm-emu-2026:off")
+        time.sleep(1.5)
         home()
     scenario("قفل الترتيب ما يحبسك", s_lock)
 

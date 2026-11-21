@@ -84,13 +84,13 @@ fun DrawScope.liquidGlass(radius: Float, strong: Boolean = false) {
     // جسم الزجاج
     drawRoundRect(
         Brush.verticalGradient(
-            listOf(Color.White.copy(alpha = if (strong) 0.24f else 0.22f), Color.White.copy(alpha = if (strong) 0.12f else 0.10f), Color.White.copy(alpha = 0.16f)),
+            listOf(Color.White.copy(alpha = if (strong) 0.30f else 0.32f), Color.White.copy(alpha = if (strong) 0.18f else 0.20f), Color.White.copy(alpha = 0.24f)),
         ),
         cornerRadius = r,
     )
     // ظل داخلي من تحت (سماكة)
     drawRoundRect(
-        Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.18f)),
+        Brush.verticalGradient(0.7f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.08f)),
         cornerRadius = r,
     )
     // انعكاس من فوق يسار
@@ -105,11 +105,11 @@ fun DrawScope.liquidGlass(radius: Float, strong: Boolean = false) {
     // الحافة الداخلية: لمعة من فوق تخف لتحت
     val inset = minOf(w, h) * 0.035f
     drawRoundRect(
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.45f), Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.22f))),
+        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.32f), Color.Transparent, Color.White.copy(alpha = 0.10f))),
         topLeft = Offset(inset, inset),
         size = Size(w - inset * 2, h - inset * 2),
         cornerRadius = CornerRadius((radius - inset).coerceAtLeast(0f)),
-        style = Stroke(minOf(w, h) * 0.022f),
+        style = Stroke((minOf(w, h) * 0.010f).coerceAtMost(3f)),
     )
     // الحافة الخارجية
     drawRoundRect(
@@ -119,7 +119,7 @@ fun DrawScope.liquidGlass(radius: Float, strong: Boolean = false) {
             end = Offset(w, h),
         ),
         cornerRadius = r,
-        style = Stroke(minOf(w, h) * 0.018f + 0.6f),
+        style = Stroke((minOf(w, h) * 0.012f).coerceAtMost(2.5f) + 0.6f),
     )
 }
 
@@ -167,11 +167,6 @@ fun FolderIcon(state: HomeState, kids: List<Item>, size: Dp) {
     Box(
         Modifier
             .size(size)
-            .graphicsLayer {
-                shadowElevation = 6.dp.toPx()
-                shape = RoundedCornerShape(percent = 27)
-                clip = false
-            }
             .drawBehind { liquidGlass(this.size.minDimension * 0.27f) },
         contentAlignment = Alignment.Center,
     ) {
@@ -272,7 +267,6 @@ fun FolderOverlay(state: HomeState) {
                 Modifier
                     .width(panelW)
                     .height(panelH)
-                    .graphicsLayer { shadowElevation = 18.dp.toPx(); shape = RoundedCornerShape(38.dp); clip = false }
                     .drawBehind { liquidGlass(38.dp.toPx(), strong = true) }
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
             ) {
