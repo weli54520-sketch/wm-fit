@@ -66,15 +66,14 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
     val anim = remember { Animatable(target, IntOffset.VectorConverter) }
     LaunchedEffect(target, state.dropTick) {
         state.takeDropFrom(item.id)?.let { anim.snapTo(it) }
-        anim.animateTo(target, Motion.bouncy(settings))
+        anim.animateTo(target, Motion.smooth(settings))
     }
     val r = state.resize?.takeIf { it.item.id == item.id }
     val spanW = r?.w ?: item.w
     val spanH = r?.h ?: item.h
-    val boxW by animateDpAsState(cellW * spanW, Motion.bouncy(settings), label = "wW")
-    val boxH by animateDpAsState(cellH * spanH, Motion.bouncy(settings), label = "wH")
+    val boxW by animateDpAsState(cellW * spanW, Motion.smooth(settings), label = "wW")
+    val boxH by animateDpAsState(cellH * spanH, Motion.smooth(settings), label = "wH")
     val dragged = state.drag?.item?.id == item.id
-    val coords = rememberCoordsHolder()
     val frame = data?.frame != false
     val info = remember(data?.id) { data?.let { state.app.widgets.info(it.id) } }
 
@@ -82,15 +81,13 @@ fun WidgetTile(state: HomeState, item: Item, page: Int, cellW: Dp, cellH: Dp) {
         Modifier
             .offset { anim.value }
             .size(boxW, boxH)
-            .graphicsLayer { alpha = if (dragged) 0f else 1f }
-            .trackBounds { b, c -> coords[0] = c; state.tileBounds[item.id] = b },
+            .graphicsLayer { alpha = if (dragged) 0f else 1f },
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .padding(WidgetMargin)
-                .then(if (frame) Modifier.smokeGlass(RoundedCornerShape(WidgetCorner)) else Modifier)
-                .widgetGestures(state, item) { coords[0] },
+                .then(if (frame) Modifier.smokeGlass(RoundedCornerShape(WidgetCorner)) else Modifier),
         ) {
             val inset = if (frame) FramePad else 0.dp
             // المقاس اللي نقوله للتطبيق: المساحة الفعلية للويدجت
@@ -142,7 +139,6 @@ private fun ResizeHandle(state: HomeState, item: Item, alpha: Float, modifier: M
             .pointerInput(item.id) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    state.tilePressed = true
                     down.consume()
                     state.resizeStart(item)
                     var total = Offset.Zero
@@ -154,7 +150,6 @@ private fun ResizeHandle(state: HomeState, item: Item, alpha: Float, modifier: M
                         c.consume()
                         state.resizeMove(total.x, total.y)
                     }
-                    state.tilePressed = false
                     state.resizeEnd()
                 }
             },
@@ -170,67 +165,5 @@ private fun ResizeHandle(state: HomeState, item: Item, alpha: Float, modifier: M
                     drawCircle(Color.White.copy(alpha = 0.55f), rad, style = Stroke(1.dp.toPx()))
                 },
         )
-    }
-}
-
-/**
- * لمسات الويدجت. نسمع اللمسة قبل الويدجت (Initial) بدون ما ناخذها،
- * فالأزرار اللي داخله تشتغل عادي. لو صارت ضغطة طويلة، ناخذ اللمسة منه ونفتح القائمة.
- */
-private fun Modifier.widgetGestures(state: HomeState, item: Item, coords: () -> LayoutCoordinates?): Modifier = pointerInput(item.id) {
-    fun root(p: Offset): Offset = coords()?.localToRoot(p) ?: p
-    val pass = PointerEventPass.Initial
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false, pass = pass)
-        state.tilePressed = true
-        val editing = state.editing
-        // بوضع الترتيب الويدجت ما يستقبل شي
-        if (editing) down.consume()
-        val slop = viewConfiguration.touchSlop
-        val holdMs = maxOf(viewConfiguration.longPressTimeoutMillis, 450L)
-        var lastPos = down.position
-        val first: Int? = withTimeoutOrNull(holdMs) {
-            var res = -1
-            while (res < 0) {
-                val e = awaitPointerEvent(pass)
-                val c = e.changes.firstOrNull { it.id == down.id }
-                res = when {
-                    c == null -> 3
-                    !c.pressed -> 0
-                    (c.position - down.position).getDistance() > slop -> 2
-                    else -> -1
-                }
-                if (c != null) {
-                    lastPos = c.position
-                    if (editing) c.consume()
-                }
-            }
-            res
-        }
-        when (first) {
-            0, 3 -> { state.tilePressed = false; return@awaitEachGesture }
-            2 -> {
-                if (editing) state.startDrag(item, root(lastPos))
-                else { state.tilePressed = false; return@awaitEachGesture }
-            }
-            null -> {
-                if (editing) state.startDrag(item, root(lastPos)) else state.openMenu(item, null)
-            }
-        }
-        var dragging = state.drag != null
-        while (true) {
-            val e = awaitPointerEvent(pass)
-            val c = e.changes.firstOrNull { it.id == down.id } ?: break
-            // من هنا اللمسة لنا: الويدجت يوصله إلغاء
-            c.consume()
-            if (!c.pressed) break
-            if (!dragging && (c.position - down.position).getDistance() > slop * 1.5f) {
-                state.startDrag(item, root(c.position))
-                dragging = state.drag != null
-            }
-            if (dragging) state.dragMove(root(c.position))
-        }
-        state.tilePressed = false
-        if (dragging) state.dragEnd()
     }
 }
